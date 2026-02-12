@@ -1,4 +1,5 @@
 export const REMEMBER_SESSION_COOKIE = 'remember_session';
+export const REMEMBER_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 type CookieOptions = {
   domain?: string;

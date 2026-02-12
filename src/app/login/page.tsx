@@ -80,7 +80,7 @@ export default async function LoginPage({ searchParams }: Props) {
 
           <label className="field-inline" htmlFor="remember">
             <input id="remember" name="remember" type="checkbox" value="on" />
-            <span>Recordarme por 30 dias</span>
+            <span>Recordarme en este dispositivo</span>
           </label>
 
           <LoginSubmitButton />

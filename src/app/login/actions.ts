@@ -5,7 +5,10 @@ import { redirect } from 'next/navigation';
 
 import { loginPathWithError } from '@/shared/feedbackMessages';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
-import { REMEMBER_SESSION_COOKIE } from '@/shared/supabase/authCookiePolicy';
+import {
+  REMEMBER_SESSION_COOKIE,
+  REMEMBER_SESSION_MAX_AGE_SECONDS,
+} from '@/shared/supabase/authCookiePolicy';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 async function isDisabledByEmail(email: string): Promise<boolean> {
@@ -90,7 +93,7 @@ export async function login(formData: FormData) {
   cookieStore.set(REMEMBER_SESSION_COOKIE, remember ? '1' : '0', {
     path: '/',
     sameSite: 'lax',
-    ...(remember ? { maxAge: 60 * 60 * 24 * 30 } : {}),
+    maxAge: REMEMBER_SESSION_MAX_AGE_SECONDS,
   });
 
   redirect('/app');
