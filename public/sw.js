@@ -1,9 +1,17 @@
-const CACHE_VERSION = 'v1.0.0';
+const CACHE_VERSION = 'v1.0.1';
+const ICON_VERSION = '20260212';
 const STATIC_CACHE = `la-sentadita-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `la-sentadita-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline';
 
-const STATIC_ASSETS = ['/', '/offline', '/manifest.webmanifest', '/icons/pwa-192.svg', '/icons/pwa-512.svg'];
+const STATIC_ASSETS = [
+  '/',
+  '/offline',
+  '/manifest.webmanifest',
+  `/icons/pwa-192.svg?v=${ICON_VERSION}`,
+  `/icons/pwa-512.svg?v=${ICON_VERSION}`,
+  `/icons/pwa-maskable.svg?v=${ICON_VERSION}`,
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

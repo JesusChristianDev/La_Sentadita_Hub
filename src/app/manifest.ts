@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next';
 
+const ICON_VERSION = '20260212';
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'La Sentadita Hub',
@@ -13,17 +15,17 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     icons: [
       {
-        src: '/icons/pwa-192.svg',
+        src: `/icons/pwa-192.svg?v=${ICON_VERSION}`,
         sizes: '192x192',
         type: 'image/svg+xml',
       },
       {
-        src: '/icons/pwa-512.svg',
+        src: `/icons/pwa-512.svg?v=${ICON_VERSION}`,
         sizes: '512x512',
         type: 'image/svg+xml',
       },
       {
-        src: '/icons/pwa-maskable.svg',
+        src: `/icons/pwa-maskable.svg?v=${ICON_VERSION}`,
         sizes: '512x512',
         type: 'image/svg+xml',
         purpose: 'maskable',
