@@ -2,11 +2,17 @@ import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { env } from '@/shared/env';
+import {
+  applySessionPersistenceToCookieOptions,
+  REMEMBER_SESSION_COOKIE,
+  shouldPersistSession,
+} from '@/shared/supabase/authCookiePolicy';
 
 const PUBLIC_PATH_PREFIXES = ['/login', '/api', '/_next', '/favicon.ico'];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const persistSession = shouldPersistSession(request.cookies.get(REMEMBER_SESSION_COOKIE)?.value);
 
   const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
@@ -20,7 +26,11 @@ export async function updateSession(request: NextRequest) {
         response = NextResponse.next({ request });
 
         cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
+          response.cookies.set(
+            name,
+            value,
+            applySessionPersistenceToCookieOptions(name, options, persistSession),
+          );
         });
       },
     },

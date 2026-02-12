@@ -308,6 +308,11 @@ a {
   background: var(--accent-strong);
 }
 
+.button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .button.small {
   min-height: 36px;
   padding: 0.42rem 0.78rem;
@@ -488,6 +493,53 @@ summary:focus-visible,
   font-size: 0.84rem;
   color: var(--muted);
   font-weight: 600;
+}
+
+.field-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.field-inline input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+}
+
+.password-input-wrap {
+  position: relative;
+}
+
+.password-input-wrap .input {
+  padding-right: 5.6rem;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  transform: translateY(-50%);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  line-height: 1.2;
+}
+
+.password-toggle:hover {
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.field-error {
+  margin: -10px 0 0;
+  font-size: 0.84rem;
+  color: #8d2c2c;
 }
 
 .notice {
