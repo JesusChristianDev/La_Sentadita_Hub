@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.0.6';
+const CACHE_VERSION = 'v1.0.7';
 const STATIC_CACHE = `la-sentadita-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `la-sentadita-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline';
@@ -6,7 +6,6 @@ const OFFLINE_URL = '/offline';
 const STATIC_ASSETS = [
   '/',
   '/offline',
-  '/manifest.webmanifest',
   '/icons/pwa-192-20260212.png',
   '/icons/pwa-512-20260212.png',
   '/icons/pwa-maskable-20260212.png',
@@ -40,13 +39,21 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;
+
+  if (url.pathname === '/manifest.webmanifest') {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
+          if (response.ok && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
+          }
           return response;
         })
         .catch(async () => {
@@ -57,17 +64,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const isStaticAsset =
+    request.destination === 'style' ||
+    request.destination === 'script' ||
+    request.destination === 'image' ||
+    request.destination === 'font' ||
+    request.destination === 'worker' ||
+    url.pathname.startsWith('/icons/');
+
+  if (!isStaticAsset) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
 
       return fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
+          if (response.ok && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
+          }
           return response;
         })
-        .catch(() => caches.match(OFFLINE_URL));
+        .catch(() => Response.error());
     }),
   );
 });
