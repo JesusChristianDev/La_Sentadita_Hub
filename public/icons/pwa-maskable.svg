@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="La Sentadita Hub maskable icon">
+  <rect width="512" height="512" fill="#101820" />
+  <circle cx="256" cy="256" r="150" fill="#f59e0b" />
+  <rect x="166" y="166" width="180" height="180" rx="36" fill="#fff7ed" />
+  <path d="M205 293V219h33c21 0 34 11 34 28s-13 28-34 28h-14v18h-19zm19-34h12c10 0 16-5 16-12s-6-12-16-12h-12v24z" fill="#101820" />
+</svg>
