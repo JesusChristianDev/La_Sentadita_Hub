@@ -1,14 +1,9 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { loginPathWithError } from '@/shared/feedbackMessages';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
-import {
-  REMEMBER_SESSION_COOKIE,
-  REMEMBER_SESSION_MAX_AGE_SECONDS,
-} from '@/shared/supabase/authCookiePolicy';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 async function isDisabledByEmail(email: string): Promise<boolean> {
@@ -54,13 +49,12 @@ export async function login(formData: FormData) {
 
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
-  const remember = String(formData.get('remember') ?? '') === 'on';
 
   if (!email || !password) {
     redirect(loginPathWithError('missing'));
   }
 
-  const supabase = await createSupabaseServerClient({ persistSession: remember });
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   // Si falla login, puede ser password mal o usuario baneado.
@@ -88,13 +82,6 @@ export async function login(formData: FormData) {
     await supabase.auth.signOut();
     redirect(loginPathWithError('disabled'));
   }
-
-  const cookieStore = await cookies();
-  cookieStore.set(REMEMBER_SESSION_COOKIE, remember ? '1' : '0', {
-    path: '/',
-    sameSite: 'lax',
-    maxAge: REMEMBER_SESSION_MAX_AGE_SECONDS,
-  });
 
   redirect('/app');
 }

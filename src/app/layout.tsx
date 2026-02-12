@@ -3,6 +3,7 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 
+import { InstallPwaButton } from './components/install-pwa-button';
 import { PwaRegister } from './components/pwa-register';
 
 const geistSans = Geist({
@@ -48,6 +49,7 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <PwaRegister />
+        <InstallPwaButton />
         <a href="#main-content" className="skip-link">
           Saltar al contenido
         </a>

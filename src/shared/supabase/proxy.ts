@@ -2,17 +2,18 @@ import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { env } from '@/shared/env';
-import {
-  applySessionPersistenceToCookieOptions,
-  REMEMBER_SESSION_COOKIE,
-  shouldPersistSession,
-} from '@/shared/supabase/authCookiePolicy';
 
 const PUBLIC_PATH_PREFIXES = ['/login', '/api', '/_next', '/favicon.ico'];
 
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATH_PREFIXES.some((prefix) => {
+    if (prefix === '/favicon.ico') return pathname === prefix;
+    return pathname === prefix || pathname.startsWith(`${prefix}/`);
+  });
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
-  const persistSession = shouldPersistSession(request.cookies.get(REMEMBER_SESSION_COOKIE)?.value);
 
   const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
@@ -20,17 +21,13 @@ export async function updateSession(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        // Mantén request/response en sync para evitar sesiones inconsistentes
+        // Manten request/response en sync para evitar sesiones inconsistentes
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
 
         response = NextResponse.next({ request });
 
         cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(
-            name,
-            value,
-            applySessionPersistenceToCookieOptions(name, options, persistSession),
-          );
+          response.cookies.set(name, value, options);
         });
       },
     },
@@ -40,7 +37,7 @@ export async function updateSession(request: NextRequest) {
   const isAuthed = Boolean(data.user);
 
   const pathname = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATH_PREFIXES.some((p) => pathname.startsWith(p));
+  const isPublic = isPublicPath(pathname);
 
   if (!isAuthed && !isPublic) {
     const url = request.nextUrl.clone();

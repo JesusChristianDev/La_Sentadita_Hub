@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 
-import { REMEMBER_SESSION_COOKIE } from '@/shared/supabase/authCookiePolicy';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 function safeNext(next: string | null): string {
@@ -18,6 +17,5 @@ export async function GET(request: Request) {
 
   const response = NextResponse.redirect(new URL(next, url.origin));
   response.cookies.delete('active_restaurant_id');
-  response.cookies.delete(REMEMBER_SESSION_COOKIE);
   return response;
 }

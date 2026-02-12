@@ -35,16 +35,19 @@ export default function manifest(): MetadataRoute.Manifest {
         name: 'Dashboard',
         short_name: 'Dashboard',
         url: '/app',
+        icons: [{ src: '/icons/casa.png', type: 'image/png' }],
       },
       {
         name: 'Personal',
         short_name: 'Personal',
         url: '/employees',
+        icons: [{ src: '/icons/reclutamiento.png', type: 'image/png' }],
       },
       {
         name: 'Mi perfil',
         short_name: 'Perfil',
         url: '/me',
+        icons: [{ src: '/icons/usuario.png', type: 'image/png' }],
       },
     ],
   };
