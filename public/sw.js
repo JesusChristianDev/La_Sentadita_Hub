@@ -49,17 +49,7 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          if (response.ok && response.type === 'basic') {
-            const copy = response.clone();
-            caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(request);
-          return cached || caches.match(OFFLINE_URL);
-        }),
+        .catch(() => caches.match(OFFLINE_URL)),
     );
     return;
   }
