@@ -1,0 +1,13 @@
+﻿# Normaliza finales de línea a LF en el repo
+* text=auto eol=lf
+
+# Asegura LF en archivos típicos
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.mjs  text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
