@@ -13,19 +13,19 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     icons: [
       {
-        src: '/icons/pwa-192.png',
+        src: '/icons/pwa-192.svg',
         sizes: '192x192',
-        type: 'image/png',
+        type: 'image/svg+xml',
       },
       {
-        src: '/icons/pwa-512.png',
+        src: '/icons/pwa-512.svg',
         sizes: '512x512',
-        type: 'image/png',
+        type: 'image/svg+xml',
       },
       {
-        src: '/icons/pwa-maskable.png',
+        src: '/icons/pwa-maskable.svg',
         sizes: '512x512',
-        type: 'image/png',
+        type: 'image/svg+xml',
         purpose: 'maskable',
       },
     ],
