@@ -15,10 +15,12 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const MANIFEST_VERSION = '20260212-1';
+
 export const metadata: Metadata = {
   title: 'La Sentadita Hub',
   description: 'Operacion diaria de restaurantes',
-  manifest: '/manifest.webmanifest',
+  manifest: `/manifest.webmanifest?v=${MANIFEST_VERSION}`,
   appleWebApp: {
     capable: true,
     title: 'La Sentadita Hub',
