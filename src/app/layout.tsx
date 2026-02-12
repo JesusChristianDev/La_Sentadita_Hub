@@ -15,12 +15,19 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const MANIFEST_VERSION = '20260212-1';
+const MANIFEST_VERSION = '20260212-2';
 
 export const metadata: Metadata = {
   title: 'La Sentadita Hub',
   description: 'Operacion diaria de restaurantes',
   manifest: `/manifest.webmanifest?v=${MANIFEST_VERSION}`,
+  icons: {
+    icon: [
+      { url: '/icons/pwa-192-20260212.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icons/pwa-512-20260212.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: [{ url: '/icons/pwa-192-20260212.png', type: 'image/png', sizes: '192x192' }],
+  },
   appleWebApp: {
     capable: true,
     title: 'La Sentadita Hub',
