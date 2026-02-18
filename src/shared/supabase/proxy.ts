@@ -38,11 +38,8 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isPublic = isPublicPath(pathname);
-  const isDocumentRequest =
-    request.headers.get('sec-fetch-dest') === 'document' ||
-    request.headers.get('accept')?.includes('text/html');
 
-  if (!isAuthed && !isPublic && isDocumentRequest) {
+  if (!isAuthed && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
