@@ -13,20 +13,14 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getUser();
 
-  let user = data.user;
-  if (!user) {
-    const { data: sessionData } = await supabase.auth.getSession();
-    user = sessionData.session?.user ?? null;
-  }
-
-  if (!user) return null;
+  if (!data.user) return null;
 
   const { data: profile, error } = await supabase
     .from('profiles')
     .select(
       'id, role, restaurant_id, employee_code, full_name, avatar_path, must_change_password, is_active',
     )
-    .eq('id', user.id)
+    .eq('id', data.user.id)
     .single();
 
   if (error) {
@@ -40,5 +34,5 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
     redirect('/api/auth/signout?next=/login?e=disabled');
   }
 
-  return { userId: user.id, profile: typed };
+  return { userId: data.user.id, profile: typed };
 }
