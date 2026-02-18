@@ -127,13 +127,12 @@ export function MobileHeaderMenu({
               </form>
             ) : null}
 
-            <Link
-              href="/api/auth/signout?next=/login"
-              className="header-menu-link danger"
-              onClick={() => setOpen(false)}
-            >
-              Cerrar sesion
-            </Link>
+            <form action="/api/auth/signout" method="post" onSubmit={() => setOpen(false)}>
+              <input type="hidden" name="next" value="/login" />
+              <button type="submit" className="header-menu-link danger">
+                Cerrar sesion
+              </button>
+            </form>
           </>
         ) : null}
       </aside>

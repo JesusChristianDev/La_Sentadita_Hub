@@ -19,3 +19,16 @@ export async function GET(request: Request) {
   response.cookies.delete('active_restaurant_id');
   return response;
 }
+
+export async function POST(request: Request) {
+  const url = new URL(request.url);
+  const formData = await request.formData();
+  const next = safeNext(String(formData.get('next') ?? '/login'));
+
+  const supabase = await createSupabaseServerClient();
+  await supabase.auth.signOut();
+
+  const response = NextResponse.redirect(new URL(next, url.origin), 303);
+  response.cookies.delete('active_restaurant_id');
+  return response;
+}
