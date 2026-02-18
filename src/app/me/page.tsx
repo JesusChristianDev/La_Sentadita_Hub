@@ -25,24 +25,46 @@ export default async function MePage({ searchParams }: Props) {
   const sp = await searchParams;
 
   const ctx = await getCurrentUserContext();
-  if (!ctx) redirect('/login');
-  const showSelector = canPickRestaurantHeader(ctx.profile.role);
+  const admin = createSupabaseAdminClient();
+
+  const resolvedCtx = async () => {
+    if (ctx) return ctx;
+
+    const supabase = await createSupabaseServerClient();
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id ?? null;
+    if (!userId) return null;
+
+    const { data: profile } = await admin
+      .from('profiles')
+      .select(
+        'id, role, restaurant_id, employee_code, full_name, avatar_path, must_change_password, is_active',
+      )
+      .eq('id', userId)
+      .single();
+
+    if (!profile || profile.is_active === false) return null;
+    return { userId, profile };
+  };
+
+  const current = await resolvedCtx();
+  if (!current) redirect('/login');
+  const showSelector = canPickRestaurantHeader(current.profile.role);
   const restaurants = showSelector ? await listRestaurants() : [];
   const store = await cookies();
   const activeRestaurantId = store.get('active_restaurant_id')?.value ?? null;
   const effectiveRestaurantId = showSelector
-    ? (activeRestaurantId ?? ctx.profile.restaurant_id)
-    : ctx.profile.restaurant_id;
+    ? (activeRestaurantId ?? current.profile.restaurant_id)
+    : current.profile.restaurant_id;
 
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
   const email = authData.user?.email ?? '';
 
-  const admin = createSupabaseAdminClient();
   const { data: profile } = await admin
     .from('profiles')
     .select('avatar_path')
-    .eq('id', ctx.userId)
+    .eq('id', current.userId)
     .single();
 
   let avatarUrl: string | null = null;
@@ -58,13 +80,13 @@ export default async function MePage({ searchParams }: Props) {
   return (
     <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
       <AppHeader
-        canSeeEmployees={canSeeEmployeesInNav(ctx.profile.role)}
+        canSeeEmployees={canSeeEmployeesInNav(current.profile.role)}
         canPickRestaurant={showSelector}
         restaurants={restaurants}
         effectiveRestaurantId={effectiveRestaurantId}
         setActiveRestaurantAction={setActiveRestaurant}
-        currentUserName={ctx.profile.full_name}
-        currentUserRole={ctx.profile.role}
+        currentUserName={current.profile.full_name}
+        currentUserRole={current.profile.role}
         currentUserAvatarUrl={avatarUrl}
       />
 
@@ -89,8 +111,8 @@ export default async function MePage({ searchParams }: Props) {
 
         <div className="profile-media mt-3">
           <UserAvatar
-            fullName={ctx.profile.full_name}
-            role={ctx.profile.role}
+            fullName={current.profile.full_name}
+            role={current.profile.role}
             avatarUrl={avatarUrl}
             size="lg"
           />
