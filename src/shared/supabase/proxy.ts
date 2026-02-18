@@ -4,10 +4,6 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { env } from '@/shared/env';
 
 export async function updateSession(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith('/api/')) {
-    return NextResponse.next({ request });
-  }
-
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
