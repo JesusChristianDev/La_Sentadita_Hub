@@ -1,5 +1,9 @@
 import { defineConfig } from '@playwright/test';
 
+try {
+  process.loadEnvFile('.env.local');
+} catch {}
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
