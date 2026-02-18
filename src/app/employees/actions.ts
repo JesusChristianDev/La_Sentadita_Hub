@@ -3,8 +3,9 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { assignAreaLead, type ZoneKey } from '@/modules/area_leads';
 import { type AppRole, getCurrentUserContext } from '@/modules/auth_users';
-import { createEmployee } from '@/modules/employees';
+import { createEmployee, deleteEmployee } from '@/modules/employees';
 import { getRestaurantStatus } from '@/modules/restaurants';
 import {
   type EmployeeErrorCode,
@@ -34,6 +35,11 @@ function isStrongPassword(value: string): boolean {
 function parseRole(value: string): 'employee' | 'manager' | 'sub_manager' | null {
   if (value === 'employee' || value === 'manager' || value === 'sub_manager')
     return value;
+  return null;
+}
+
+function parseZone(value: string): ZoneKey | null {
+  if (value === 'kitchen' || value === 'floor' || value === 'bar') return value;
   return null;
 }
 
@@ -89,6 +95,9 @@ export async function createEmployeeAction(formData: FormData) {
   const restaurantId = String(formData.get('restaurantId') ?? '').trim();
   const roleRaw = String(formData.get('role') ?? '');
   const role = parseRole(roleRaw);
+  const assignAreaLeadRaw = String(formData.get('assignAreaLead') ?? '');
+  const zone = parseZone(String(formData.get('zone') ?? ''));
+  const shouldAssignAreaLead = assignAreaLeadRaw === '1';
 
   if (!email || !fullName || !password || !restaurantId) {
     redirect(employeesPathWithError('missing'));
@@ -104,6 +113,14 @@ export async function createEmployeeAction(formData: FormData) {
 
   if (!role) {
     redirect(employeesPathWithError('invalid_role'));
+  }
+
+  if (shouldAssignAreaLead && role !== 'employee') {
+    redirect(employeesPathWithError('area_lead_only_employee'));
+  }
+
+  if (shouldAssignAreaLead && !zone) {
+    redirect(employeesPathWithError('missing'));
   }
 
   // Anti-tamper: el restaurante del form debe coincidir con el restaurante "efectivo" del server
@@ -131,22 +148,48 @@ export async function createEmployeeAction(formData: FormData) {
     await assertRoleSlotAvailable(restaurantId, role);
   }
 
+  let createdUserId: string | null = null;
+
   try {
-    await createEmployee({
+    createdUserId = await createEmployee({
       email,
       fullName,
       password,
       restaurantId,
       role,
     });
+
+    if (shouldAssignAreaLead && zone) {
+      await assignAreaLead({
+        restaurantId,
+        zone,
+        userId: createdUserId,
+        assignedBy: ctx.profile.id,
+      });
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+
+    if (msg === 'area_lead_zone_full' && createdUserId) {
+      try {
+        await deleteEmployee(createdUserId, { soft: true });
+      } catch (rollbackErr) {
+        const rollbackMsg =
+          rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr);
+        throw new Error(
+          `Failed to rollback created user after zone assignment error: ${rollbackMsg}`,
+        );
+      }
+    }
 
     if (msg === 'sub_manager_exists') {
       redirect(employeesPathWithError('sub_manager_exists'));
     }
     if (msg === 'manager_exists') {
       redirect(employeesPathWithError('manager_exists'));
+    }
+    if (msg === 'area_lead_zone_full') {
+      redirect(employeesPathWithError('area_lead_zone_full'));
     }
 
     throw err; // lo demás sí es bug real

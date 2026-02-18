@@ -24,6 +24,10 @@ const EMPLOYEE_ERROR_MESSAGES = {
   manager_protected: 'Solo admin u office pueden editar un gerente.',
   manager_exists: 'Ya existe un manager activo en este restaurante.',
   sub_manager_exists: 'Ya existe un sub manager activo en este restaurante.',
+  area_lead_zone_full:
+    'La zona seleccionada ya tiene el maximo de encargados (2). Quita uno antes de asignar otro.',
+  area_lead_only_employee:
+    'Encargado de zona solo aplica para usuarios con rol Empleado.',
 } as const;
 
 const EMPLOYEE_SUCCESS_MESSAGES = {

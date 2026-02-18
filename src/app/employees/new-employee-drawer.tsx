@@ -15,12 +15,26 @@ export function NewEmployeeDrawer({
   createEmployeeAction,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [assignAreaLead, setAssignAreaLead] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'employee' | 'sub_manager' | 'manager'>(
+    'employee',
+  );
+
+  const closeDrawer = () => {
+    setOpen(false);
+    setAssignAreaLead(false);
+    setSelectedRole('employee');
+  };
 
   useEffect(() => {
     if (!open) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') {
+        setOpen(false);
+        setAssignAreaLead(false);
+        setSelectedRole('employee');
+      }
     };
 
     const previousOverflow = document.body.style.overflow;
@@ -40,7 +54,7 @@ export function NewEmployeeDrawer({
       </button>
 
       {open ? (
-        <div className="employee-drawer-backdrop" onClick={() => setOpen(false)} role="presentation">
+        <div className="employee-drawer-backdrop" onClick={closeDrawer} role="presentation">
           <div
             className="employee-drawer-panel"
             onClick={(event) => event.stopPropagation()}
@@ -58,7 +72,7 @@ export function NewEmployeeDrawer({
               <button
                 className="button secondary"
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={closeDrawer}
               >
                 Cerrar
               </button>
@@ -84,12 +98,60 @@ export function NewEmployeeDrawer({
 
               <label className="field">
                 <span>Rol</span>
-                <select name="role" className="select" defaultValue="employee">
+                <select
+                  name="role"
+                  className="select"
+                  value={selectedRole}
+                  onChange={(event) => {
+                    const nextRole = event.target.value as
+                      | 'employee'
+                      | 'sub_manager'
+                      | 'manager';
+                    setSelectedRole(nextRole);
+                    if (nextRole !== 'employee') setAssignAreaLead(false);
+                  }}
+                >
                   <option value="employee">Empleado</option>
                   <option value="sub_manager">Subgerente</option>
                   {canAssignManager ? <option value="manager">Gerente</option> : null}
                 </select>
               </label>
+
+              {selectedRole === 'employee' ? (
+                <>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      name="assignAreaLead"
+                      value="1"
+                      checked={assignAreaLead}
+                      onChange={(event) => setAssignAreaLead(event.target.checked)}
+                    />
+                    <span>Asignar como encargado de zona</span>
+                  </label>
+
+                  {assignAreaLead ? (
+                    <label className="field">
+                      <span>Zona</span>
+                      <select name="zone" className="select" defaultValue="kitchen">
+                        <option value="kitchen">Cocina</option>
+                        <option value="floor">Sala</option>
+                        <option value="bar">Barra</option>
+                      </select>
+                    </label>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-xs muted">
+                  Solo rol Empleado puede ser encargado de zona.
+                </p>
+              )}
+
+              {assignAreaLead && selectedRole === 'employee' ? (
+                <p className="text-xs muted">
+                  El cupo se asigna automaticamente en la zona seleccionada.
+                </p>
+              ) : null}
 
               <button className="button w-full" type="submit">
                 Crear empleado

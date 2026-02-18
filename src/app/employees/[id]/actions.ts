@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 
+import { assignAreaLead, revokeAreaLead, type ZoneKey } from '@/modules/area_leads';
 import { type AppRole, getCurrentUserContext } from '@/modules/auth_users';
 import { deleteEmployee, setEmployeeActive, updateEmployee } from '@/modules/employees';
 import { getRestaurantStatus } from '@/modules/restaurants';
@@ -30,6 +31,11 @@ type EditableRole = 'employee' | 'manager' | 'sub_manager';
 function parseRole(value: string): EditableRole | null {
   if (value === 'employee' || value === 'manager' || value === 'sub_manager')
     return value;
+  return null;
+}
+
+function parseZone(value: string): ZoneKey | null {
+  if (value === 'kitchen' || value === 'floor' || value === 'bar') return value;
   return null;
 }
 
@@ -108,6 +114,23 @@ async function assertRoleSlotAvailable(
   }
 }
 
+async function hasActiveAreaLead(userId: string): Promise<boolean> {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from('area_leads')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .is('revoked_at', null)
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Failed to check active area leads: ${error.message}`);
+  }
+
+  return (data ?? []).length > 0;
+}
+
 function handleUniqueConstraint(err: unknown, userId: string): void {
   const msg = err instanceof Error ? err.message : String(err);
 
@@ -162,6 +185,9 @@ export async function updateEmployeeAction(userId: string, formData: FormData) {
 
   // Slots por restaurante (solo 1 manager y 1 sub_manager activos)
   if (role === 'manager' || role === 'sub_manager') {
+    if (await hasActiveAreaLead(userId)) {
+      redirect(employeeDetailPathWithError(userId, 'area_lead_only_employee'));
+    }
     await assertRoleSlotAvailable(restaurantId, role, userId);
   }
 
@@ -213,4 +239,74 @@ export async function softDeleteEmployeeAction(userId: string) {
 
   await deleteEmployee(userId, { soft: true });
   redirect('/employees');
+}
+
+export async function assignAreaLeadAction(userId: string, formData: FormData) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx) redirect('/login');
+  if (!canManageUsers(ctx.profile.role)) redirect('/employees');
+
+  const target = await assertCanManageTarget(ctx.profile, userId);
+
+  if (!target.restaurant_id) {
+    redirect(employeeDetailPathWithError(userId, 'missing'));
+  }
+
+  const zone = parseZone(String(formData.get('zone') ?? ''));
+
+  if (!zone) {
+    redirect(employeeDetailPathWithError(userId, 'missing'));
+  }
+
+  if (target.role !== 'employee') {
+    redirect(employeeDetailPathWithError(userId, 'area_lead_only_employee'));
+  }
+
+  try {
+    await assignAreaLead({
+      restaurantId: target.restaurant_id,
+      zone,
+      userId,
+      assignedBy: ctx.profile.id,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg === 'area_lead_zone_full') {
+      redirect(employeeDetailPathWithError(userId, 'area_lead_zone_full'));
+    }
+    throw err;
+  }
+
+  redirect(`/employees/${userId}`);
+}
+
+export async function revokeAreaLeadAction(userId: string, leadId: string) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx) redirect('/login');
+  if (!canManageUsers(ctx.profile.role)) redirect('/employees');
+
+  const target = await assertCanManageTarget(ctx.profile, userId);
+
+  const admin = createSupabaseAdminClient();
+  const { data: lead, error } = await admin
+    .from('area_leads')
+    .select('id, user_id, restaurant_id, is_active, revoked_at')
+    .eq('id', leadId)
+    .single();
+
+  if (error || !lead) {
+    redirect(`/employees/${userId}`);
+  }
+
+  if (
+    lead.user_id !== userId ||
+    lead.restaurant_id !== target.restaurant_id ||
+    !lead.is_active ||
+    lead.revoked_at
+  ) {
+    redirect(`/employees/${userId}`);
+  }
+
+  await revokeAreaLead(leadId);
+  redirect(`/employees/${userId}`);
 }

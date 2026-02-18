@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { listActiveAreaLeads, ZONES } from '@/modules/area_leads';
 import { getCurrentUserContext } from '@/modules/auth_users';
 import { listRestaurants } from '@/modules/restaurants';
 import {
@@ -16,8 +17,10 @@ import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 import { setActiveRestaurant } from '../../app/actions';
 import { AppHeader } from '../../components/app-header';
 import {
+  assignAreaLeadAction,
   deactivateEmployeeAction,
   reactivateEmployeeAction,
+  revokeAreaLeadAction,
   softDeleteEmployeeAction,
   updateEmployeeAction,
 } from './actions';
@@ -122,6 +125,16 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
     ctx.profile.role === 'manager' || ctx.profile.role === 'sub_manager'
       ? allRestaurants.filter((r) => r.id === ctx.profile.restaurant_id)
       : allRestaurants;
+  const activeAreaLeads = profile.restaurant_id
+    ? await listActiveAreaLeads(profile.restaurant_id)
+    : [];
+  const userAreaLeads = activeAreaLeads
+    .filter((lead) => lead.user_id === profile.id)
+    .sort((a, b) => {
+      if (a.zone === b.zone) return a.lead_slot - b.lead_slot;
+      return a.zone.localeCompare(b.zone);
+    });
+  const zoneLabelByKey = new Map(ZONES.map((zone) => [zone.key, zone.label]));
 
   const errorMsg = getEmployeeErrorMessage(sp.e);
 
@@ -230,6 +243,59 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
           </button>
         </form>
       </section>
+
+      {profile.role === 'employee' ? (
+        <section className="panel">
+          <h2 className="panel-title">Encargado de zona</h2>
+          <p className="panel-subtitle">
+            Solo usuarios con rol Empleado pueden ser encargados de zona.
+          </p>
+
+          {profile.restaurant_id ? (
+            <>
+              {userAreaLeads.length ? (
+                <div className="mt-3 grid gap-2">
+                  {userAreaLeads.map((lead) => (
+                    <div key={lead.id} className="inline-flex items-center gap-2">
+                      <span className="chip active">
+                        {zoneLabelByKey.get(lead.zone) ?? lead.zone} - Slot {lead.lead_slot}
+                      </span>
+                      <form action={revokeAreaLeadAction.bind(null, id, lead.id)}>
+                        <button className="button secondary small" type="submit">
+                          Quitar
+                        </button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm muted">Este empleado no tiene zonas asignadas.</p>
+              )}
+
+              <form action={assignAreaLeadAction.bind(null, id)} className="mt-3 grid gap-3">
+                <label className="field">
+                  <span>Zona</span>
+                  <select name="zone" className="select" defaultValue={ZONES[0]?.key}>
+                    {ZONES.map((zone) => (
+                      <option key={zone.key} value={zone.key}>
+                        {zone.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <p className="text-xs muted">El cupo se asigna automaticamente (maximo 2 por zona).</p>
+
+                <button className="button" type="submit">
+                  Asignar zona
+                </button>
+              </form>
+            </>
+          ) : (
+            <p className="mt-3 text-sm muted">Sin restaurante asignado, no se puede definir zona.</p>
+          )}
+        </section>
+      ) : null}
 
       <section className="panel">
         <h2 className="panel-title">Estado</h2>
