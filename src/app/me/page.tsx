@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { getCurrentUserContext } from '@/modules/auth_users';
 import { listRestaurants } from '@/modules/restaurants';
 import {
   getProfileErrorMessage,
@@ -24,31 +23,29 @@ type Props = { searchParams: Promise<SearchParams> };
 export default async function MePage({ searchParams }: Props) {
   const sp = await searchParams;
 
-  const ctx = await getCurrentUserContext();
+  const supabase = await createSupabaseServerClient();
+  const [{ data: authData }, { data: sessionData }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.auth.getSession(),
+  ]);
+  const authUser = authData.user ?? sessionData.session?.user ?? null;
+  if (!authUser) redirect('/login');
+
   const admin = createSupabaseAdminClient();
 
-  const resolvedCtx = async () => {
-    if (ctx) return ctx;
+  const { data: currentProfile } = await admin
+    .from('profiles')
+    .select(
+      'id, role, restaurant_id, employee_code, full_name, avatar_path, must_change_password, is_active',
+    )
+    .eq('id', authUser.id)
+    .single();
 
-    const supabase = await createSupabaseServerClient();
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData.user?.id ?? null;
-    if (!userId) return null;
+  if (!currentProfile || currentProfile.is_active === false) {
+    redirect('/api/auth/signout?next=/login?e=disabled');
+  }
 
-    const { data: profile } = await admin
-      .from('profiles')
-      .select(
-        'id, role, restaurant_id, employee_code, full_name, avatar_path, must_change_password, is_active',
-      )
-      .eq('id', userId)
-      .single();
-
-    if (!profile || profile.is_active === false) return null;
-    return { userId, profile };
-  };
-
-  const current = await resolvedCtx();
-  if (!current) redirect('/login');
+  const current = { userId: authUser.id, profile: currentProfile };
   const showSelector = canPickRestaurantHeader(current.profile.role);
   const restaurants = showSelector ? await listRestaurants() : [];
   const store = await cookies();
@@ -56,10 +53,7 @@ export default async function MePage({ searchParams }: Props) {
   const effectiveRestaurantId = showSelector
     ? (activeRestaurantId ?? current.profile.restaurant_id)
     : current.profile.restaurant_id;
-
-  const supabase = await createSupabaseServerClient();
-  const { data: authData } = await supabase.auth.getUser();
-  const email = authData.user?.email ?? '';
+  const email = authUser.email ?? '';
 
   const { data: profile } = await admin
     .from('profiles')
