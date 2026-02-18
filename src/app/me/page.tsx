@@ -1,5 +1,4 @@
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 
 import { listRestaurants } from '@/modules/restaurants';
 import {
@@ -29,7 +28,18 @@ export default async function MePage({ searchParams }: Props) {
     supabase.auth.getSession(),
   ]);
   const authUser = authData.user ?? sessionData.session?.user ?? null;
-  if (!authUser) redirect('/login');
+  if (!authUser) {
+    return (
+      <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
+        <section className="panel">
+          <h1 className="page-title">Mi perfil</h1>
+          <p className="notice error">
+            No se detecto sesion en /me. Ve a login e intenta nuevamente.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
   const admin = createSupabaseAdminClient();
 
@@ -42,7 +52,16 @@ export default async function MePage({ searchParams }: Props) {
     .single();
 
   if (!currentProfile || currentProfile.is_active === false) {
-    redirect('/api/auth/signout?next=/login?e=disabled');
+    return (
+      <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
+        <section className="panel">
+          <h1 className="page-title">Mi perfil</h1>
+          <p className="notice error">
+            No se encontro un perfil activo para este usuario.
+          </p>
+        </section>
+      </main>
+    );
   }
 
   const current = { userId: authUser.id, profile: currentProfile };
