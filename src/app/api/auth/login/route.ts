@@ -5,7 +5,7 @@ import { env } from '@/shared/env';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 function redirectWithError(request: NextRequest, code: string): NextResponse {
-  return NextResponse.redirect(new URL(`/login?e=${code}`, request.url), 303);
+  return NextResponse.redirect(new URL(`/login?e=${code}`, request.url));
 }
 
 async function isDisabledByEmail(email: string): Promise<boolean> {
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     return redirectWithError(request, 'missing');
   }
 
-  let response = NextResponse.redirect(new URL('/app', request.url), 303);
+  let response = NextResponse.redirect(new URL('/app', request.url));
 
   const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
