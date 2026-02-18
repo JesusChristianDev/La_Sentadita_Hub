@@ -3,6 +3,7 @@ import {
   type LoginErrorCode,
 } from '@/shared/feedbackMessages';
 
+import { login } from './actions';
 import PasswordInput from './password-input';
 import LoginSubmitButton from './submit-button';
 
@@ -39,7 +40,7 @@ export default async function LoginPage({ searchParams }: Props) {
           </p>
         ) : null}
 
-        <form action="/api/auth/login" method="post" className="stack">
+        <form action={login} className="stack">
           <label className="field" htmlFor="email">
             <span>Email</span>
             <input
