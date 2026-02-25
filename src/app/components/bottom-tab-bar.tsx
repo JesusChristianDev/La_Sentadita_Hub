@@ -1,5 +1,6 @@
 'use client';
 
+import { LayoutDashboard, UserCircle, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -14,36 +15,45 @@ function isActive(pathname: string, href: string): boolean {
 
 export function BottomTabBar({ canSeeEmployees }: Props) {
   const pathname = usePathname();
-  const secondHref = canSeeEmployees ? '/employees' : '/me';
-  const secondLabel = canSeeEmployees ? 'Personal' : 'Perfil';
 
   return (
-    <nav className="bottom-tab-bar" aria-label="Navegacion operativa">
+    <nav 
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-border bg-background/90 pb-safe pt-1 backdrop-blur-lg"
+      aria-label="Navegacion operativa"
+    >
       <Link
         href="/app"
-        className={isActive(pathname, '/app') ? 'bottom-tab-link active' : 'bottom-tab-link'}
+        className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors ${
+          isActive(pathname, '/app') ? 'text-accent-strong' : 'text-muted hover:text-foreground'
+        }`}
         aria-current={isActive(pathname, '/app') ? 'page' : undefined}
       >
-        <span className="bottom-tab-icon">DB</span>
-        <span className="bottom-tab-text">Dashboard</span>
+        <LayoutDashboard className="h-5 w-5" strokeWidth={isActive(pathname, '/app') ? 2.5 : 2} />
+        <span className="text-[10px] font-medium tracking-wide">Dashboard</span>
       </Link>
 
-      <Link
-        href={secondHref}
-        className={isActive(pathname, secondHref) ? 'bottom-tab-link active' : 'bottom-tab-link'}
-        aria-current={isActive(pathname, secondHref) ? 'page' : undefined}
-      >
-        <span className="bottom-tab-icon">PR</span>
-        <span className="bottom-tab-text">{secondLabel}</span>
-      </Link>
+      {canSeeEmployees && (
+        <Link
+          href="/employees"
+          className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors ${
+            isActive(pathname, '/employees') ? 'text-accent-strong' : 'text-muted hover:text-foreground'
+          }`}
+          aria-current={isActive(pathname, '/employees') ? 'page' : undefined}
+        >
+          <Users className="h-5 w-5" strokeWidth={isActive(pathname, '/employees') ? 2.5 : 2} />
+          <span className="text-[10px] font-medium tracking-wide">Personal</span>
+        </Link>
+      )}
 
       <Link
         href="/me"
-        className={isActive(pathname, '/me') ? 'bottom-tab-link active' : 'bottom-tab-link'}
+        className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors ${
+          isActive(pathname, '/me') ? 'text-accent-strong' : 'text-muted hover:text-foreground'
+        }`}
         aria-current={isActive(pathname, '/me') ? 'page' : undefined}
       >
-        <span className="bottom-tab-icon">CU</span>
-        <span className="bottom-tab-text">Cuenta</span>
+        <UserCircle className="h-5 w-5" strokeWidth={isActive(pathname, '/me') ? 2.5 : 2} />
+        <span className="text-[10px] font-medium tracking-wide">Mi Perfil</span>
       </Link>
     </nav>
   );

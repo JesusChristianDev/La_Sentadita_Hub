@@ -1,20 +1,9 @@
 import './globals.css';
 
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 
 import { InstallPwaButton } from './components/install-pwa-button';
 import { PwaRegister } from './components/pwa-register';
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
 
 const MANIFEST_VERSION = '20260212-2';
 
@@ -47,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className="antialiased">
         <PwaRegister />
         <InstallPwaButton />
         <a href="#main-content" className="skip-link">

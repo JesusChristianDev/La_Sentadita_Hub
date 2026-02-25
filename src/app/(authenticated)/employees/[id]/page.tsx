@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -10,12 +9,9 @@ import {
   employeesPathWithError,
   getEmployeeErrorMessage,
 } from '@/shared/feedbackMessages';
-import { canPickRestaurantHeader, canSeeEmployeesInNav } from '@/shared/headerPolicy';
 import { roleLabel } from '@/shared/roleLabel';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
-import { setActiveRestaurant } from '../../app/actions';
-import { AppHeader } from '../../components/app-header';
 import {
   assignAreaLeadAction,
   deactivateEmployeeAction,
@@ -42,11 +38,6 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
   if (ctx.profile.role === 'employee') redirect('/app');
 
   const admin = createSupabaseAdminClient();
-  let currentUserAvatarUrl: string | null = null;
-  if (ctx.profile.avatar_path) {
-    const { data } = await admin.storage.from('avatars').createSignedUrl(ctx.profile.avatar_path, 60 * 60);
-    currentUserAvatarUrl = data?.signedUrl ?? null;
-  }
 
   const { data: profile, error } = await admin
     .from('profiles')
@@ -57,12 +48,6 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
   if (error || !profile) {
     return (
       <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
-        <AppHeader
-          canSeeEmployees
-          currentUserName={ctx.profile.full_name}
-          currentUserRole={ctx.profile.role}
-          currentUserAvatarUrl={currentUserAvatarUrl}
-        />
         <h1 className="page-title">Empleado</h1>
         <p className="notice error">No encontrado.</p>
         <p className="text-sm">
@@ -77,12 +62,6 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
   if (profile.role === 'admin' || profile.role === 'office') {
     return (
       <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
-        <AppHeader
-          canSeeEmployees
-          currentUserName={ctx.profile.full_name}
-          currentUserRole={ctx.profile.role}
-          currentUserAvatarUrl={currentUserAvatarUrl}
-        />
         <h1 className="page-title">Usuario global</h1>
         <p className="notice">
           Este usuario es {roleLabel(profile.role)} (global) y no se gestiona desde Equipo.
@@ -115,42 +94,28 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
   const email = authUser.user?.email ?? '';
 
   const allRestaurants = await listRestaurants();
-  const showSelector = canPickRestaurantHeader(ctx.profile.role);
-  const store = await cookies();
-  const activeRestaurantId = store.get('active_restaurant_id')?.value ?? null;
-  const effectiveRestaurantId = showSelector
-    ? (activeRestaurantId ?? ctx.profile.restaurant_id)
-    : ctx.profile.restaurant_id;
+  
   const restaurants =
     ctx.profile.role === 'manager' || ctx.profile.role === 'sub_manager'
       ? allRestaurants.filter((r) => r.id === ctx.profile.restaurant_id)
       : allRestaurants;
+      
   const activeAreaLeads = profile.restaurant_id
     ? await listActiveAreaLeads(profile.restaurant_id)
     : [];
+    
   const userAreaLeads = activeAreaLeads
     .filter((lead) => lead.user_id === profile.id)
     .sort((a, b) => {
       if (a.zone === b.zone) return a.lead_slot - b.lead_slot;
       return a.zone.localeCompare(b.zone);
     });
+    
   const zoneLabelByKey = new Map(ZONES.map((zone) => [zone.key, zone.label]));
-
   const errorMsg = getEmployeeErrorMessage(sp.e);
 
   return (
     <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
-      <AppHeader
-        canSeeEmployees={canSeeEmployeesInNav(ctx.profile.role)}
-        canPickRestaurant={showSelector}
-        restaurants={allRestaurants}
-        effectiveRestaurantId={effectiveRestaurantId}
-        setActiveRestaurantAction={setActiveRestaurant}
-        currentUserName={ctx.profile.full_name}
-        currentUserRole={ctx.profile.role}
-        currentUserAvatarUrl={currentUserAvatarUrl}
-      />
-
       <section className="page-intro">
         <div>
           <h1 className="page-title">Editar empleado</h1>
@@ -186,7 +151,11 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
 
           <label className="field">
             <span>Nombre completo</span>
-            <input defaultValue={profile.full_name ?? ''} name="fullName" className="input" />
+            <input
+              defaultValue={profile.full_name ?? ''}
+              name="fullName"
+              className="input"
+            />
           </label>
 
           {ctx.profile.role === 'manager' || ctx.profile.role === 'sub_manager' ? (
@@ -209,7 +178,11 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
           {ctx.profile.role === 'manager' || ctx.profile.role === 'sub_manager' ? (
             <label className="field">
               <span>Restaurante</span>
-              <input type="hidden" name="restaurantId" value={ctx.profile.restaurant_id ?? ''} />
+              <input
+                type="hidden"
+                name="restaurantId"
+                value={ctx.profile.restaurant_id ?? ''}
+              />
               <input
                 className="input"
                 value={restaurants[0]?.name ?? '(sin restaurante)'}
@@ -258,7 +231,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
                   {userAreaLeads.map((lead) => (
                     <div key={lead.id} className="inline-flex items-center gap-2">
                       <span className="chip active">
-                        {zoneLabelByKey.get(lead.zone) ?? lead.zone} - Slot {lead.lead_slot}
+                        {zoneLabelByKey.get(lead.zone) ?? lead.zone} - Slot{' '}
+                        {lead.lead_slot}
                       </span>
                       <form action={revokeAreaLeadAction.bind(null, id, lead.id)}>
                         <button className="button secondary small" type="submit">
@@ -269,10 +243,15 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
                   ))}
                 </div>
               ) : (
-                <p className="mt-3 text-sm muted">Este empleado no tiene zonas asignadas.</p>
+                <p className="mt-3 text-sm muted">
+                  Este empleado no tiene zonas asignadas.
+                </p>
               )}
 
-              <form action={assignAreaLeadAction.bind(null, id)} className="mt-3 grid gap-3">
+              <form
+                action={assignAreaLeadAction.bind(null, id)}
+                className="mt-3 grid gap-3"
+              >
                 <label className="field">
                   <span>Zona</span>
                   <select name="zone" className="select" defaultValue={ZONES[0]?.key}>
@@ -284,7 +263,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
                   </select>
                 </label>
 
-                <p className="text-xs muted">El cupo se asigna automaticamente (maximo 2 por zona).</p>
+                <p className="text-xs muted">
+                  El cupo se asigna automaticamente (maximo 2 por zona).
+                </p>
 
                 <button className="button" type="submit">
                   Asignar zona
@@ -292,7 +273,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
               </form>
             </>
           ) : (
-            <p className="mt-3 text-sm muted">Sin restaurante asignado, no se puede definir zona.</p>
+            <p className="mt-3 text-sm muted">
+              Sin restaurante asignado, no se puede definir zona.
+            </p>
           )}
         </section>
       ) : null}
@@ -302,7 +285,10 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
         <p className="panel-subtitle">Controla la disponibilidad del usuario en el sistema.</p>
 
         <p className="mt-2 text-sm muted">
-          Estado: <span className="font-semibold">{profile.is_active ? 'activo' : 'desactivado'}</span>
+          Estado:{' '}
+          <span className="font-semibold">
+            {profile.is_active ? 'activo' : 'desactivado'}
+          </span>
         </p>
 
         <div className="form-actions mt-3">

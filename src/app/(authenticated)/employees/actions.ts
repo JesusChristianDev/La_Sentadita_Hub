@@ -3,50 +3,23 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { assignAreaLead, type ZoneKey } from '@/modules/area_leads';
+import { assignAreaLead } from '@/modules/area_leads';
 import { type AppRole, getCurrentUserContext } from '@/modules/auth_users';
 import { createEmployee, deleteEmployee } from '@/modules/employees';
+import {
+  assertRoleSlotAvailable,
+  canCreate,
+  isAdminOrOffice,
+  isStrongPassword,
+  isValidEmail,
+  parseRole,
+  parseZone,
+} from '@/modules/employees/application/guards';
 import { getRestaurantStatus } from '@/modules/restaurants';
 import {
-  type EmployeeErrorCode,
   employeesPathWithError,
   employeesPathWithSuccess,
 } from '@/shared/feedbackMessages';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
-
-function canCreate(role: AppRole): boolean {
-  return role === 'admin' || role === 'office';
-}
-
-function isAdminOrOffice(role: AppRole): boolean {
-  return role === 'admin' || role === 'office';
-}
-
-function isValidEmail(value: string): boolean {
-  // simple y suficiente para backend (evita basura)
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function isStrongPassword(value: string): boolean {
-  // mínimo razonable (puedes subirlo más tarde)
-  return value.length >= 8;
-}
-
-function parseRole(value: string): 'employee' | 'manager' | 'sub_manager' | null {
-  if (value === 'employee' || value === 'manager' || value === 'sub_manager')
-    return value;
-  return null;
-}
-
-function parseZone(value: string): ZoneKey | null {
-  if (value === 'kitchen' || value === 'floor' || value === 'bar') return value;
-  return null;
-}
-
-const ROLE_SLOT_ERROR_BY_ROLE: Record<'manager' | 'sub_manager', EmployeeErrorCode> = {
-  manager: 'manager_exists',
-  sub_manager: 'sub_manager_exists',
-};
 
 async function getEffectiveRestaurantId(
   role: AppRole,
@@ -57,30 +30,6 @@ async function getEffectiveRestaurantId(
 
   if (isAdminOrOffice(role)) return active ?? profileRestaurantId;
   return profileRestaurantId;
-}
-
-async function assertRoleSlotAvailable(
-  restaurantId: string,
-  role: 'manager' | 'sub_manager',
-): Promise<void> {
-  const admin = createSupabaseAdminClient();
-
-  const { data, error } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('restaurant_id', restaurantId)
-    .eq('role', role)
-    .eq('is_active', true)
-    .is('deleted_at', null)
-    .limit(1);
-
-  if (error) {
-    throw new Error(`Failed to check role slot: ${error.message}`);
-  }
-
-  if ((data ?? []).length > 0) {
-    redirect(employeesPathWithError(ROLE_SLOT_ERROR_BY_ROLE[role]));
-  }
 }
 
 export async function createEmployeeAction(formData: FormData) {

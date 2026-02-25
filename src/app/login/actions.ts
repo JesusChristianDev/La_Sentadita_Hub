@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import { redirect } from 'next/navigation';
 
@@ -6,39 +6,60 @@ import { loginPathWithError } from '@/shared/feedbackMessages';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
-async function isDisabledByEmail(email: string): Promise<boolean> {
-  const admin = createSupabaseAdminClient();
-  const target = email.toLowerCase();
+const AUTH_USERS_PAGE_SIZE = 200;
+const AUTH_USERS_MAX_PAGES = 50;
 
-  // MVP: listUsers es paginado. Buscamos unas cuantas paginas.
-  // (Con pocos usuarios, esto va rapido.)
-  const perPage = 1000;
+async function findAuthUserIdByEmail(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  email: string,
+): Promise<string | null> {
+  const target = email.trim().toLowerCase();
+  if (!target) return null;
 
-  for (let page = 1; page <= 10; page += 1) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) {
-      throw new Error(`Failed to list users: ${error.message}`);
-    }
+  // Fast path: query auth.users directly when schema access is available.
+  const { data: authUser, error: authUserError } = await admin
+    .schema('auth')
+    .from('users')
+    .select('id')
+    .ilike('email', target)
+    .limit(1)
+    .maybeSingle();
+
+  if (!authUserError && authUser?.id) return authUser.id;
+
+  // Fallback: paginate Auth Admin users and stop as soon as we find a match.
+  for (let page = 1; page <= AUTH_USERS_MAX_PAGES; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({
+      page,
+      perPage: AUTH_USERS_PAGE_SIZE,
+    });
+
+    if (error) return null;
 
     const users = data.users ?? [];
     const found = users.find((u) => (u.email ?? '').toLowerCase() === target);
+    if (found?.id) return found.id;
 
-    if (found?.id) {
-      const { data: profile, error: profileError } = await admin
-        .from('profiles')
-        .select('is_active')
-        .eq('id', found.id)
-        .single();
-
-      if (profileError || !profile) return false;
-      return profile.is_active === false;
-    }
-
-    // Si esta pagina vino incompleta, ya no hay mas usuarios.
-    if (users.length < perPage) break;
+    if (users.length < AUTH_USERS_PAGE_SIZE) break;
+    if (typeof data.lastPage === 'number' && page >= data.lastPage) break;
   }
 
-  return false;
+  return null;
+}
+
+async function isDisabledByEmail(email: string): Promise<boolean> {
+  const admin = createSupabaseAdminClient();
+  const authUserId = await findAuthUserIdByEmail(admin, email);
+  if (!authUserId) return false;
+
+  const { data: profile, error: profileError } = await admin
+    .from('profiles')
+    .select('is_active')
+    .eq('id', authUserId)
+    .maybeSingle();
+
+  if (profileError || !profile) return false;
+  return profile.is_active === false;
 }
 
 export async function login(formData: FormData) {
@@ -57,15 +78,14 @@ export async function login(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-  // Si falla login, puede ser password mal o usuario baneado.
-  // Si esta desactivado en profiles => mensaje correcto.
+  // If sign-in fails, we still try to detect disabled profile to show the right message.
   if (error || !data.user) {
     const disabled = await isDisabledByEmail(email);
     if (disabled) redirect(loginPathWithError('disabled'));
     redirect(loginPathWithError('bad'));
   }
 
-  // Si loguea, validamos estado con admin (sin RLS)
+  // Post-login check uses admin client to bypass RLS.
   const admin = createSupabaseAdminClient();
   const { data: profile, error: profileError } = await admin
     .from('profiles')

@@ -2,146 +2,24 @@
 
 import { redirect } from 'next/navigation';
 
-import { assignAreaLead, revokeAreaLead, type ZoneKey } from '@/modules/area_leads';
-import { type AppRole, getCurrentUserContext } from '@/modules/auth_users';
+import { assignAreaLead, revokeAreaLead } from '@/modules/area_leads';
+import { getCurrentUserContext } from '@/modules/auth_users';
 import { deleteEmployee, setEmployeeActive, updateEmployee } from '@/modules/employees';
+import {
+  assertCanManageTarget,
+  assertRoleSlotAvailable,
+  canManageUsers,
+  handleUniqueConstraint,
+  hasActiveAreaLead,
+  parseRole,
+  parseZone,
+} from '@/modules/employees/application/guards';
 import { getRestaurantStatus } from '@/modules/restaurants';
 import {
   employeeDetailPathWithError,
-  type EmployeeErrorCode,
   employeesPathWithError,
 } from '@/shared/feedbackMessages';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
-
-function canManageUsers(role: AppRole): boolean {
-  return (
-    role === 'admin' ||
-    role === 'office' ||
-    role === 'manager' ||
-    role === 'sub_manager'
-  );
-}
-
-function isAdminOrOffice(role: AppRole): boolean {
-  return role === 'admin' || role === 'office';
-}
-
-type EditableRole = 'employee' | 'manager' | 'sub_manager';
-
-function parseRole(value: string): EditableRole | null {
-  if (value === 'employee' || value === 'manager' || value === 'sub_manager')
-    return value;
-  return null;
-}
-
-function parseZone(value: string): ZoneKey | null {
-  if (value === 'kitchen' || value === 'floor' || value === 'bar') return value;
-  return null;
-}
-
-async function loadTarget(
-  userId: string,
-): Promise<{ role: string; restaurant_id: string | null }> {
-  const admin = createSupabaseAdminClient();
-
-  const { data, error } = await admin
-    .from('profiles')
-    .select('role, restaurant_id')
-    .eq('id', userId)
-    .single();
-
-  if (error || !data) {
-    throw new Error(
-      `Failed to load target profile: ${error?.message ?? 'unknown error'}`,
-    );
-  }
-
-  return data;
-}
-
-async function assertCanManageTarget(
-  actor: { role: AppRole; restaurant_id: string | null },
-  userId: string,
-): Promise<{ role: string; restaurant_id: string | null }> {
-  const target = await loadTarget(userId);
-
-  // Nunca tocar globales desde Employees
-  if (target.role === 'admin' || target.role === 'office') {
-    redirect(employeesPathWithError('global_user'));
-  }
-
-  // Solo admin/office pueden editar/gestionar managers
-  if (target.role === 'manager' && !isAdminOrOffice(actor.role)) {
-    redirect(employeesPathWithError('manager_protected'));
-  }
-
-  // Manager/Subgerente: solo su restaurante
-  if (
-    (actor.role === 'manager' || actor.role === 'sub_manager') &&
-    target.restaurant_id !== actor.restaurant_id
-  ) {
-    redirect(employeesPathWithError('restaurant_mismatch'));
-  }
-
-  return target;
-}
-
-async function assertRoleSlotAvailable(
-  restaurantId: string,
-  role: 'manager' | 'sub_manager',
-  excludingUserId: string,
-) {
-  const admin = createSupabaseAdminClient();
-
-  const { data, error } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('restaurant_id', restaurantId)
-    .eq('role', role)
-    .eq('is_active', true)
-    .is('deleted_at', null)
-    .neq('id', excludingUserId)
-    .limit(1);
-
-  if (error) {
-    throw new Error(`Failed to check role slot: ${error.message}`);
-  }
-
-  if ((data ?? []).length > 0) {
-    const roleErrorCode: EmployeeErrorCode =
-      role === 'manager' ? 'manager_exists' : 'sub_manager_exists';
-    redirect(employeeDetailPathWithError(excludingUserId, roleErrorCode));
-  }
-}
-
-async function hasActiveAreaLead(userId: string): Promise<boolean> {
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('area_leads')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .is('revoked_at', null)
-    .limit(1);
-
-  if (error) {
-    throw new Error(`Failed to check active area leads: ${error.message}`);
-  }
-
-  return (data ?? []).length > 0;
-}
-
-function handleUniqueConstraint(err: unknown, userId: string): void {
-  const msg = err instanceof Error ? err.message : String(err);
-
-  if (msg.includes('ux_profiles_one_manager_per_restaurant')) {
-    redirect(employeeDetailPathWithError(userId, 'manager_exists'));
-  }
-
-  if (msg.includes('ux_profiles_one_sub_manager_per_restaurant')) {
-    redirect(employeeDetailPathWithError(userId, 'sub_manager_exists'));
-  }
-}
 
 export async function updateEmployeeAction(userId: string, formData: FormData) {
   const ctx = await getCurrentUserContext();

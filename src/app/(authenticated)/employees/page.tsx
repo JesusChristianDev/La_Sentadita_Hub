@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 
 import { getCurrentUserContext } from '@/modules/auth_users';
 import { listEmployees } from '@/modules/employees';
-import { listRestaurants } from '@/modules/restaurants';
 import {
   type EmployeeErrorCode,
   type EmployeeStatusFilter,
@@ -12,13 +11,11 @@ import {
   getEmployeeErrorMessage,
   getEmployeeSuccessMessage,
 } from '@/shared/feedbackMessages';
-import { canPickRestaurantHeader, canSeeEmployeesInNav } from '@/shared/headerPolicy';
+import { canPickRestaurantHeader } from '@/shared/headerPolicy';
 import { roleLabel } from '@/shared/roleLabel';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
-import { setActiveRestaurant } from '../app/actions';
-import { AppHeader } from '../components/app-header';
-import { UserAvatar } from '../components/user-avatar';
+import { UserAvatar } from '../../components/user-avatar';
 import { createEmployeeAction } from './actions';
 import { NewEmployeeDrawer } from './new-employee-drawer';
 
@@ -47,14 +44,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
   const store = await cookies();
   const activeRestaurantId = store.get('active_restaurant_id')?.value ?? null;
-  const showSelector = canPickRestaurantHeader(ctx.profile.role);
-  const restaurants = showSelector ? await listRestaurants() : [];
   const admin = createSupabaseAdminClient();
-  let currentUserAvatarUrl: string | null = null;
-  if (ctx.profile.avatar_path) {
-    const { data } = await admin.storage.from('avatars').createSignedUrl(ctx.profile.avatar_path, 60 * 60);
-    currentUserAvatarUrl = data?.signedUrl ?? null;
-  }
 
   const restaurantId = canPickRestaurantHeader(ctx.profile.role)
     ? (activeRestaurantId ?? ctx.profile.restaurant_id)
@@ -63,19 +53,9 @@ export default async function EmployeesPage({ searchParams }: Props) {
   if (!restaurantId) {
     return (
       <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
-        <AppHeader
-          canSeeEmployees
-          canPickRestaurant={showSelector}
-          restaurants={restaurants}
-          effectiveRestaurantId={restaurantId}
-          setActiveRestaurantAction={setActiveRestaurant}
-          currentUserName={ctx.profile.full_name}
-          currentUserRole={ctx.profile.role}
-          currentUserAvatarUrl={currentUserAvatarUrl}
-        />
         <h1 className="page-title">Equipo</h1>
         <p className="notice error">
-          No hay restaurante efectivo. Ve a /app y selecciona un restaurante.
+          No hay restaurante efectivo. Selecciona uno en el selector superior.
         </p>
       </main>
     );
@@ -85,7 +65,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
   const avatarPaths = [
     ...new Set(
       employees
-        .map((employee) => employee.avatar_path)
+        .map((e) => e.avatar_path)
         .filter((path): path is string => Boolean(path)),
     ),
   ];
@@ -93,7 +73,9 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
   await Promise.all(
     avatarPaths.map(async (path) => {
-      const { data } = await admin.storage.from('avatars').createSignedUrl(path, 60 * 60);
+      const { data } = await admin.storage
+        .from('avatars')
+        .createSignedUrl(path, 60 * 60);
       if (data?.signedUrl) avatarUrlByPath.set(path, data.signedUrl);
     }),
   );
@@ -104,17 +86,6 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
   return (
     <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
-      <AppHeader
-        canSeeEmployees={canSeeEmployeesInNav(ctx.profile.role)}
-        canPickRestaurant={showSelector}
-        restaurants={restaurants}
-        effectiveRestaurantId={restaurantId}
-        setActiveRestaurantAction={setActiveRestaurant}
-        currentUserName={ctx.profile.full_name}
-        currentUserRole={ctx.profile.role}
-        currentUserAvatarUrl={currentUserAvatarUrl}
-      />
-
       <section className="page-intro">
         <h1 className="page-title">Equipo</h1>
         <p className="subtitle">Gestion de usuarios operativos por restaurante.</p>
@@ -182,7 +153,11 @@ export default async function EmployeesPage({ searchParams }: Props) {
                         <UserAvatar
                           fullName={e.full_name}
                           role={e.role}
-                          avatarUrl={e.avatar_path ? (avatarUrlByPath.get(e.avatar_path) ?? null) : null}
+                          avatarUrl={
+                            e.avatar_path
+                              ? avatarUrlByPath.get(e.avatar_path) ?? null
+                              : null
+                          }
                           size="sm"
                         />
                         <span>{e.full_name || '(sin nombre)'}</span>
@@ -190,7 +165,10 @@ export default async function EmployeesPage({ searchParams }: Props) {
                     </td>
                     <td>{roleLabel(e.role)}</td>
                     <td>
-                      <Link className="button secondary small" href={`/employees/${e.id}`}>
+                      <Link
+                        className="button secondary small"
+                        href={`/employees/${e.id}`}
+                      >
                         Editar
                       </Link>
                     </td>
@@ -215,7 +193,11 @@ export default async function EmployeesPage({ searchParams }: Props) {
                   <UserAvatar
                     fullName={e.full_name}
                     role={e.role}
-                    avatarUrl={e.avatar_path ? (avatarUrlByPath.get(e.avatar_path) ?? null) : null}
+                    avatarUrl={
+                      e.avatar_path
+                        ? avatarUrlByPath.get(e.avatar_path) ?? null
+                        : null
+                    }
                     size="md"
                   />
                   <strong>{e.full_name || '(sin nombre)'}</strong>
@@ -225,7 +207,10 @@ export default async function EmployeesPage({ searchParams }: Props) {
                 <p>{roleLabel(e.role)}</p>
 
                 <div className="form-actions mt-3">
-                  <Link className="button secondary w-full" href={`/employees/${e.id}`}>
+                  <Link
+                    className="button secondary w-full"
+                    href={`/employees/${e.id}`}
+                  >
                     Ver detalle
                   </Link>
                 </div>
