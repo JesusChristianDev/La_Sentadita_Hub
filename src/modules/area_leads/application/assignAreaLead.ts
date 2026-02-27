@@ -2,28 +2,6 @@ import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 import type { ZoneKey } from '../domain/zone';
 
-async function syncIsAreaLead(userId: string): Promise<void> {
-  const admin = createSupabaseAdminClient();
-
-  const { data, error } = await admin
-    .from('area_leads')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .is('revoked_at', null)
-    .limit(1);
-
-  if (error) throw new Error(`Failed to sync is_area_lead: ${error.message}`);
-
-  const isAreaLead = (data ?? []).length > 0;
-
-  const { error: upd } = await admin
-    .from('profiles')
-    .update({ is_area_lead: isAreaLead })
-    .eq('id', userId);
-  if (upd) throw new Error(`Failed to update is_area_lead: ${upd.message}`);
-}
-
 export async function assignAreaLead(params: {
   restaurantId: string;
   zone: ZoneKey;
@@ -59,6 +37,4 @@ export async function assignAreaLead(params: {
   });
 
   if (insErr) throw new Error(`Failed to assign area lead: ${insErr.message}`);
-
-  await syncIsAreaLead(params.userId);
 }
