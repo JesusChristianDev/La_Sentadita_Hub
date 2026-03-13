@@ -1,0 +1,36 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "noEmit": false,
+    "outDir": "./.unit-test-dist",
+    "rootDir": "./src",
+    "incremental": false
+  },
+  "include": [
+    "src/modules/auth_users/application/accountCredentialRules.ts",
+    "src/modules/auth_users/application/selfProfileMutationRules.test.ts",
+    "src/modules/auth_users/application/selfProfileMutationRules.ts",
+    "src/modules/auth_users/domain/**/*.ts",
+    "src/modules/employees/application/employeeMutationRules.test.ts",
+    "src/modules/employees/application/employeeMutationRules.ts",
+    "src/modules/employees/application/employeeMutationService.test.ts",
+    "src/modules/employees/application/employeeMutationService.ts",
+    "src/modules/employees/domain/**/*.ts",
+    "src/modules/schedule/application/scheduleCalculations.test.ts",
+    "src/modules/schedule/application/scheduleCalculations.ts",
+    "src/modules/schedule/application/scheduleDates.ts",
+    "src/modules/schedule/application/scheduleDraftRules.test.ts",
+    "src/modules/schedule/application/scheduleDraftRules.ts",
+    "src/modules/schedule/application/scheduleDraftService.test.ts",
+    "src/modules/schedule/application/scheduleDraftService.ts",
+    "src/modules/schedule/application/scheduleLockService.test.ts",
+    "src/modules/schedule/application/scheduleLockService.ts",
+    "src/modules/schedule/application/schedulePublicationService.test.ts",
+    "src/modules/schedule/application/schedulePublicationService.ts",
+    "src/modules/schedule/application/shiftValidation.test.ts",
+    "src/modules/schedule/application/shiftValidation.ts",
+    "src/modules/schedule/domain/**/*.ts"
+  ]
+}

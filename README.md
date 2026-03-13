@@ -1,51 +1,51 @@
-# La Sentadita Hub Web
+# La Sentadita Hub
 
-[![CI](https://github.com/JesusChristianDev/La_Sentadita_Hub/actions/workflows/ci.yml/badge.svg)](https://github.com/JesusChristianDev/La_Sentadita_Hub/actions/workflows/ci.yml)
+Repositorio principal de La Sentadita Hub. El proyecto se versiona desde la raiz y despliega solo la app de `web/`.
 
-Aplicacion web de operacion interna para La Sentadita Hub, construida con Next.js 16.
+## Estructura
 
-## Stack
-
-- Next.js 16 (App Router)
-- React 19
-- Supabase (auth + datos)
-- Playwright (E2E)
-- GitHub Actions (CI)
+- `docs/`: specs, reglas de negocio y notas operativas.
+- `supabase/`: migraciones SQL del proyecto.
+- `web/`: aplicacion Next.js 16 lista para desplegar en Vercel.
 
 ## Requisitos
 
 - Node.js 20+
-- Variables de entorno:
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - `SUPABASE_SERVICE_ROLE_KEY` (server-side)
+- npm 10+
+- proyecto Supabase con credenciales activas
 
-## Scripts
+## Desarrollo local
 
-- `npm run dev`: entorno local
-- `npm run build`: build de produccion
-- `npm run start`: levantar build
-- `npm run lint`: lint del proyecto
-- `npm run test:e2e`: pruebas E2E con Playwright
-- `npm run test:e2e:ui`: Playwright en modo UI
+1. Entrar en `web/`.
+2. Crear `web/.env.local` a partir de `web/.env.example`.
+3. Instalar dependencias con `npm install`.
+4. Levantar el proyecto con `npm run dev`.
 
-## PWA
+## Variables de entorno
 
-- Manifest en `src/app/manifest.ts`
-- Service worker en `public/sw.js`
-- Registro e instalacion en `src/app/components/pwa-register.tsx`
-- Boton de instalacion en `src/app/components/install-pwa-button.tsx`
-- Iconos en `public/icons`
+Obligatorias para la app:
 
-## Login y sesion
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-- Login por server action en `src/app/login/actions.ts`
-- Sesion persistente por defecto para evitar cortes en PWA instalada
-- Validacion de sesion por proxy en `src/shared/supabase/proxy.ts`
+Opcionales para pruebas E2E:
 
-## Testing y CI
+- `E2E_LOGIN_EMAIL`
+- `E2E_LOGIN_PASSWORD`
+- `E2E_LOGIN_DELAY_MS`
 
-- E2E principales en `tests/e2e/login.spec.ts`
-- Workflow en `.github/workflows/ci.yml`:
-  - Lint
-  - E2E (Playwright)
+## Calidad minima antes de subir cambios
+
+Desde `web/`:
+
+- `npm run lint`
+- `npm run build`
+- `npm run test:unit`
+- `npm run test:e2e` si estan configuradas las credenciales E2E
+
+## Git y despliegue
+
+- El repositorio Git debe inicializarse en la raiz `C:\la-sentadita-hub`.
+- La carpeta que se despliega en Vercel es `web/`.
+- La guia operativa de versionado y despliegue esta en `docs/19_GIT_Y_VERCEL_SETUP.md`.

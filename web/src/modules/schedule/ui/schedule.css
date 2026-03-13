@@ -1,0 +1,159 @@
+.app-runtime[data-mobile-device='true'] .schedule-shell {
+  gap: 18px;
+}
+
+.app-runtime[data-mobile-device='true'] .schedule-home-card,
+.app-runtime[data-mobile-device='true'] .schedule-tool-card,
+.app-runtime[data-mobile-device='true'] .schedule-employee-summary,
+.app-runtime[data-mobile-device='true'] .schedule-week-hero,
+.app-runtime[data-mobile-device='true'] .schedule-filter-panel,
+.app-runtime[data-mobile-device='true'] .schedule-review-summary {
+  border-color: rgb(82 82 91 / 70%);
+  background:
+    linear-gradient(180deg, rgb(27 27 33 / 94%) 0%, rgb(17 17 22 / 98%) 100%),
+    var(--surface);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.app-runtime[data-mobile-device='true'] .schedule-home-grid,
+.app-runtime[data-mobile-device='true'] .schedule-tools-grid,
+.app-runtime[data-mobile-device='true'] .schedule-employee-days,
+.app-runtime[data-mobile-device='true'] .schedule-editor-sidebar {
+  gap: 14px;
+}
+
+.app-runtime[data-mobile-device='true'] .schedule-home-card,
+.app-runtime[data-mobile-device='true'] .schedule-tool-card {
+  border-radius: 24px;
+}
+
+.app-runtime[data-mobile-device='true'] .schedule-review-grid {
+  gap: 14px;
+}
+
+.app-runtime[data-mobile-device='true'] .schedule-table-container {
+  border-radius: 22px;
+  margin-inline: -2px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 3%),
+    0 22px 42px -34px rgb(0 0 0 / 90%);
+}
+
+.app-runtime[data-mobile-device='true'] .schedule-table th,
+.app-runtime[data-mobile-device='true'] .schedule-table td {
+  padding: 0.72rem;
+}
+
+.app-runtime[data-mobile-device='true'] .schedule-table .sticky-col {
+  min-width: 9.5rem;
+}
+
+.app-runtime[data-mobile-device='true'] .schedule-page-intro .panel-actions,
+.app-runtime[data-mobile-device='true'] .schedule-page-intro .page-intro-actions {
+  width: 100%;
+}
+
+.app-runtime[data-mobile-device='true'] .schedule-page-intro .input,
+.app-runtime[data-mobile-device='true'] .schedule-page-intro .button {
+  width: 100%;
+}
+
+@media (min-width: 480px) {
+  .app-runtime[data-mobile-device='true'] .schedule-tools-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.schedule-table-container {
+  overflow: auto;
+  border: 1px solid rgb(63 63 70 / 90%);
+  border-radius: 1.4rem;
+  background: linear-gradient(180deg, rgb(18 20 26 / 96%) 0%, rgb(12 13 17 / 98%) 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 3%),
+    0 24px 48px -38px rgb(0 0 0 / 82%);
+}
+
+@media (min-width: 1280px) {
+  .schedule-table-container {
+    max-height: min(72dvh, 58rem);
+  }
+}
+
+.schedule-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.schedule-table th,
+.schedule-table td {
+  border-right: 1px solid rgb(63 63 70 / 75%);
+  border-bottom: 1px solid rgb(63 63 70 / 75%);
+  padding: 0.85rem;
+  vertical-align: top;
+}
+
+.schedule-table th:last-child,
+.schedule-table td:last-child {
+  border-right: none;
+}
+
+.schedule-table thead th {
+  position: sticky;
+  top: 0;
+  background: rgb(17 18 23 / 94%);
+  z-index: 20;
+  color: #d4d4d8;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.schedule-table .sticky-col {
+  position: sticky;
+  left: 0;
+  background: linear-gradient(180deg, rgb(20 22 28 / 96%) 0%, rgb(14 15 20 / 98%) 100%);
+  z-index: 10;
+  border-right: 1px solid rgb(82 82 91 / 88%);
+  box-shadow: 14px 0 24px -24px rgb(0 0 0 / 88%);
+}
+
+.schedule-table .sticky-right-col {
+  position: sticky;
+  right: 0;
+  z-index: 12;
+  background: linear-gradient(180deg, rgb(20 22 28 / 96%) 0%, rgb(14 15 20 / 98%) 100%);
+  border-left: 1px solid rgb(82 82 91 / 88%);
+  box-shadow: -14px 0 24px -24px rgb(0 0 0 / 88%);
+}
+
+.schedule-table thead th.sticky-col {
+  z-index: 30;
+  background: rgb(17 18 23 / 98%);
+}
+
+.schedule-table thead th.sticky-right-col {
+  z-index: 30;
+  background: rgb(17 18 23 / 98%);
+}
+
+.day-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.day-header-name {
+  text-transform: capitalize;
+  font-weight: 700;
+  color: #fafafa;
+}
+
+.day-header-date {
+  font-size: 0.75rem;
+  color: #a1a1aa;
+  font-weight: 400;
+}

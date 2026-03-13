@@ -1,45 +1,41 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-/playwright-report
-/test-results
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
+# Root repository
+.cursor/
 .DS_Store
-*.pem
+Thumbs.db
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# Vercel
+.vercel/
+web/.vercel/
+web/.git-history-backup/
 
-# env files (can opt-in for committing if needed)
-.env*
+# Web app artifacts
+web/node_modules/
+web/.next/
+web/out/
+web/build/
+web/coverage/
+web/playwright-report/
+web/test-results/
+web/.unit-test-dist/
+web/*.tsbuildinfo
 
-# vercel
-.vercel
+# Local env files
+web/.env*
+!web/.env.example
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Debug logs
+web/npm-debug.log*
+web/yarn-debug.log*
+web/yarn-error.log*
+web/.pnpm-debug.log*
+web/.codex-*.err
+web/.codex-*.out
+web/.playwright-*.err
+web/.playwright-*.out
 
-.vercel
+# Generated docs and local captures
+docs/lighthouse/
+screenshots_error/
+
+# Heavy local backups
+docs/backups/*.zip

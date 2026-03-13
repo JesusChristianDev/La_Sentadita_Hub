@@ -1,0 +1,43 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "test:unit": "npm run test:unit:build && npm run test:unit:run",
+    "test:unit:build": "tsc -p tsconfig.unit-tests.json",
+    "test:unit:run": "node --test .unit-test-dist/modules/auth_users/application/selfProfileMutationRules.test.js .unit-test-dist/modules/employees/application/employeeMutationRules.test.js .unit-test-dist/modules/employees/application/employeeMutationService.test.js .unit-test-dist/modules/schedule/application/shiftValidation.test.js .unit-test-dist/modules/schedule/application/scheduleCalculations.test.js .unit-test-dist/modules/schedule/application/scheduleDraftRules.test.js .unit-test-dist/modules/schedule/application/scheduleDraftService.test.js .unit-test-dist/modules/schedule/application/scheduleLockService.test.js .unit-test-dist/modules/schedule/application/schedulePublicationService.test.js",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "format": "prettier . --write",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.94.1",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.575.0",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-unused-imports": "^4.3.0",
+    "prettier": "^3.8.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
