@@ -58,7 +58,6 @@ export function MobileHeaderMenu({
   const items = buildAppNavigationItems({
     canSeeEmployees,
     canSeeSchedules,
-    includeProfile: true,
   });
   const closeAfterSubmit = () => {
     window.setTimeout(() => {
@@ -144,7 +143,7 @@ export function MobileHeaderMenu({
       <button
         ref={menuButtonRef}
         type="button"
-        className="inline-flex h-12 w-12 items-center justify-center rounded-[1.35rem] border border-white/10 bg-white/[0.05] text-foreground shadow-[0_18px_38px_-28px_rgba(0,0,0,0.9)] transition-colors hover:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-accent"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-[1.15rem] border border-white/10 bg-white/[0.05] text-foreground shadow-[0_18px_38px_-28px_rgba(0,0,0,0.9)] transition-colors hover:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-accent"
         aria-label={open ? 'Cerrar menu' : 'Abrir menu'}
         aria-expanded={open}
         aria-controls={drawerId}
@@ -175,7 +174,11 @@ export function MobileHeaderMenu({
                   <div className="mx-auto h-1.5 w-16 rounded-full bg-white/10" />
 
                   <div className="mt-4 flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1 rounded-[1.75rem] border border-white/8 bg-white/[0.04] px-4 py-4 shadow-[0_18px_42px_-32px_rgba(0,0,0,0.8)]">
+                    <Link
+                      href="/me"
+                      className="min-w-0 flex-1 rounded-[1.75rem] border border-white/8 bg-white/[0.04] px-4 py-4 shadow-[0_18px_42px_-32px_rgba(0,0,0,0.8)] transition-colors hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-accent"
+                      onClick={() => setOpen(false)}
+                    >
                       <div className="flex items-center gap-3">
                         <UserAvatar
                           fullName={currentUserName}
@@ -195,7 +198,7 @@ export function MobileHeaderMenu({
                           </span>
                         </div>
                       </div>
-                    </div>
+                    </Link>
 
                     <button
                       type="button"

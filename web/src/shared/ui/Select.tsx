@@ -13,6 +13,7 @@ import {
   forwardRef,
   Fragment,
   isValidElement,
+  useCallback,
   useEffect,
   useId,
   useImperativeHandle,
@@ -20,6 +21,9 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+
+import { useMobileOverlay } from '@/shared/hooks/useMobileOverlay';
+import { MOBILE_VIEWPORT_MEDIA_QUERY } from '@/shared/responsive';
 
 import { cx } from './cx';
 
@@ -276,6 +280,7 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
   const [internalValue, setInternalValue] = useState(() => normalizedDefaultValue);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [isMobileSheet, setIsMobileSheet] = useState(false);
   const [panelSide, setPanelSide] = useState<'bottom' | 'top'>('bottom');
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -307,6 +312,50 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
     () => nativeSelectRef.current as HTMLSelectElement,
     [],
   );
+
+  const {
+    backdropProps,
+    closeOverlay,
+    overlayRef,
+    panelProps,
+    prepareToOpen,
+    shouldRenderOverlay,
+  } = useMobileOverlay({
+    enabled: isMobileSheet,
+    onOpenChange: setOpen,
+    open,
+    restoreFocusRef: triggerRef,
+  });
+
+  const closeMenu = useCallback(
+    ({
+      armGuard = false,
+      focusTrigger = false,
+    }: {
+      armGuard?: boolean;
+      focusTrigger?: boolean;
+    } = {}) => {
+      closeOverlay({ armGuard, restoreFocus: focusTrigger });
+    },
+    [closeOverlay],
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(MOBILE_VIEWPORT_MEDIA_QUERY);
+
+    const syncMobileSheet = (matches: boolean) => {
+      setIsMobileSheet(matches);
+    };
+
+    syncMobileSheet(mediaQuery.matches);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      syncMobileSheet(event.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -381,6 +430,12 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
     }
 
     const updatePanelPosition = () => {
+      if (isMobileSheet) {
+        setPanelSide('bottom');
+        setPanelStyle({});
+        return;
+      }
+
       const trigger = triggerRef.current;
       if (!trigger) {
         return;
@@ -430,10 +485,10 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
       window.removeEventListener('resize', updatePanelPosition);
       window.removeEventListener('scroll', updatePanelPosition, true);
     };
-  }, [open]);
+  }, [isMobileSheet, open]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open || isMobileSheet) {
       return;
     }
 
@@ -444,8 +499,19 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
         return;
       }
 
-      setOpen(false);
+      closeMenu();
     };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [closeMenu, isMobileSheet, open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
 
     const handleEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape') {
@@ -453,17 +519,14 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
       }
 
       event.preventDefault();
-      setOpen(false);
-      triggerRef.current?.focus();
+      closeMenu({ armGuard: isMobileSheet, focusTrigger: true });
     };
 
-    document.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('keydown', handleEscape);
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [open]);
+  }, [closeMenu, isMobileSheet, open]);
 
   const clearTypeahead = () => {
     if (typeaheadTimeoutRef.current != null) {
@@ -530,8 +593,7 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
     }
 
     clearTypeahead();
-    setOpen(false);
-    triggerRef.current?.focus();
+    closeMenu({ armGuard: isMobileSheet, focusTrigger: true });
   };
 
   const handleNativeChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -543,6 +605,7 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
   };
 
   const moveActiveOption = (direction: 1 | -1) => {
+    prepareToOpen();
     setOpen(true);
     setActiveIndex((currentIndex) => {
       const fallbackIndex =
@@ -561,6 +624,7 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
   };
 
   const moveToEdgeOption = (edge: 'first' | 'last') => {
+    prepareToOpen();
     setOpen(true);
     setActiveIndex(edge === 'first' ? firstEnabledOptionIndex : lastEnabledOptionIndex);
   };
@@ -570,14 +634,14 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
       return;
     }
 
-    setOpen((current) => {
-      if (current) {
-        return false;
-      }
+    if (open) {
+      closeMenu();
+      return;
+    }
 
-      setActiveIndex(defaultActiveIndex);
-      return true;
-    });
+    prepareToOpen();
+    setOpen(true);
+    setActiveIndex(defaultActiveIndex);
   };
 
   const handleTypeahead = (key: string, keepMenuOpen: boolean) => {
@@ -667,7 +731,7 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
         return;
       case 'Tab':
         event.preventDefault();
-        setOpen(false);
+        closeMenu({ armGuard: isMobileSheet });
         moveFocusFromTrigger(event.shiftKey);
         return;
       default:
@@ -677,6 +741,81 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
         }
     }
   };
+
+  const listboxSurface = (
+    <div
+      ref={listboxRef}
+      id={listboxId}
+      aria-activedescendant={
+        activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
+      }
+      aria-labelledby={ariaLabelledby}
+      aria-label={ariaLabel}
+      className={cx(
+        'select-dropdown__surface',
+        isMobileSheet && 'max-h-[min(70dvh,32rem)] rounded-[1.75rem]',
+      )}
+      role="listbox"
+      tabIndex={-1}
+      onKeyDown={handleListboxKeyDown}
+    >
+      <ul className="select-dropdown__list">
+        {options.map((option, index) => {
+          const showGroupLabel =
+            option.groupLabel &&
+            option.groupLabel !== options[index - 1]?.groupLabel;
+          const isSelected = option.value === resolvedValue;
+          const isActive = index === activeIndex;
+
+          return (
+            <Fragment key={`${option.groupLabel ?? 'default'}-${option.value}`}>
+              {showGroupLabel ? (
+                <li className="select-dropdown__group" aria-hidden="true">
+                  {option.groupLabel}
+                </li>
+              ) : null}
+
+              <li
+                id={`${listboxId}-option-${index}`}
+                aria-disabled={option.disabled || undefined}
+                aria-selected={isSelected}
+                className={cx(
+                  'select-dropdown__option',
+                  isActive && 'is-active',
+                  isSelected && 'is-selected',
+                  option.disabled && 'is-disabled',
+                )}
+                role="option"
+                tabIndex={-1}
+                onClick={() => {
+                  if (option.disabled) {
+                    return;
+                  }
+
+                  commitSelection(option.value);
+                }}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                }}
+                onMouseEnter={() => {
+                  if (option.disabled) {
+                    return;
+                  }
+
+                  setActiveIndex(index);
+                }}
+              >
+                <span className="select-dropdown__text">{option.label}</span>
+                <span className="select-dropdown__check" aria-hidden="true">
+                  {isSelected ? <Check className="h-4 w-4" strokeWidth={2.3} /> : null}
+                </span>
+              </li>
+            </Fragment>
+          );
+        })}
+      </ul>
+    </div>
+  );
 
   return (
     <>
@@ -733,79 +872,42 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
         </span>
       </div>
 
-      {open && typeof document !== 'undefined'
+      {(open || shouldRenderOverlay) && typeof document !== 'undefined'
         ? createPortal(
-            <div className="select-dropdown" data-side={panelSide} style={panelStyle}>
+            isMobileSheet ? (
               <div
-                ref={listboxRef}
-                id={listboxId}
-                aria-activedescendant={
-                  activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
-                }
-                aria-labelledby={ariaLabelledby}
-                aria-label={ariaLabel}
-                className="select-dropdown__surface"
-                role="listbox"
-                tabIndex={-1}
-                onKeyDown={handleListboxKeyDown}
+                ref={overlayRef}
+                className="pointer-events-auto fixed inset-0 z-[1300]"
               >
-                <ul className="select-dropdown__list">
-                  {options.map((option, index) => {
-                    const showGroupLabel =
-                      option.groupLabel &&
-                      option.groupLabel !== options[index - 1]?.groupLabel;
-                    const isSelected = option.value === resolvedValue;
-                    const isActive = index === activeIndex;
-
-                    return (
-                      <Fragment key={`${option.groupLabel ?? 'default'}-${option.value}`}>
-                        {showGroupLabel ? (
-                          <li className="select-dropdown__group" aria-hidden="true">
-                            {option.groupLabel}
-                          </li>
-                        ) : null}
-
-                        <li
-                          id={`${listboxId}-option-${index}`}
-                          aria-disabled={option.disabled || undefined}
-                          aria-selected={isSelected}
-                          className={cx(
-                            'select-dropdown__option',
-                            isActive && 'is-active',
-                            isSelected && 'is-selected',
-                            option.disabled && 'is-disabled',
-                          )}
-                          role="option"
-                          tabIndex={-1}
-                          onClick={() => {
-                            if (option.disabled) {
-                              return;
-                            }
-
-                            commitSelection(option.value);
-                          }}
-                          onMouseDown={(event) => {
-                            event.preventDefault();
-                          }}
-                          onMouseEnter={() => {
-                            if (option.disabled) {
-                              return;
-                            }
-
-                            setActiveIndex(index);
-                          }}
-                        >
-                          <span className="select-dropdown__text">{option.label}</span>
-                          <span className="select-dropdown__check" aria-hidden="true">
-                            {isSelected ? <Check className="h-4 w-4" strokeWidth={2.3} /> : null}
-                          </span>
-                        </li>
-                      </Fragment>
-                    );
-                  })}
-                </ul>
+                <div
+                  aria-hidden="true"
+                  className={cx(
+                    'absolute inset-0',
+                    open ? 'bg-black/60 backdrop-blur-sm' : 'bg-transparent',
+                  )}
+                  {...backdropProps}
+                />
+                {open ? (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 py-6">
+                    <div
+                      className="pointer-events-auto relative z-[1] w-full max-w-[28rem]"
+                      {...panelProps}
+                    >
+                      <div className="mb-3 flex justify-center">
+                        <span className="h-1.5 w-16 rounded-full bg-white/14" />
+                      </div>
+                      <div className="max-h-[min(78dvh,36rem)] overflow-hidden">
+                        {listboxSurface}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            </div>,
+            ) : (
+              <div className="select-dropdown" data-side={panelSide} style={panelStyle}>
+                {listboxSurface}
+              </div>
+            ),
             document.body,
           )
         : null}

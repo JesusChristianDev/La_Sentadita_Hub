@@ -17,6 +17,7 @@ import {
   softDeleteEmployeeAction,
   updateEmployeeAction,
 } from './actions';
+import { EmployeeDangerZoneActions } from './EmployeeDangerZoneActions';
 
 type SearchParams = { e?: EmployeeErrorCode };
 
@@ -105,6 +106,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
     .eq('is_active', true);
 
   const errorMsg = getEmployeeErrorMessage(sp.e);
+  const deactivateAction = deactivateEmployeeAction.bind(null, id);
+  const reactivateAction = reactivateEmployeeAction.bind(null, id);
+  const softDeleteAction = softDeleteEmployeeAction.bind(null, id);
 
   return (
     <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
@@ -264,27 +268,12 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
           </span>
         </p>
 
-        <div className="form-actions mt-3">
-          {profile.is_active ? (
-            <form action={deactivateEmployeeAction.bind(null, id)}>
-              <Button size="small" type="submit" variant="secondary">
-                Desactivar
-              </Button>
-            </form>
-          ) : (
-            <form action={reactivateEmployeeAction.bind(null, id)}>
-              <Button size="small" type="submit">
-                Reactivar
-              </Button>
-            </form>
-          )}
-
-          <form action={softDeleteEmployeeAction.bind(null, id)}>
-            <Button size="small" type="submit" variant="danger">
-              Eliminar (soft)
-            </Button>
-          </form>
-        </div>
+        <EmployeeDangerZoneActions
+          deactivateAction={deactivateAction}
+          isActive={profile.is_active}
+          reactivateAction={reactivateAction}
+          softDeleteAction={softDeleteAction}
+        />
 
         <p className="mt-3 text-xs muted">
           Eliminar (soft) desactiva el usuario en Auth (no es borrado duro).

@@ -13,7 +13,6 @@ import {
 import type { AppRole } from '@/modules/auth_users';
 import type { EmployeeListItem } from '@/modules/employees';
 import {
-  matchesMobileViewport,
   MOBILE_VIEWPORT_MEDIA_QUERY,
 } from '@/shared/responsive';
 
@@ -46,6 +45,7 @@ import {
   formatWeekRange,
   getPreferredDisplayMode,
   type NoticeState,
+  parseScheduleLocalDate,
   sanitizeActionError,
   upsertEntry,
 } from './scheduleEditorHelpers';
@@ -146,10 +146,8 @@ export default function ScheduleEditor({
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [displayMode, setDisplayMode] = useState<ScheduleDisplayMode>(
-    getPreferredDisplayMode,
-  );
-  const [isMobileViewport, setIsMobileViewport] = useState(matchesMobileViewport);
+  const [displayMode, setDisplayMode] = useState<ScheduleDisplayMode>('week');
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [publishPulse, setPublishPulse] = useState(0);
   const [gridHealth, setGridHealth] = useState<ScheduleGridHealth>({
@@ -330,7 +328,7 @@ export default function ScheduleEditor({
             displayMode === 'day' && currentSchedule
               ? [
                   format(
-                    addDays(new Date(`${currentSchedule.week_start}T00:00:00`), selectedDayIndex),
+                    addDays(parseScheduleLocalDate(currentSchedule.week_start), selectedDayIndex),
                     'yyyy-MM-dd',
                   ),
                 ]

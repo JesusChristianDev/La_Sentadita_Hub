@@ -20,6 +20,7 @@
     "src/modules/employees/domain/**/*.ts",
     "src/modules/schedule/application/scheduleCalculations.test.ts",
     "src/modules/schedule/application/scheduleCalculations.ts",
+    "src/modules/schedule/application/scheduleDates.test.ts",
     "src/modules/schedule/application/scheduleDates.ts",
     "src/modules/schedule/application/scheduleDraftRules.test.ts",
     "src/modules/schedule/application/scheduleDraftRules.ts",

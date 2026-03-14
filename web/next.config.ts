@@ -40,6 +40,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ['127.0.0.1', 'localhost'],
   poweredByHeader: false,
   images: {
     qualities: [70, 75],

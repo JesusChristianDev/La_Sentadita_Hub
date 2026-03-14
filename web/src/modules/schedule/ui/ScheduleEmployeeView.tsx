@@ -11,6 +11,7 @@ import {
   formatWeekRange,
   getEmployeeDayTone,
   type NoticeState,
+  parseScheduleLocalDate,
   toWeekStartIso,
 } from './scheduleEditorHelpers';
 
@@ -89,7 +90,7 @@ export function ScheduleEmployeeView({
               <Button
                 onClick={() =>
                   onLoadEmployeeWeek(
-                    format(addWeeks(new Date(`${shownWeek}T00:00:00`), -1), 'yyyy-MM-dd'),
+                    format(addWeeks(parseScheduleLocalDate(shownWeek), -1), 'yyyy-MM-dd'),
                   )
                 }
                 variant="secondary"
@@ -107,24 +108,26 @@ export function ScheduleEmployeeView({
         </div>
 
         <div className="schedule-employee-days grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {(employeeWeek?.days ?? []).map((day) => (
-            <article
-              key={day.date}
-              className={`rounded-[1.5rem] border p-4 shadow-sm transition-transform duration-150 hover:-translate-y-0.5 ${getEmployeeDayTone(
-                day.day_type,
-              )}`}
-            >
-              <p className="text-[11px] uppercase tracking-[0.26em] text-muted">
-                {format(new Date(`${day.date}T00:00:00`), 'EEEE', { locale: es })}
-              </p>
-              <p className="mt-3 text-base font-semibold text-foreground">
-                {day.shift_text}
-              </p>
-              <p className="mt-2 text-sm text-muted">
-                Fecha: {format(new Date(`${day.date}T00:00:00`), 'dd/MM')}
-              </p>
-            </article>
-          ))}
+          {(employeeWeek?.days ?? []).map((day) => {
+            const date = parseScheduleLocalDate(day.date);
+
+            return (
+              <article
+                key={day.date}
+                className={`rounded-[1.5rem] border p-4 shadow-sm transition-transform duration-150 hover:-translate-y-0.5 ${getEmployeeDayTone(
+                  day.day_type,
+                )}`}
+              >
+                <p className="text-[11px] uppercase tracking-[0.26em] text-muted">
+                  {format(date, 'EEEE', { locale: es })}
+                </p>
+                <p className="mt-3 text-base font-semibold text-foreground">
+                  {day.shift_text}
+                </p>
+                <p className="mt-2 text-sm text-muted">Fecha: {format(date, 'dd/MM')}</p>
+              </article>
+            );
+          })}
         </div>
       </section>
     </main>

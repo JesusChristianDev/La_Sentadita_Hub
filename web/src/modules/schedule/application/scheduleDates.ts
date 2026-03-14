@@ -1,6 +1,8 @@
 import { addDays, addWeeks, format, startOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+import { parseScheduleLocalDate } from './scheduleLocalDate';
+
 function toIsoDate(value: Date): string {
   return format(value, 'yyyy-MM-dd');
 }
@@ -18,7 +20,7 @@ export function getCurrentAndNextWeekStarts(reference = new Date()) {
 }
 
 export function getWeekDates(weekStart: string): string[] {
-  const start = new Date(`${weekStart}T00:00:00`);
+  const start = parseScheduleLocalDate(weekStart);
   return Array.from({ length: 7 }).map((_, index) => toIsoDate(addDays(start, index)));
 }
 
@@ -27,7 +29,7 @@ export function getWeekEnd(weekStart: string): string {
 }
 
 export function getWeekRangeLabel(weekStart: string): string {
-  const start = new Date(`${weekStart}T00:00:00`);
+  const start = parseScheduleLocalDate(weekStart);
   const end = addDays(start, 6);
   return `${format(start, "d MMM", { locale: es })} - ${format(end, "d MMM", { locale: es })}`;
 }

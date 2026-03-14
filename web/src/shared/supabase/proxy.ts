@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { env } from '@/shared/env';
 
 const PUBLIC_PATH_PREFIXES = [
+  '/__preview',
   '/login',
   '/api',
   '/_next',

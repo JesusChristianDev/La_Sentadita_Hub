@@ -5,6 +5,7 @@ import { es } from 'date-fns/locale';
 
 import { matchesMobileViewport } from '@/shared/responsive';
 
+import { parseScheduleLocalDate } from '../application/scheduleLocalDate';
 import type {
   EmployeeScheduleDayView,
   ScheduleEntry,
@@ -18,15 +19,17 @@ export type NoticeState = {
   tone: 'error' | 'ok' | 'warning';
 } | null;
 
+export { parseScheduleLocalDate } from '../application/scheduleLocalDate';
+
 export function toWeekStartIso(value: string): string {
   return format(
-    startOfWeek(new Date(`${value}T00:00:00`), { weekStartsOn: 1 }),
+    startOfWeek(parseScheduleLocalDate(value), { weekStartsOn: 1 }),
     'yyyy-MM-dd',
   );
 }
 
 export function formatWeekRange(weekStart: string): string {
-  const start = new Date(`${weekStart}T00:00:00`);
+  const start = parseScheduleLocalDate(weekStart);
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
 
@@ -167,7 +170,7 @@ export function getEmployeeDayTone(day: EmployeeScheduleDayView['day_type']): st
 }
 
 export function formatDayOptionLabel(weekStart: string, index: number): string {
-  const date = addDays(new Date(`${weekStart}T00:00:00`), index);
+  const date = addDays(parseScheduleLocalDate(weekStart), index);
   return `${format(date, 'EEE', { locale: es })} ${format(date, 'dd/MM')}`;
 }
 

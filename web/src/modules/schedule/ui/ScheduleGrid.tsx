@@ -27,6 +27,7 @@ import {
   type ScheduleCellSuggestion,
 } from './ScheduleCellField';
 import { buildCellText, buildTemplateText, parseCellInput } from './scheduleCellHelpers';
+import { parseScheduleLocalDate } from './scheduleEditorHelpers';
 import type { ScheduleDisplayMode, ScheduleGridHealth } from './scheduleUiModels';
 
 type CellStatus = 'error' | 'idle' | 'saving' | 'success';
@@ -35,6 +36,7 @@ type ScheduleGridProps = {
   allEmployees: EmployeeListItem[];
   config: ScheduleConfig;
   entries: ScheduleEntry[];
+  healthScope?: 'all' | 'visible';
   isLockedByMe: boolean;
   mode: ScheduleDisplayMode;
   onStateChange: (health: ScheduleGridHealth) => void;
@@ -56,7 +58,7 @@ function buildCellKey(employeeId: string, date: string): string {
 }
 
 function buildDayColumns(weekStart: string) {
-  const startDate = new Date(weekStart);
+  const startDate = parseScheduleLocalDate(weekStart);
 
   return Array.from({ length: 7 }, (_, index) => {
     const date = addDays(startDate, index);
@@ -114,6 +116,7 @@ export const ScheduleGrid = forwardRef<ScheduleGridHandle, ScheduleGridProps>(fu
   allEmployees,
   config,
   entries,
+  healthScope = 'all',
   isLockedByMe,
   mode,
   onStateChange,
@@ -126,10 +129,13 @@ export const ScheduleGrid = forwardRef<ScheduleGridHandle, ScheduleGridProps>(fu
   zones,
 }, ref) {
   const dayColumns = useMemo(() => buildDayColumns(weekStart), [weekStart]);
-  const visibleColumns =
-    mode === 'day'
-      ? dayColumns.filter((column) => column.index === selectedDayIndex)
-      : dayColumns;
+  const visibleColumns = useMemo(
+    () =>
+      mode === 'day'
+        ? dayColumns.filter((column) => column.index === selectedDayIndex)
+        : dayColumns,
+    [dayColumns, mode, selectedDayIndex],
+  );
 
   const entriesMap = useMemo(() => {
     const map = new Map<string, ScheduleEntry>();
@@ -143,12 +149,14 @@ export const ScheduleGrid = forwardRef<ScheduleGridHandle, ScheduleGridProps>(fu
   const [cellStatuses, setCellStatuses] = useState<Record<string, CellStatus>>({});
   const [cellErrors, setCellErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+  const gridHealth = useMemo(() => {
     let emptyCount = 0;
     let invalidCount = 0;
+    const healthEmployees = healthScope === 'visible' ? visibleEmployees : allEmployees;
+    const healthColumns = healthScope === 'visible' ? visibleColumns : dayColumns;
 
-    allEmployees.forEach((employee) => {
-      dayColumns.forEach((column) => {
+    healthEmployees.forEach((employee) => {
+      healthColumns.forEach((column) => {
         const key = buildCellKey(employee.id, column.iso);
         const value = draftValues[key] ?? buildCellText(entriesMap.get(key));
         const entry = entriesMap.get(key);
@@ -163,8 +171,22 @@ export const ScheduleGrid = forwardRef<ScheduleGridHandle, ScheduleGridProps>(fu
       });
     });
 
+    return { emptyCount, invalidCount };
+  }, [
+    allEmployees,
+    cellStatuses,
+    dayColumns,
+    draftValues,
+    entriesMap,
+    healthScope,
+    visibleColumns,
+    visibleEmployees,
+  ]);
+  const { emptyCount, invalidCount } = gridHealth;
+
+  useEffect(() => {
     onStateChange({ emptyCount, invalidCount });
-  }, [allEmployees, cellStatuses, dayColumns, draftValues, entriesMap, onStateChange]);
+  }, [emptyCount, invalidCount, onStateChange]);
 
   const rowHoursByEmployee = useMemo(() => {
     const totals = new Map<string, number>();

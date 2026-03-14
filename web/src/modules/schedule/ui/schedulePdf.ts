@@ -4,7 +4,7 @@ import { es } from 'date-fns/locale';
 import type { EmployeeListItem } from '@/modules/employees';
 
 import type { RestaurantZone, ScheduleEntry } from '../domain/scheduleTypes';
-import { formatWeekRange } from './scheduleEditorHelpers';
+import { formatWeekRange, parseScheduleLocalDate } from './scheduleEditorHelpers';
 
 const PAGE_WIDTH = 841.89;
 const PAGE_HEIGHT = 595.28;
@@ -173,7 +173,7 @@ export function createSchedulePdfFileName(params: {
 export function buildSchedulePdfDocument(params: SchedulePdfParams): ArrayBuffer {
   const effectiveScopeLabel = normalizeScopeLabel(params.scopeLabel);
   const dayColumns = Array.from({ length: 7 }, (_, index) => {
-    const date = addDays(new Date(`${params.weekStart}T00:00:00`), index);
+    const date = addDays(parseScheduleLocalDate(params.weekStart), index);
 
     return {
       iso: format(date, 'yyyy-MM-dd'),

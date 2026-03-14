@@ -122,6 +122,10 @@ export function ScheduleCellField({
     activeField === 'primary' &&
     !isReadOnlyCell &&
     filteredSuggestions.length > 0;
+  const activeSuggestionId =
+    showSuggestions && filteredSuggestions[highlightedIndex]
+      ? `${suggestionsId}-option-${highlightedIndex}`
+      : undefined;
   const baseInputClassName = compact ? 'min-h-10 text-sm' : 'min-h-11 text-sm';
   const showSplitField =
     hasSecondary || (isSplitExpanded && Boolean(primary) && !isStatusCellDraftValue(primary));
@@ -211,13 +215,34 @@ export function ScheduleCellField({
     }, 80);
   }
 
+  function handleAddSplit() {
+    setIsSplitExpanded(true);
+    focusSecondaryRef.current = true;
+  }
+
+  function handleRemoveSplit() {
+    setIsSplitExpanded(false);
+    onValueChange(removeSplitFromCellDraft(value));
+    primaryInputRef.current?.focus();
+  }
+
+  function handleClearCell() {
+    setIsSplitExpanded(false);
+    setHighlightedIndex(0);
+    onValueChange('');
+    onCommit('');
+    primaryInputRef.current?.focus();
+  }
+
   return (
     <div ref={containerRef} className={`relative grid ${compact ? 'gap-1.5' : 'gap-2'}`}>
       <input
         ref={primaryInputRef}
+        aria-activedescendant={activeSuggestionId}
         aria-autocomplete="list"
         aria-controls={showSuggestions ? suggestionsId : undefined}
         aria-expanded={showSuggestions}
+        aria-haspopup="listbox"
         aria-invalid={Boolean(error)}
         aria-label={`${employeeName}, ${label}`}
         className={`${baseInputClassName} w-full rounded-2xl border px-3 py-2 font-semibold shadow-sm outline-none transition ${statusClassName}`}
@@ -369,18 +394,17 @@ export function ScheduleCellField({
         <div className={`flex flex-wrap items-center ${compact ? 'gap-1.5' : 'gap-2'} text-muted`}>
           {canAddSplit ? (
             <button
-              aria-label="Añadir segundo tramo"
+              aria-label="Agregar segundo tramo"
               className={actionButtonClassName}
               onMouseDown={(event) => {
                 event.preventDefault();
-                setIsSplitExpanded(true);
-                focusSecondaryRef.current = true;
               }}
-              title="Añadir tramo"
+              onClick={handleAddSplit}
+              title="Agregar tramo"
               type="button"
             >
               <Plus className="h-3.5 w-3.5" />
-              {compact ? null : <span>Añadir tramo</span>}
+              {compact ? null : <span>Agregar tramo</span>}
             </button>
           ) : null}
           {showSplitField && !autoTag && !isReadOnlyCell && isLockedByMe ? (
@@ -389,10 +413,8 @@ export function ScheduleCellField({
               className={destructiveActionButtonClassName}
               onMouseDown={(event) => {
                 event.preventDefault();
-                setIsSplitExpanded(false);
-                onValueChange(removeSplitFromCellDraft(value));
-                primaryInputRef.current?.focus();
               }}
+              onClick={handleRemoveSplit}
               title="Quitar tramo"
               type="button"
             >
@@ -406,12 +428,8 @@ export function ScheduleCellField({
               className={destructiveActionButtonClassName}
               onMouseDown={(event) => {
                 event.preventDefault();
-                setIsSplitExpanded(false);
-                setHighlightedIndex(0);
-                onValueChange('');
-                onCommit('');
-                primaryInputRef.current?.focus();
               }}
+              onClick={handleClearCell}
               title="Limpiar"
               type="button"
             >
@@ -436,6 +454,8 @@ export function ScheduleCellField({
             >
               {filteredSuggestions.map((suggestion, index) => (
                 <button
+                  id={`${suggestionsId}-option-${index}`}
+                  aria-selected={index === highlightedIndex}
                   key={`${suggestion.value}-${suggestion.label}`}
                   className={`rounded-[0.9rem] px-3 py-2 text-left transition ${
                     index === highlightedIndex
@@ -444,8 +464,9 @@ export function ScheduleCellField({
                   }`}
                   onMouseDown={(event) => {
                     event.preventDefault();
-                    selectSuggestion(index);
                   }}
+                  onClick={() => selectSuggestion(index)}
+                  role="option"
                   type="button"
                 >
                   <span className="block text-sm font-semibold">{suggestion.value}</span>

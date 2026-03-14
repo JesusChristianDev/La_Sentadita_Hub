@@ -10,10 +10,10 @@ import { mePathWithError, mePathWithSuccess } from '@/shared/feedbackMessages';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
-async function requireReauth(currentPassword: string): Promise<{
+async function requireAuthenticatedUser(): Promise<{
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   userId: string;
-  email: string;
+  email: string | null;
 }> {
   const supabase = await createSupabaseServerClient();
 
@@ -21,7 +21,18 @@ async function requireReauth(currentPassword: string): Promise<{
   const email = userData.user?.email ?? null;
   const userId = userData.user?.id ?? null;
 
-  if (!email || !userId) redirect('/login');
+  if (!userId) redirect('/login');
+
+  return { supabase, userId, email };
+}
+
+async function requireReauth(currentPassword: string): Promise<{
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  userId: string;
+  email: string;
+}> {
+  const { supabase, userId, email } = await requireAuthenticatedUser();
+  if (!email) redirect('/login');
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -72,16 +83,14 @@ export async function changePasswordAction(formData: FormData) {
 }
 
 export async function changeAvatarAction(formData: FormData) {
-  const password = String(formData.get('password') ?? '');
   const file = formData.get('avatar');
 
-  if (!password) redirect(mePathWithError('missing'));
-  if (!(file instanceof File)) redirect(mePathWithError('missing'));
+  if (!(file instanceof File) || file.size === 0) redirect(mePathWithError('missing'));
 
   if (!file.type.startsWith('image/')) redirect(mePathWithError('bad_file'));
   if (file.size > 2_000_000) redirect(mePathWithError('file_too_large')); // 2MB
 
-  const { userId } = await requireReauth(password);
+  const { userId } = await requireAuthenticatedUser();
 
   const bytes = Buffer.from(await file.arrayBuffer());
 

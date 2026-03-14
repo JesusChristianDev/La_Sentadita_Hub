@@ -28,6 +28,7 @@ web/npm-debug.log*
 web/yarn-debug.log*
 web/yarn-error.log*
 web/.pnpm-debug.log*
+web/.dashboard-hero-*.log
 web/.codex-*.err
 web/.codex-*.out
 web/.playwright-*.err

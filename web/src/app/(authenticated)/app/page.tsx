@@ -3,12 +3,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { getCurrentUserContext } from '@/modules/auth_users';
+import { DashboardHeroWidget } from '@/modules/dashboard';
 import { listRestaurants } from '@/modules/restaurants';
 import { canPickRestaurantHeader } from '@/shared/headerPolicy';
 import { canAccessSchedulesModule } from '@/shared/schedulePolicy';
 
 import { ClearInitialFocus } from '../../components/clear-initial-focus';
-import { DashboardPersonalizedMessages } from './dashboard-personalized-messages';
 
 export default async function AppPage() {
   const ctx = await getCurrentUserContext();
@@ -40,7 +40,7 @@ export default async function AppPage() {
         </div>
       </section>
 
-      <DashboardPersonalizedMessages
+      <DashboardHeroWidget
         canPickRestaurant={showSelector}
         effectiveRestaurantName={effectiveRestaurantName}
         hasEffectiveRestaurant={Boolean(effectiveRestaurantId)}

@@ -220,10 +220,10 @@ export function ScheduleQuickActionsWorkspace({
               Mostrando {visibleEmployees.length} de {totalEmployees}
             </span>
             <span className="rounded-full border border-border/70 bg-background/25 px-3 py-1 text-xs text-muted">
-              {gridHealth.emptyCount} pendientes
+              {gridHealth.emptyCount} pendientes en vista
             </span>
             <span className="rounded-full border border-border/70 bg-background/25 px-3 py-1 text-xs text-muted">
-              {gridHealth.invalidCount} errores
+              {gridHealth.invalidCount} errores en vista
             </span>
             {isBusy ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs text-accent-strong">
@@ -240,6 +240,7 @@ export function ScheduleQuickActionsWorkspace({
           entries={editorData.schedule.schedule_entries}
           isLockedByMe={!isViewMode && Boolean(lockStatus?.acquired)}
           key={currentSchedule.id}
+          healthScope="visible"
           mode="day"
           onSaveCell={onSaveCell}
           onStateChange={onGridHealthChange}

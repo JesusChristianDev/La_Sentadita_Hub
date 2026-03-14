@@ -2,9 +2,9 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import type { AppRole } from '@/modules/auth_users';
-import { roleLabel } from '@/shared/roleLabel';
 import { Button, Select } from '@/shared/ui';
 
 import { ScreenNav } from './screen-nav';
@@ -47,40 +47,54 @@ export function AppHeader({
 }: AppHeaderProps) {
   const availableRestaurants = restaurants.filter((restaurant) => restaurant.is_active);
   const shortName = currentUserName?.trim() || 'Cuenta';
-  const activeRestaurantName =
-    restaurants.find((restaurant) => restaurant.id === effectiveRestaurantId)?.name ?? null;
-  const roleName = currentUserRole ? roleLabel(currentUserRole) : 'Operacion diaria';
+  const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+  const desktopMenuId = useId();
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
+  const isDesktopMenuVisible = desktopMenuOpen && !isMobileDevice;
+
+  useEffect(() => {
+    if (!isDesktopMenuVisible) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (!desktopMenuRef.current?.contains(target)) {
+        setDesktopMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setDesktopMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isDesktopMenuVisible]);
 
   if (isMobileDevice) {
     return (
       <header
         data-app-header
-        className="sticky top-0 z-50 w-full px-2 pb-2 pt-[calc(env(safe-area-inset-top,0px)+0.55rem)]"
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 px-3 pt-[calc(env(safe-area-inset-top,0px)+0.55rem)]"
       >
-        <div className="mx-auto w-full rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(23,23,29,0.96)_0%,rgba(11,11,15,0.98)_100%)] p-3.5 shadow-[0_32px_80px_-44px_rgba(0,0,0,0.94)] backdrop-blur-xl">
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <span className="text-[0.65rem] font-semibold uppercase tracking-[0.34em] text-accent-strong/90">
-                La Sentadita Hub
-              </span>
-              <div className="mt-3 flex min-w-0 items-center gap-3">
-                <UserAvatar
-                  fullName={currentUserName}
-                  role={currentUserRole}
-                  avatarUrl={currentUserAvatarUrl}
-                  size="md"
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-base font-semibold text-foreground">
-                    {shortName}
-                  </p>
-                  <p className="truncate text-[0.72rem] font-medium uppercase tracking-[0.2em] text-muted">
-                    {roleName}
-                  </p>
-                </div>
-              </div>
-            </div>
+        <div className="pointer-events-auto mx-auto flex w-full items-center gap-3 rounded-[1.45rem] border border-white/10 bg-[linear-gradient(180deg,rgba(23,23,29,0.94)_0%,rgba(11,11,15,0.97)_100%)] px-3.5 py-2.5 shadow-[0_28px_70px_-42px_rgba(0,0,0,0.96)] backdrop-blur-xl">
+          <div className="min-w-0 flex-1">
+            <Link
+              href="/app"
+              className="block truncate text-[0.7rem] font-semibold uppercase tracking-[0.34em] text-accent-strong/90"
+            >
+              La Sentadita Hub
+            </Link>
+          </div>
 
+          <div className="shrink-0">
             <MobileHeaderMenu
               canSeeEmployees={canSeeEmployees}
               canSeeSchedules={canSeeSchedules}
@@ -92,17 +106,6 @@ export function AppHeader({
               currentUserRole={currentUserRole}
               currentUserAvatarUrl={currentUserAvatarUrl}
             />
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="inline-flex min-h-10 items-center rounded-full border border-white/8 bg-white/[0.04] px-3.5 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-muted">
-              Operacion movil
-            </span>
-            {activeRestaurantName ? (
-              <span className="inline-flex min-h-10 items-center rounded-full border border-accent/30 bg-accent/10 px-3.5 text-sm font-medium text-foreground">
-                {activeRestaurantName}
-              </span>
-            ) : null}
           </div>
         </div>
       </header>
@@ -121,7 +124,7 @@ export function AppHeader({
               href="/app"
               className="shrink-0 text-base font-bold tracking-tight text-white transition-colors hover:text-amber-500 sm:text-lg"
             >
-              La Sentadita
+              La Sentadita Hub
             </Link>
 
             <div className="min-w-0 flex-1">
@@ -163,8 +166,15 @@ export function AppHeader({
               </form>
             ) : null}
 
-            <details className="group relative block">
-              <summary className="flex cursor-pointer items-center gap-2 rounded-full border border-border bg-surface-strong/85 py-1 pl-1 pr-2 transition-colors hover:border-muted hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 list-none xl:pr-3 [&::-webkit-details-marker]:hidden">
+            <div ref={desktopMenuRef} className="relative block">
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-2 rounded-full border border-border bg-surface-strong/85 py-1 pl-1 pr-2 transition-colors hover:border-muted hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 xl:pr-3"
+                aria-expanded={isDesktopMenuVisible}
+                aria-controls={desktopMenuId}
+                aria-label={isDesktopMenuVisible ? 'Cerrar menu de cuenta' : 'Abrir menu de cuenta'}
+                onClick={() => setDesktopMenuOpen((open) => !open)}
+              >
                 <UserAvatar
                   fullName={currentUserName}
                   role={currentUserRole}
@@ -174,25 +184,36 @@ export function AppHeader({
                 <span className="hidden max-w-[160px] truncate text-sm font-medium text-foreground xl:block">
                   {shortName}
                 </span>
-              </summary>
-              <div className="absolute right-0 top-[calc(100%+8px)] z-50 hidden min-w-[220px] flex-col gap-1 rounded-[1.15rem] border border-border bg-background/95 p-2 shadow-2xl backdrop-blur-xl group-open:flex">
-                <Link
-                  href="/me"
-                  className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-surface hover:text-white"
+              </button>
+              {isDesktopMenuVisible ? (
+                <div
+                  id={desktopMenuId}
+                  className="absolute right-0 top-[calc(100%+8px)] z-50 flex min-w-[220px] flex-col gap-1 rounded-[1.15rem] border border-border bg-background/95 p-2 shadow-2xl backdrop-blur-xl"
                 >
-                  Mi perfil
-                </Link>
-                <form action="/api/auth/signout" method="post" className="m-0 w-full">
-                  <input type="hidden" name="next" value="/login" />
-                  <button
-                    type="submit"
-                    className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm text-danger transition-colors hover:bg-danger/20 hover:text-danger"
+                  <Link
+                    href="/me"
+                    className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-surface hover:text-white"
+                    onClick={() => setDesktopMenuOpen(false)}
                   >
-                    Cerrar sesion
-                  </button>
-                </form>
-              </div>
-            </details>
+                    Mi perfil
+                  </Link>
+                  <form
+                    action="/api/auth/signout"
+                    method="post"
+                    className="m-0 w-full"
+                    onSubmit={() => setDesktopMenuOpen(false)}
+                  >
+                    <input type="hidden" name="next" value="/login" />
+                    <button
+                      type="submit"
+                      className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm text-danger transition-colors hover:bg-danger/20 hover:text-danger"
+                    >
+                      Cerrar sesion
+                    </button>
+                  </form>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </header>
