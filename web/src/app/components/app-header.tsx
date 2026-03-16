@@ -51,6 +51,11 @@ export function AppHeader({
   const desktopMenuId = useId();
   const desktopMenuRef = useRef<HTMLDivElement>(null);
   const isDesktopMenuVisible = desktopMenuOpen && !isMobileDevice;
+  const closeDesktopMenuAfterSubmit = () => {
+    window.setTimeout(() => {
+      setDesktopMenuOpen(false);
+    }, 0);
+  };
 
   useEffect(() => {
     if (!isDesktopMenuVisible) return;
@@ -201,7 +206,7 @@ export function AppHeader({
                     action="/api/auth/signout"
                     method="post"
                     className="m-0 w-full"
-                    onSubmit={() => setDesktopMenuOpen(false)}
+                    onSubmit={closeDesktopMenuAfterSubmit}
                   >
                     <input type="hidden" name="next" value="/login" />
                     <button

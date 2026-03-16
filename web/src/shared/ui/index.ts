@@ -4,4 +4,5 @@ export * from './ChipButton';
 export * from './ChipLink';
 export * from './Modal';
 export * from './Notice';
+export * from './RestaurantContextEmptyState';
 export * from './Select';

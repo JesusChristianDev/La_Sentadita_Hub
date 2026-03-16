@@ -8,7 +8,9 @@ import {
   loadScheduleHomeAction,
 } from '@/modules/schedule/application/serverActions';
 import ScheduleEditor from '@/modules/schedule/ui/ScheduleEditor';
+import { canPickRestaurantHeader } from '@/shared/headerPolicy';
 import { canAccessSchedulesModule } from '@/shared/schedulePolicy';
+import { RestaurantContextEmptyState } from '@/shared/ui';
 
 export default async function SchedulePage() {
   const ctx = await getCurrentUserContext();
@@ -22,6 +24,30 @@ export default async function SchedulePage() {
   }
 
   const restaurantId = await getEffectiveRestaurantId(ctx.profile);
+  if (!restaurantId) {
+    return (
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="app-shell app-shell--workspace schedule-shell stack rise-in"
+      >
+        <section className="page-intro schedule-page-intro">
+          <div>
+            <h1 className="page-title">Horarios</h1>
+            <p className="subtitle">
+              Semanas activas, edicion y consulta del calendario operativo.
+            </p>
+          </div>
+        </section>
+
+        <RestaurantContextEmptyState
+          canPickRestaurant={canPickRestaurantHeader(ctx.profile.role)}
+          moduleLabel="Horarios"
+        />
+      </main>
+    );
+  }
+
   const initialHome = await loadScheduleHomeAction(restaurantId ?? undefined);
   const initialEmployeeWeek = initialHome.permissions.is_employee_view
     ? await loadEmployeeScheduleWeekAction(

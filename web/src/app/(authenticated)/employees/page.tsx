@@ -12,7 +12,7 @@ import {
 import { canPickRestaurantHeader } from '@/shared/headerPolicy';
 import { roleLabel } from '@/shared/roleLabel';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
-import { ButtonLink, ChipLink, Notice } from '@/shared/ui';
+import { ButtonLink, ChipLink, Notice, RestaurantContextEmptyState } from '@/shared/ui';
 
 import { UserAvatar } from '../../components/user-avatar';
 import { createEmployeeAction } from './actions';
@@ -47,10 +47,17 @@ export default async function EmployeesPage({ searchParams }: Props) {
   if (!restaurantId) {
     return (
       <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
-        <h1 className="page-title">Equipo</h1>
-        <Notice tone="error">
-          No hay restaurante efectivo. Selecciona uno en el selector superior.
-        </Notice>
+        <section className="page-intro">
+          <div>
+            <h1 className="page-title">Equipo</h1>
+            <p className="subtitle">Gestion de usuarios operativos por restaurante.</p>
+          </div>
+        </section>
+
+        <RestaurantContextEmptyState
+          canPickRestaurant={canPickRestaurantHeader(ctx.profile.role)}
+          moduleLabel="Equipo"
+        />
       </main>
     );
   }
