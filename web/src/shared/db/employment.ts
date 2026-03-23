@@ -33,12 +33,15 @@ type PersonIdRow = {
   person_id: string;
 };
 
-type PersonRoleProjectionRow = {
-  first_name: string;
-  is_archived?: boolean;
-  last_name: string;
+type PersonProjectionRow = {
   person_id: string;
   system_role: SystemRole;
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
+  agora_employee_id: string | null;
+  is_archived: boolean;
+  onboarding_status: string;
 };
 
 type PersonSystemRoleRow = {
@@ -79,16 +82,8 @@ export type EmploymentScopeProjection = {
   zone_id: string | null;
 };
 
-type LegacyProfileProjectionRow = {
-  avatar_path: string | null;
-  employee_code: number;
-  full_name: string;
-  id: string;
-  is_active?: boolean;
-  restaurant_id: string | null;
-  role: EditableEmployeeRole;
-  zone_id: string | null;
-};
+// Legacy types removed as profiles table is gone.
+// Projection now comes from persons + employment_relationships.
 
 const BAN_100_YEARS = '876600h';
 const LEGACY_MIGRATED_CHAIN_ID = '00000000-0000-0000-0000-000000000001';
@@ -237,26 +232,8 @@ export async function loadEmploymentScopeProjection(
 export async function loadLegacyEmployeeScopeProjection(
   personId: string,
 ): Promise<EmploymentScopeProjection | null> {
-  const admin = createSupabaseAdminClient();
-  const [employmentScope, { data: profile, error: profileError }] = await Promise.all([
-    loadEmploymentScopeProjection(personId),
-    admin
-      .from('profiles')
-      .select('zone_id')
-      .eq('id', personId)
-      .maybeSingle(),
-  ]);
-
-  if (profileError && profileError.code !== 'PGRST116') {
-    throw new Error(`Failed to load legacy employee scope: ${profileError.message}`);
-  }
-
-  if (!employmentScope && !profile) return null;
-
-  return {
-    restaurant_id: employmentScope?.restaurant_id ?? null,
-    zone_id: employmentScope?.zone_id ?? ((profile ?? null) as { zone_id: string | null } | null)?.zone_id ?? null,
-  };
+  // Now simply using the v6 projection as profiles is gone
+  return loadEmploymentScopeProjection(personId);
 }
 
 export async function loadScheduleActorProjection(
@@ -324,20 +301,13 @@ async function listEmploymentFromProjection(
   if (personIds.length === 0) return [];
 
   const [
-    { data: profiles, error: profilesError },
     { data: persons, error: personsError },
     { data: zoneScopes, error: zoneScopesError },
   ] =
     await Promise.all([
       admin
-        .from('profiles')
-        .select(
-          'id, employee_code, full_name, role, restaurant_id, avatar_path, is_active, zone_id',
-        )
-        .in('id', personIds),
-      admin
         .from('persons')
-        .select('person_id, system_role, first_name, last_name, is_archived')
+        .select('person_id, system_role, first_name, last_name, avatar_url, agora_employee_id, is_archived, onboarding_status')
         .in('person_id', personIds),
       admin
         .from('role_scope_assignments')
@@ -347,10 +317,6 @@ async function listEmploymentFromProjection(
         .eq('active', true),
     ]);
 
-  if (profilesError) {
-    throw new Error(`Failed to load employment profiles: ${profilesError.message}`);
-  }
-
   if (personsError) {
     throw new Error(`Failed to load person roles: ${personsError.message}`);
   }
@@ -359,11 +325,8 @@ async function listEmploymentFromProjection(
     throw new Error(`Failed to load zone scope assignments: ${zoneScopesError.message}`);
   }
 
-  const profilesById = new Map(
-    ((profiles ?? []) as LegacyProfileProjectionRow[]).map((row) => [row.id, row]),
-  );
-  const personsById = new Map(
-    ((persons ?? []) as PersonRoleProjectionRow[]).map((row) => [row.person_id, row]),
+  const personsById = new Map<string, PersonProjectionRow>(
+    ((persons ?? []) as PersonProjectionRow[]).map((row) => [row.person_id, row]),
   );
   const zoneScopesByPersonId = new Map(
     ((zoneScopes ?? []) as PersonZoneScopeAssignmentRow[]).map((row) => [
@@ -375,34 +338,31 @@ async function listEmploymentFromProjection(
   const items: EmploymentListItem[] = [];
 
   for (const employment of typedEmploymentRows) {
-    const profile = profilesById.get(employment.person_id);
-    if (!profile) continue;
-
     const projectedPerson = personsById.get(employment.person_id);
-    const projectedSystemRole = projectedPerson
-      ? mapSystemRoleToLegacyEmployment(projectedPerson.system_role)
-      : profile.role;
+    if (!projectedPerson) continue;
 
-    const fullName =
-      profile.full_name?.trim() ||
-      [projectedPerson?.first_name, projectedPerson?.last_name]
-        .filter(Boolean)
-        .join(' ')
-        .trim();
+    const projectedSystemRole = mapSystemRoleToLegacyEmployment(projectedPerson.system_role);
+
+    const fullName = [projectedPerson.first_name, projectedPerson.last_name]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    const employeeCode = parseInt(projectedPerson.agora_employee_id || '0', 10);
 
     items.push({
-      avatar_path: profile.avatar_path,
-      employee_code: profile.employee_code,
+      avatar_path: projectedPerson.avatar_url,
+      employee_code: isNaN(employeeCode) ? 0 : employeeCode,
       full_name: fullName || '(sin nombre)',
-      id: profile.id,
+      id: projectedPerson.person_id,
       is_active:
         employment.active_principal &&
         !employment.is_archived &&
-        profile.is_active &&
-        projectedPerson?.is_archived !== true,
+        projectedPerson.onboarding_status === 'active' &&
+        projectedPerson.is_archived !== true,
       restaurant_id: employment.restaurant_id,
       system_role: projectedSystemRole,
-      zone_id: zoneScopesByPersonId.get(profile.id) ?? profile.zone_id,
+      zone_id: zoneScopesByPersonId.get(projectedPerson.person_id) ?? null,
     });
   }
 
@@ -584,17 +544,32 @@ async function loadLegacyEmploymentActivationSeed(
   personId: string,
 ): Promise<LegacyEmploymentActivationSeedRow | null> {
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('profiles')
-    .select('restaurant_id, role, zone_id')
-    .eq('id', personId)
-    .maybeSingle();
+  const [{ data: employment }, { data: scope }] = await Promise.all([
+    admin
+      .from('employment_relationships')
+      .select('restaurant_id, job_title')
+      .eq('person_id', personId)
+      .eq('active_principal', true)
+      .maybeSingle(),
+    admin
+      .from('role_scope_assignments')
+      .select('scope_id')
+      .eq('person_id', personId)
+      .eq('scope_type', 'zone')
+      .eq('active', true)
+      .maybeSingle(),
+  ]);
 
-  if (error && error.code !== 'PGRST116') {
-    throw new Error(`Failed to load employment activation seed: ${error.message}`);
-  }
+  if (!employment) return null;
 
-  return (data ?? null) as LegacyEmploymentActivationSeedRow | null;
+  const typedEmployment = employment as { restaurant_id: string; job_title: string };
+  const typedScope = scope as { scope_id: string } | null;
+
+  return {
+    restaurant_id: typedEmployment.restaurant_id,
+    role: typedEmployment.job_title as EditableEmployeeRole,
+    zone_id: typedScope?.scope_id ?? null,
+  };
 }
 
 async function deactivateEmploymentProjection(personId: string): Promise<void> {
@@ -644,7 +619,6 @@ async function deactivateEmploymentProjection(personId: string): Promise<void> {
 export async function updateLegacyEmployment(
   input: UpdateLegacyEmploymentInput,
 ): Promise<void> {
-  const normalizedRole: EditableEmployeeRole = input.role;
   const normalizedZoneId =
     input.role === 'employee' || input.role === 'area_lead' ? input.zoneId : null;
 
@@ -694,35 +668,6 @@ export async function updateLegacyEmployment(
     systemRole: input.role,
     zoneId: normalizedZoneId,
   });
-
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin
-    .from('profiles')
-    .update({
-      restaurant_id: input.restaurantId,
-      role: normalizedRole,
-      zone_id: normalizedZoneId,
-    })
-    .eq('id', input.personId);
-
-  if (!error) return;
-
-  const msg = error.message ?? '';
-  if (
-    error.code === '23505' &&
-    msg.includes('ux_profiles_one_sub_manager_per_restaurant')
-  ) {
-    throw new Error('sub_manager_exists');
-  }
-
-  if (
-    error.code === '23505' &&
-    msg.includes('ux_profiles_one_manager_per_restaurant')
-  ) {
-    throw new Error('manager_exists');
-  }
-
-  throw new Error(`Failed to update employment: ${msg}`);
 }
 
 export async function getLegacyEmploymentRoleSlotConflictCode(
@@ -801,19 +746,6 @@ export async function setLegacyEmploymentActive(
     }
   } else {
     await deactivateEmploymentProjection(personId);
-  }
-
-  const payload = isActive
-    ? { deleted_at: null, is_active: true }
-    : { deleted_at: new Date().toISOString(), is_active: false };
-
-  const { error: profileError } = await admin
-    .from('profiles')
-    .update(payload)
-    .eq('id', personId);
-
-  if (profileError) {
-    throw new Error(`Failed to set employment active: ${profileError.message}`);
   }
 
   const { error: authError } = await admin.auth.admin.updateUserById(personId, {

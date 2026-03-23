@@ -29,6 +29,8 @@ const EMPLOYEE_ERROR_MESSAGES = {
     'Encargado de zona requiere una zona activa asignada al empleado.',
   area_lead_zone_full:
     'La zona seleccionada ya tiene el maximo de encargados (2). Quita uno antes de asignar otro.',
+  duplicate_identity: 'Ya existe una persona con este Documento de Identidad en la cadena.',
+  duplicate_employee_code: 'El Codigo de Empleado ya esta en uso por otra persona.',
 } as const;
 
 const EMPLOYEE_SUCCESS_MESSAGES = {

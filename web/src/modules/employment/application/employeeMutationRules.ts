@@ -15,7 +15,9 @@ export type EmployeeMutationErrorCode =
   | 'manager_exists'
   | 'sub_manager_exists'
   | 'area_lead_requires_zone'
-  | 'area_lead_zone_full';
+  | 'area_lead_zone_full'
+  | 'duplicate_identity'       // DNI/NIE ya existe en la cadena
+  | 'duplicate_employee_code'; // código de empleado duplicado
 // 'weak_password' eliminado — ya no hay password en el alta
 
 export type CreateEmployeeDraftInput = {

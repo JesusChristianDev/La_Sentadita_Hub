@@ -20,16 +20,17 @@ test('normalizeEmployeeAssignment maps system_role into simplified assignment pa
   });
 });
 
-test('validateCreateEmployeeInput rejects invalid area lead assignments and weak credentials', () => {
+test('validateCreateEmployeeInput rejects invalid area lead assignments and missing fields', () => {
   assert.deepEqual(
     validateCreateEmployeeInput({
       email: 'bad-email',
       fullName: 'Paula',
-      password: '12345678',
+      phone: '123456789',
+      identityDocument: '12345678A',
       restaurantId: 'restaurant-1',
       roleRaw: 'employee',
       zoneId: 'zone-1',
-    }),
+    }, 'chain-1'),
     { ok: false, errorCode: 'invalid_email' },
   );
 
@@ -37,11 +38,12 @@ test('validateCreateEmployeeInput rejects invalid area lead assignments and weak
     validateCreateEmployeeInput({
       email: 'paula@example.com',
       fullName: 'Paula',
-      password: '12345678',
+      phone: '123456789',
+      identityDocument: '12345678A',
       restaurantId: 'restaurant-1',
       roleRaw: 'area_lead',
       zoneId: '',
-    }),
+    }, 'chain-1'),
     { ok: false, errorCode: 'area_lead_requires_zone' },
   );
 });
@@ -49,9 +51,7 @@ test('validateCreateEmployeeInput rejects invalid area lead assignments and weak
 test('validateUpdateEmployeeInput rejects area lead changes without a zone assignment', () => {
   assert.deepEqual(
     validateUpdateEmployeeInput({
-      email: '  ',
       fullName: 'Paula',
-      password: '',
       restaurantId: 'restaurant-1',
       roleRaw: 'area_lead',
       zoneId: '',
@@ -84,13 +84,19 @@ test('validateScopedEmployeeManagement blocks restaurant hopping and role change
   );
 });
 
-test('mapEmployeeMutationErrorCode recognizes slot conflicts from service and database messages', () => {
+test('mapEmployeeMutationErrorCode recognizes slot conflicts and v6 unique indices', () => {
   assert.equal(mapEmployeeMutationErrorCode(new Error('manager_exists')), 'manager_exists');
   assert.equal(
     mapEmployeeMutationErrorCode(
-      new Error('duplicate key value violates unique constraint ux_profiles_one_sub_manager_per_restaurant'),
+      new Error('duplicate key value violates unique constraint idx_persons_chain_identity_document_unique'),
     ),
-    'sub_manager_exists',
+    'duplicate_identity',
+  );
+  assert.equal(
+    mapEmployeeMutationErrorCode(
+      new Error('duplicate key value violates unique constraint idx_persons_agora_employee_id'),
+    ),
+    'duplicate_employee_code',
   );
   assert.equal(
     mapEmployeeMutationErrorCode(new Error('area_lead_zone_full')),
