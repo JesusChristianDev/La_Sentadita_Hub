@@ -17,9 +17,14 @@ export async function createEmployeeAction(formData: FormData) {
 
   if (!canCreate(ctx.requestContext)) redirect('/employees');
 
+  // chainId viene del contexto del usuario autenticado, no del form
+  const chainId = ctx.requestContext.chainId;
+  if (!chainId) redirect(employeesPathWithError('missing'));
+
   const email = String(formData.get('email') ?? '').trim();
   const fullName = String(formData.get('fullName') ?? '').trim();
-  const password = String(formData.get('password') ?? '');
+  const phone = String(formData.get('phone') ?? '').trim();
+  const identityDocument = String(formData.get('identityDocument') ?? '').trim();
   const restaurantId = String(formData.get('restaurantId') ?? '').trim();
   const roleRaw = String(formData.get('role') ?? '');
   const zoneId = String(formData.get('zoneId') ?? '').trim() || null;
@@ -30,12 +35,15 @@ export async function createEmployeeAction(formData: FormData) {
     getRoleSlotConflictCode,
     updateEmployee: async () => undefined,
   });
+
   const result = await service.createEmployeeFromDraft({
+    chainId,
     effectiveRestaurantId: ctx.requestContext.effectiveRestaurantId,
     input: {
       email,
       fullName,
-      password,
+      phone,
+      identityDocument,
       restaurantId,
       roleRaw,
       zoneId,

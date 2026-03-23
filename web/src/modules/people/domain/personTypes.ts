@@ -11,18 +11,25 @@ export type PersonIdentity = Pick<
   'avatar_path' | 'employee_code' | 'full_name' | 'must_change_password'
 >;
 
+// v6: phone, identityDocument y chainId son obligatorios
+// password eliminado — el alta usa email de activación
 export type CreatePersonInput = {
   email: string;
   emailConfirm?: boolean;
   fullName: string;
-  mustChangePassword?: boolean;
-  password: string;
+  phone: string;
+  identityDocument: string;
+  chainId: string;
+  systemRole?: SystemRole;
+  agoraEmployeeId?: string;
 };
 
 export type UpdatePersonIdentityInput = {
   avatarPath?: string | null;
   email?: string;
   fullName?: string;
+  phone?: string;
+  identityDocument?: string;
   mustChangePassword?: boolean;
   password?: string;
   personId: string;

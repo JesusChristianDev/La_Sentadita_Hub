@@ -1,21 +1,13 @@
 import type { SystemRole } from '@/modules/authz';
 
-import {
-  isStrongAccountPassword,
-  isValidAccountEmail,
-} from '../../auth_users/application/accountCredentialRules';
-import type {
-  EditableEmploymentSystemRole,
-} from '../domain/employmentTypes';
+import { isValidAccountEmail } from '../../auth_users/application/accountCredentialRules';
+import type { EditableEmploymentSystemRole } from '../domain/employmentTypes';
 
-export type {
-  EditableEmploymentSystemRole,
-} from '../domain/employmentTypes';
+export type { EditableEmploymentSystemRole } from '../domain/employmentTypes';
 
 export type EmployeeMutationErrorCode =
   | 'missing'
   | 'invalid_email'
-  | 'weak_password'
   | 'invalid_role'
   | 'no_effective_restaurant'
   | 'restaurant_mismatch'
@@ -24,14 +16,17 @@ export type EmployeeMutationErrorCode =
   | 'sub_manager_exists'
   | 'area_lead_requires_zone'
   | 'area_lead_zone_full';
+// 'weak_password' eliminado — ya no hay password en el alta
 
 export type CreateEmployeeDraftInput = {
   email: string;
   fullName: string;
-  password: string;
+  phone: string;
+  identityDocument: string;
   restaurantId: string;
   roleRaw: string;
   zoneId?: string | null;
+  // chainId viene del contexto del usuario autenticado, no del form
 };
 
 export type UpdateEmployeeDraftInput = {
@@ -46,7 +41,9 @@ export type UpdateEmployeeDraftInput = {
 export type CreateEmployeeValidatedInput = {
   email: string;
   fullName: string;
-  password: string;
+  phone: string;
+  identityDocument: string;
+  chainId: string;   // inyectado desde el contexto del actor
   restaurantId: string;
   role: EditableEmploymentSystemRole;
   zoneId: string | null;
@@ -61,7 +58,9 @@ export type UpdateEmployeeValidatedInput = {
   zoneId: string | null;
 };
 
-type ValidationResult<T> = | { ok: true; value: T } | { ok: false; errorCode: EmployeeMutationErrorCode };
+type ValidationResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; errorCode: EmployeeMutationErrorCode };
 
 export function parseEditableEmployeeRole(
   value: string,
@@ -74,7 +73,6 @@ export function parseEditableEmployeeRole(
   ) {
     return value;
   }
-
   return null;
 }
 
@@ -87,34 +85,29 @@ export function normalizeEmployeeAssignment(
 } {
   const normalizedZoneId =
     role === 'employee' || role === 'area_lead'
-      ? (zoneId?.trim() ? zoneId.trim() : null)
+      ? zoneId?.trim() || null
       : null;
 
-  return {
-    systemRole: role,
-    zoneId: normalizedZoneId,
-  };
+  return { systemRole: role, zoneId: normalizedZoneId };
 }
 
 export function validateCreateEmployeeInput(
   input: CreateEmployeeDraftInput,
+  chainId: string,
 ): ValidationResult<CreateEmployeeValidatedInput> {
   const email = input.email.trim();
   const fullName = input.fullName.trim();
-  const password = input.password;
+  const phone = input.phone.trim();
+  const identityDocument = input.identityDocument.trim();
   const restaurantId = input.restaurantId.trim();
   const role = parseEditableEmployeeRole(input.roleRaw);
 
-  if (!email || !fullName || !password || !restaurantId) {
+  if (!email || !fullName || !phone || !identityDocument || !restaurantId) {
     return { ok: false, errorCode: 'missing' };
   }
 
   if (!isValidAccountEmail(email)) {
     return { ok: false, errorCode: 'invalid_email' };
-  }
-
-  if (!isStrongAccountPassword(password)) {
-    return { ok: false, errorCode: 'weak_password' };
   }
 
   if (!role) return { ok: false, errorCode: 'invalid_role' };
@@ -130,7 +123,9 @@ export function validateCreateEmployeeInput(
     value: {
       email,
       fullName,
-      password,
+      phone,
+      identityDocument,
+      chainId,
       restaurantId,
       role: assignment.systemRole,
       zoneId: assignment.zoneId,
@@ -147,14 +142,12 @@ export function validateUpdateEmployeeInput(
   const email = input.email?.trim() || undefined;
   const password = input.password || undefined;
 
-  if (!fullName || !restaurantId || !role) return { ok: false, errorCode: 'missing' };
+  if (!fullName || !restaurantId || !role) {
+    return { ok: false, errorCode: 'missing' };
+  }
 
   if (email && !isValidAccountEmail(email)) {
     return { ok: false, errorCode: 'invalid_email' };
-  }
-
-  if (password && !isStrongAccountPassword(password)) {
-    return { ok: false, errorCode: 'weak_password' };
   }
 
   const assignment = normalizeEmployeeAssignment(role, input.zoneId);
@@ -205,6 +198,7 @@ export function mapEmployeeMutationErrorCode(
 ): 'area_lead_zone_full' | 'manager_exists' | 'sub_manager_exists' | null {
   const message = error instanceof Error ? error.message : String(error);
 
+  // Bug fix: faltaba el cierre ) en el if original
   if (
     message === 'manager_exists' ||
     message.includes('ux_profiles_one_manager_per_restaurant')

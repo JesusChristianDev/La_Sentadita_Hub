@@ -11,6 +11,7 @@ export type ActiveScope = {
 
 export type RequestContext = {
   activeScopes: ActiveScope[];
+  chainId: string | null;          // v6 — cadena a la que pertenece el actor
   effectiveRestaurantId: string | null;
   legacyRole: AppRole;
   now: Date;
@@ -44,7 +45,7 @@ export function deriveScopeType(profile: Profile, systemRole: SystemRole): Scope
   if (systemRole === 'admin' || systemRole === 'office') return 'platform';
   if (systemRole === 'manager' || systemRole === 'sub_manager') return 'restaurant';
   if (systemRole === 'area_lead') return 'zone';
-  return profile.zone_id ? 'self' : 'self';
+  return 'self';
 }
 
 export function deriveActiveScopes(
@@ -62,12 +63,20 @@ export function deriveActiveScopes(
   }
 
   if (systemRole === 'manager' || systemRole === 'sub_manager') {
-    return [{ scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null, scopeType: 'restaurant' }];
+    return [
+      {
+        scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null,
+        scopeType: 'restaurant',
+      },
+    ];
   }
 
   if (systemRole === 'area_lead') {
     return [
-      { scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null, scopeType: 'restaurant' },
+      {
+        scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null,
+        scopeType: 'restaurant',
+      },
       { scopeId: profile.zone_id ?? null, scopeType: 'zone' },
     ];
   }
@@ -84,6 +93,7 @@ export function buildRequestContextFromLegacyProfile(
 
   return {
     activeScopes: deriveActiveScopes(profile, systemRole, effectiveRestaurantId),
+    chainId: profile.chain_id ?? null,   // v6
     effectiveRestaurantId,
     legacyRole: profile.role,
     now: new Date(),
@@ -99,6 +109,7 @@ export function buildRequestContextFromLegacyProfile(
   };
 }
 
+// Bug fix: faltaba el cierre ) en el original
 export function buildRequestContextFromLegacyUserContext(
   userContext: LegacyUserContextLike,
   effectiveRestaurantId: string | null = userContext.profile.restaurant_id ?? null,

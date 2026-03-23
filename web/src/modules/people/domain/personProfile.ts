@@ -1,6 +1,13 @@
 import type { SystemRole } from '@/modules/authz';
 
-export type AppRole = 'employee' | 'manager' | 'sub_manager' | 'area_lead' | 'office' | 'admin' | 'chain_owner';
+export type AppRole =
+  | 'employee'
+  | 'manager'
+  | 'sub_manager'
+  | 'area_lead'
+  | 'office'
+  | 'admin'
+  | 'chain_owner';
 
 export type PersonProfile = {
   avatar_path: string | null;
@@ -14,4 +21,7 @@ export type PersonProfile = {
   must_change_password: boolean;
   system_role?: SystemRole;
   zone_id: string | null;
+  // v6
+  chain_id?: string | null;
+  onboarding_status?: 'draft' | 'pending_activation' | 'active' | 'suspended';
 };

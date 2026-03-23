@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button, Select } from '@/shared/ui';
 
@@ -50,9 +49,7 @@ export function NewEmployeeDrawer({
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
-        Nuevo empleado
-      </Button>
+      <Button onClick={() => setOpen(true)}>Nuevo empleado</Button>
 
       {open ? (
         <div
@@ -71,7 +68,8 @@ export function NewEmployeeDrawer({
               <div>
                 <h2 className="panel-title">Nuevo empleado</h2>
                 <p className="mt-2 text-sm muted">
-                  Usuario activo con cambio de contrasena obligatorio.
+                  Se enviará un email de activación al empleado para que establezca
+                  su contraseña.
                 </p>
               </div>
               <Button onClick={closeDrawer} variant="secondary">
@@ -82,21 +80,28 @@ export function NewEmployeeDrawer({
             <form action={createEmployeeAction} className="employee-drawer-form">
               <input type="hidden" name="restaurantId" value={restaurantId} />
 
-              <label className="field">
-                <span>Email</span>
-                <input name="email" type="email" className="input" required />
-              </label>
-
+              {/* Datos personales */}
               <label className="field">
                 <span>Nombre completo</span>
                 <input name="fullName" className="input" required />
               </label>
 
               <label className="field">
-                <span>Contrasena temporal</span>
-                <input name="password" type="password" className="input" required />
+                <span>Email</span>
+                <input name="email" type="email" className="input" required />
               </label>
 
+              <label className="field">
+                <span>Teléfono</span>
+                <input name="phone" type="tel" className="input" required />
+              </label>
+
+              <label className="field">
+                <span>DNI / NIE</span>
+                <input name="identityDocument" className="input" required />
+              </label>
+
+              {/* Rol */}
               <label className="field">
                 <span>Rol</span>
                 <Select
@@ -115,14 +120,16 @@ export function NewEmployeeDrawer({
                   <option value="employee">Empleado</option>
                   <option value="area_lead">Encargado de zona</option>
                   <option value="sub_manager">Subgerente</option>
-                  {canAssignManager ? <option value="manager">Gerente</option> : null}
+                  {canAssignManager ? (
+                    <option value="manager">Gerente</option>
+                  ) : null}
                 </Select>
               </label>
 
+              {/* Zona — solo para employee y area_lead */}
               {selectedRole === 'employee' || selectedRole === 'area_lead' ? (
                 <>
                   <hr className="my-2 border-muted/20" />
-
                   <label className="field">
                     <span>Zona predeterminada</span>
                     <Select name="zoneId" defaultValue="">
@@ -134,20 +141,19 @@ export function NewEmployeeDrawer({
                       ))}
                     </Select>
                     <p className="text-2xs muted mt-1">
-                      Categorias sugeridas: Cocina, Sala, Barra.
+                      Categorías sugeridas: Cocina, Sala, Barra.
                     </p>
                   </label>
-
                   <p className="text-xs muted mb-4">
                     {selectedRole === 'area_lead'
                       ? 'Encargado de zona requiere una zona predeterminada asignada.'
-                      : 'Empleado sin zona quedara como no asignado en horarios.'}
+                      : 'Empleado sin zona quedará como no asignado en horarios.'}
                   </p>
                 </>
               ) : (
                 <p className="text-sm muted my-4">
-                  Los roles de gestión (Gerente/Subgerente) no requieren asignación de
-                  zona ni pueden ser encargados de zona en los horarios operativos.
+                  Los roles de gestión (Gerente/Subgerente) no requieren asignación
+                  de zona ni pueden ser encargados de zona en los horarios operativos.
                 </p>
               )}
 

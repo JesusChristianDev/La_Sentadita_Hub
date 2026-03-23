@@ -5,89 +5,81 @@ import type { PersonProfile } from '@/modules/people';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
-const LEGACY_PERSON_PROFILE_SELECT =
-  'id, role, restaurant_id, employee_code, full_name, avatar_path, must_change_password, is_active, zone_id';
+// ─────────────────────────────────────────────────────────────
+// Tipos internos — filas raw de la BD v6
+// ─────────────────────────────────────────────────────────────
 
-type ServerSupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
-
-type PersonRoleProjectionRow = {
-  avatar_url: string | null;
-  first_name: string;
-  is_archived: boolean;
-  last_name: string;
+type PersonRow = {
   person_id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  identity_document: string | null;
+  avatar_url: string | null;
   system_role: SystemRole;
+  is_archived: boolean;
+  onboarding_status: 'draft' | 'pending_activation' | 'active' | 'suspended';
+  agora_employee_id: string | null;
+  chain_id: string | null;
 };
 
-type ActiveEmploymentScopeRow = {
-  restaurant_id: string | null;
+type ActiveEmploymentRow = {
+  restaurant_id: string;
 };
 
 type ActiveZoneScopeRow = {
   scope_id: string | null;
 };
 
-type PersonDisplayProjectionRow = {
-  first_name: string;
-  last_name: string;
-  person_id: string;
-};
+// ─────────────────────────────────────────────────────────────
+// Tipos públicos de input
+// ─────────────────────────────────────────────────────────────
 
-type CreateLegacyPersonInput = {
+export type CreateLegacyPersonInput = {
   email: string;
   emailConfirm?: boolean;
   fullName: string;
+  phone: string;
+  identityDocument: string;
+  systemRole?: SystemRole;
+  chainId: string;
   mustChangePassword?: boolean;
-  password: string;
+  agoraEmployeeId?: string;
 };
 
-type UpdateLegacyPersonIdentityInput = {
+export type UpdateLegacyPersonIdentityInput = {
   avatarPath?: string | null;
   fullName?: string;
+  phone?: string;
+  identityDocument?: string;
   mustChangePassword?: boolean;
   personId: string;
 };
 
-type UpdateLegacyPersonCredentialsInput = {
+export type UpdateLegacyPersonCredentialsInput = {
   email?: string;
   password?: string;
   personId: string;
 };
 
-type ArchiveLegacyPersonInput = {
+export type ArchiveLegacyPersonInput = {
   personId: string;
   soft?: boolean;
 };
 
-type PersonAccessStateRow = {
-  id?: string;
-  is_active: boolean;
-};
-
-const LEGACY_MIGRATED_CHAIN_ID = '00000000-0000-0000-0000-000000000001';
-
-function hasKeys(value: Record<string, unknown>): boolean {
-  return Object.keys(value).length > 0;
-}
+// ─────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────
 
 function splitFullName(fullName: string): { firstName: string; lastName: string } {
   const trimmed = fullName.trim();
-  if (!trimmed) {
-    return {
-      firstName: 'SinNombre',
-      lastName: '',
-    };
-  }
-
+  if (!trimmed) return { firstName: 'SinNombre', lastName: '' };
   const [firstName, ...rest] = trimmed.split(/\s+/);
   return {
     firstName: firstName || 'SinNombre',
     lastName: rest.join(' '),
   };
-}
-
-export function mapSystemRoleToLegacyProfileRole(systemRole: SystemRole): PersonProfile['role'] {
-  return systemRole;
 }
 
 export function formatProjectedPersonFullName(person: {
@@ -97,266 +89,242 @@ export function formatProjectedPersonFullName(person: {
   return [person.first_name, person.last_name].filter(Boolean).join(' ').trim();
 }
 
+function hasKeys(value: Record<string, unknown>): boolean {
+  return Object.keys(value).length > 0;
+}
+
+// ─────────────────────────────────────────────────────────────
+// loadLegacyPersonProfileByIdWithClient
+// Construye el PersonProfile desde persons + employment + role_scope
+// Sin ninguna referencia a profiles
+// ─────────────────────────────────────────────────────────────
+
+type ServerSupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
 export async function loadLegacyPersonProfileByIdWithClient(
   supabase: ServerSupabaseClient,
   personId: string,
 ): Promise<PersonProfile> {
   const [
-    { data, error },
-    { data: personProjection, error: personError },
-    { data: employmentProjection, error: employmentError },
-    { data: zoneScopeProjection, error: zoneScopeError },
-  ] =
-    await Promise.all([
-      supabase
-        .from('profiles')
-        .select(LEGACY_PERSON_PROFILE_SELECT)
-        .eq('id', personId)
-        .maybeSingle(),
-      supabase
-        .from('persons')
-        .select('person_id, first_name, last_name, avatar_url, system_role, is_archived')
-        .eq('person_id', personId)
-        .maybeSingle(),
-      supabase
-        .from('employment_relationships')
-        .select('restaurant_id')
-        .eq('person_id', personId)
-        .eq('active_principal', true)
-        .eq('is_archived', false)
-        .maybeSingle(),
-      supabase
-        .from('role_scope_assignments')
-        .select('scope_id')
-        .eq('person_id', personId)
-        .eq('scope_type', 'zone')
-        .eq('active', true)
-        .maybeSingle(),
-    ]);
+    { data: person, error: personError },
+    { data: employment, error: employmentError },
+    { data: zoneScope, error: zoneScopeError },
+  ] = await Promise.all([
+    supabase
+      .from('persons')
+      .select(
+        'person_id, first_name, last_name, email, phone, identity_document, avatar_url, system_role, is_archived, onboarding_status, chain_id',
+      )
+      .eq('person_id', personId)
+      .maybeSingle(),
 
-  if (error && error.code !== 'PGRST116') {
-    throw new Error(`Failed to load person profile: ${error.message}`);
-  }
+    supabase
+      .from('employment_relationships')
+      .select('restaurant_id')
+      .eq('person_id', personId)
+      .eq('active_principal', true)
+      .eq('is_archived', false)
+      .maybeSingle(),
+
+    supabase
+      .from('role_scope_assignments')
+      .select('scope_id')
+      .eq('person_id', personId)
+      .eq('scope_type', 'zone')
+      .eq('active', true)
+      .maybeSingle(),
+  ]);
 
   if (personError && personError.code !== 'PGRST116') {
-    throw new Error(`Failed to load person projection: ${personError.message}`);
+    throw new Error(`Failed to load person: ${personError.message}`);
   }
-
   if (employmentError && employmentError.code !== 'PGRST116') {
-    throw new Error(`Failed to load employment scope projection: ${employmentError.message}`);
+    throw new Error(`Failed to load employment: ${employmentError.message}`);
   }
-
   if (zoneScopeError && zoneScopeError.code !== 'PGRST116') {
-    throw new Error(`Failed to load zone scope projection: ${zoneScopeError.message}`);
+    throw new Error(`Failed to load zone scope: ${zoneScopeError.message}`);
+  }
+  if (!person) {
+    throw new Error(`Person not found: ${personId}`);
   }
 
-  const projectedPerson = (personProjection ?? null) as PersonRoleProjectionRow | null;
-  const projectedEmployment = (employmentProjection ?? null) as ActiveEmploymentScopeRow | null;
-  const projectedZoneScope = (zoneScopeProjection ?? null) as ActiveZoneScopeRow | null;
-  if (!data && !projectedPerson) {
-    throw new Error('Failed to load person profile: not found');
-  }
+  const p = person as PersonRow;
+  const emp = (employment ?? null) as ActiveEmploymentRow | null;
+  const zone = (zoneScope ?? null) as ActiveZoneScopeRow | null;
 
-  const projectedFullName = formatProjectedPersonFullName({
-    first_name: projectedPerson?.first_name ?? null,
-    last_name: projectedPerson?.last_name ?? null,
+  const fullName = formatProjectedPersonFullName({
+    first_name: p.first_name,
+    last_name: p.last_name,
   });
-  const profile = ((data ?? {
-    avatar_path: projectedPerson?.avatar_url ?? null,
-    employee_code: 0,
-    full_name: projectedFullName || '(sin nombre)',
-    id: personId,
-    is_active: projectedPerson?.is_archived !== true,
-    must_change_password: false,
-    restaurant_id: null,
-    role: projectedPerson
-      ? projectedPerson.system_role
-      : 'employee',
-    zone_id: null,
-  }) as PersonProfile);
-  const projectedRole = projectedPerson
-    ? { role: projectedPerson.system_role }
-    : { role: profile.role };
-  const resolvedFullName = profile.full_name?.trim() || projectedFullName;
-  const isArchived =
-    projectedPerson?.is_archived === true || profile.is_active === false;
 
   return {
-    ...profile,
-    avatar_path: profile.avatar_path ?? projectedPerson?.avatar_url ?? null,
-    full_name: resolvedFullName || profile.full_name,
-    is_active: profile.is_active && !isArchived,
-    is_archived: isArchived,
-    restaurant_id: projectedEmployment?.restaurant_id ?? profile.restaurant_id ?? null,
-    role: projectedRole.role,
-    system_role: projectedPerson?.system_role ?? profile.role,
-    zone_id: projectedZoneScope?.scope_id ?? profile.zone_id ?? null,
+    // Campos legacy que el resto del código espera
+    id: p.person_id,
+    employee_code: 0,              // sin equivalente en v6
+    full_name: fullName || '(sin nombre)',
+    role: p.system_role,
+    is_active: !p.is_archived,
+    is_archived: p.is_archived,
+    must_change_password: p.onboarding_status === 'pending_activation',
+    avatar_path: p.avatar_url ?? null,
+    restaurant_id: emp?.restaurant_id ?? null,
+    zone_id: zone?.scope_id ?? null,
+
+    // Campos v6
+    system_role: p.system_role,
+    onboarding_status: p.onboarding_status,
   };
 }
 
-export async function loadLegacyPersonProfileById(
-  personId: string,
-): Promise<PersonProfile> {
+export async function loadLegacyPersonProfileById(personId: string): Promise<PersonProfile> {
   const supabase = await createSupabaseServerClient();
   return loadLegacyPersonProfileByIdWithClient(supabase, personId);
 }
 
-export async function loadProjectedPersonDisplayName(
-  personId: string,
-): Promise<string | null> {
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('persons')
-    .select('person_id, first_name, last_name')
-    .eq('person_id', personId)
-    .maybeSingle();
-
-  if (error && error.code !== 'PGRST116') {
-    throw new Error(`Failed to load person display projection: ${error.message}`);
-  }
-
-  if (!data) return null;
-
-  const typed = data as PersonDisplayProjectionRow;
-  const displayName = formatProjectedPersonFullName(typed);
-  return displayName || null;
-}
+// ─────────────────────────────────────────────────────────────
+// loadLegacyPersonAccessState
+// Usada en login para verificar si el usuario puede acceder
+// ─────────────────────────────────────────────────────────────
 
 export async function loadLegacyPersonAccessState(
   personId: string,
 ): Promise<{ is_active: boolean; is_archived: boolean } | null> {
   const admin = createSupabaseAdminClient();
-  const [{ data: person, error: personError }, { data: profile, error: profileError }] =
-    await Promise.all([
-      admin
-        .from('persons')
-        .select('is_archived')
-        .eq('person_id', personId)
-        .maybeSingle(),
-      admin
-        .from('profiles')
-        .select('id, is_active')
-        .eq('id', personId)
-        .maybeSingle(),
-    ]);
 
-  if (personError && personError.code !== 'PGRST116') {
-    throw new Error(`Failed to load person archive state: ${personError.message}`);
+  const { data, error } = await admin
+    .from('persons')
+    .select('is_archived, onboarding_status')
+    .eq('person_id', personId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to load person access state: ${error.message}`);
   }
 
-  if (profileError && profileError.code !== 'PGRST116') {
-    throw new Error(`Failed to load person access state: ${profileError.message}`);
-  }
+  if (!data) return null;
 
-  if (!profile && !person) return null;
-
-  const typedProfile = (profile ?? null) as PersonAccessStateRow | null;
-  const typedPerson = (person ?? null) as { is_archived?: boolean } | null;
-  const isArchived =
-    typedPerson?.is_archived === true || typedProfile?.is_active === false;
+  const p = data as Pick<PersonRow, 'is_archived' | 'onboarding_status'>;
+  const isArchived = p.is_archived;
+  const isSuspended = p.onboarding_status === 'suspended';
+  const isActive = !isArchived && !isSuspended;
 
   return {
-    is_active: (typedProfile?.is_active ?? true) && !isArchived,
+    is_active: isActive,
     is_archived: isArchived,
   };
 }
 
-export async function createLegacyPerson(
-  input: CreateLegacyPersonInput,
-): Promise<string> {
+// ─────────────────────────────────────────────────────────────
+// loadProjectedPersonDisplayName
+// ─────────────────────────────────────────────────────────────
+
+export async function loadProjectedPersonDisplayName(
+  personId: string,
+): Promise<string | null> {
   const admin = createSupabaseAdminClient();
+
+  const { data, error } = await admin
+    .from('persons')
+    .select('first_name, last_name')
+    .eq('person_id', personId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to load person display name: ${error.message}`);
+  }
+
+  if (!data) return null;
+
+  const name = formatProjectedPersonFullName(data as Pick<PersonRow, 'first_name' | 'last_name'>);
+  return name || null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// createLegacyPerson
+// Flujo v6: auth.user + persons en una sola operación atómica
+// Si persons falla → elimina el auth.user para no dejar huérfanos
+// ─────────────────────────────────────────────────────────────
+
+export async function createLegacyPerson(input: CreateLegacyPersonInput): Promise<string> {
+  const admin = createSupabaseAdminClient();
+
+  // 1. Crear auth.user sin password → Supabase enviará email de activación
   const { data, error } = await admin.auth.admin.createUser({
     email: input.email,
-    email_confirm: input.emailConfirm ?? true,
-    password: input.password,
+    email_confirm: input.emailConfirm ?? false, // false = envía email de activación
   });
 
   if (error || !data.user) {
-    throw new Error(`Failed to create user: ${error?.message ?? 'unknown error'}`);
+    throw new Error(`Failed to create auth user: ${error?.message ?? 'unknown error'}`);
   }
 
   const personId = data.user.id;
   const { firstName, lastName } = splitFullName(input.fullName);
-  const { error: personError } = await admin
-    .from('persons')
-    .upsert({
-      chain_id: LEGACY_MIGRATED_CHAIN_ID,
-      email: input.email,
-      first_name: firstName,
-      is_archived: false,
-      last_name: lastName,
-      person_id: personId,
-      system_role: 'employee',
-    });
+
+  // 2. Crear person en v6 con onboarding_status = pending_activation
+  const { error: personError } = await admin.from('persons').insert({
+    person_id: personId,
+    chain_id: input.chainId,
+    first_name: firstName,
+    last_name: lastName,
+    email: input.email,
+    phone: input.phone,
+    identity_document: input.identityDocument,
+    system_role: input.systemRole ?? 'employee',
+    onboarding_status: 'pending_activation',
+    is_archived: false,
+    agora_employee_id: input.agoraEmployeeId ?? null,
+  });
 
   if (personError) {
+    // Rollback: eliminar el auth.user para no dejar huérfano
     await admin.auth.admin.deleteUser(personId, false);
-    throw new Error(`Failed to initialize person projection: ${personError.message}`);
+    throw new Error(`Failed to create person: ${personError.message}`);
   }
 
-  const { error: profileError } = await admin
-    .from('profiles')
-    .update({
-      full_name: input.fullName,
-      must_change_password: input.mustChangePassword ?? false,
-    })
-    .eq('id', personId);
-
-  if (!profileError) {
-    return personId;
-  }
-
-  await admin.auth.admin.deleteUser(personId, false);
-  throw new Error(`Failed to initialize person profile: ${profileError.message}`);
+  return personId;
 }
+
+// ─────────────────────────────────────────────────────────────
+// updateLegacyPersonIdentity
+// ─────────────────────────────────────────────────────────────
 
 export async function updateLegacyPersonIdentity(
   input: UpdateLegacyPersonIdentityInput,
 ): Promise<void> {
-  const patch: Record<string, unknown> = {};
-  const personPatch: Record<string, unknown> = {
+  const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
 
-  if (input.avatarPath !== undefined) {
-    personPatch.avatar_url = input.avatarPath;
-  }
-
+  if (input.avatarPath !== undefined) patch.avatar_url = input.avatarPath;
   if (input.fullName !== undefined) {
     const { firstName, lastName } = splitFullName(input.fullName);
-    personPatch.first_name = firstName;
-    personPatch.last_name = lastName;
+    patch.first_name = firstName;
+    patch.last_name = lastName;
   }
-
-  if (input.avatarPath !== undefined) patch.avatar_path = input.avatarPath;
-  if (input.fullName !== undefined) patch.full_name = input.fullName;
+  if (input.phone !== undefined) patch.phone = input.phone;
+  if (input.identityDocument !== undefined) patch.identity_document = input.identityDocument;
   if (input.mustChangePassword !== undefined) {
-    patch.must_change_password = input.mustChangePassword;
+    // En v6: must_change_password se mapea a onboarding_status
+    patch.onboarding_status = input.mustChangePassword ? 'pending_activation' : 'active';
   }
 
-  if (!hasKeys(patch) && !hasKeys(personPatch)) return;
+  if (Object.keys(patch).length <= 1) return; // solo updated_at, nada que hacer
 
   const admin = createSupabaseAdminClient();
-
-  if (hasKeys(personPatch)) {
-    const { error: personError } = await admin
-      .from('persons')
-      .update(personPatch)
-      .eq('person_id', input.personId);
-
-    if (personError) {
-      throw new Error(`Failed to sync person identity: ${personError.message}`);
-    }
-  }
-
-  if (!hasKeys(patch)) return;
-
-  const { error } = await admin.from('profiles').update(patch).eq('id', input.personId);
+  const { error } = await admin
+    .from('persons')
+    .update(patch)
+    .eq('person_id', input.personId);
 
   if (error) {
-    throw new Error(`Failed to update person identity bridge: ${error.message}`);
+    throw new Error(`Failed to update person identity: ${error.message}`);
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// updateLegacyPersonCredentials
+// ─────────────────────────────────────────────────────────────
 
 export async function updateLegacyPersonCredentials(
   input: UpdateLegacyPersonCredentialsInput,
@@ -374,13 +342,11 @@ export async function updateLegacyPersonCredentials(
     throw new Error(`Failed to update person credentials: ${error.message}`);
   }
 
+  // Sincronizar email en persons si cambió
   if (input.email) {
     const { error: personError } = await admin
       .from('persons')
-      .update({
-        email: input.email,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ email: input.email, updated_at: new Date().toISOString() })
       .eq('person_id', input.personId);
 
     if (personError) {
@@ -389,40 +355,40 @@ export async function updateLegacyPersonCredentials(
   }
 }
 
-export async function archiveLegacyPerson(
-  input: ArchiveLegacyPersonInput,
-): Promise<void> {
+// ─────────────────────────────────────────────────────────────
+// archiveLegacyPerson
+// ─────────────────────────────────────────────────────────────
+
+export async function archiveLegacyPerson(input: ArchiveLegacyPersonInput): Promise<void> {
   const admin = createSupabaseAdminClient();
   const soft = input.soft ?? true;
   const timestamp = new Date().toISOString();
 
   const { error: authError } = await admin.auth.admin.deleteUser(input.personId, soft);
   if (authError) {
-    throw new Error(`Failed to archive person auth user: ${authError.message}`);
-  }
-
-  const { error: profileError } = await admin
-    .from('profiles')
-    .update({
-      deleted_at: timestamp,
-      is_active: false,
-    })
-    .eq('id', input.personId);
-
-  if (profileError) {
-    throw new Error(`Failed to archive person profile: ${profileError.message}`);
+    throw new Error(`Failed to archive auth user: ${authError.message}`);
   }
 
   const { error: personError } = await admin
     .from('persons')
     .update({
-      deleted_at: timestamp,
       is_archived: true,
+      onboarding_status: 'suspended',
+      deleted_at: timestamp,
       updated_at: timestamp,
     })
     .eq('person_id', input.personId);
 
   if (personError) {
-    throw new Error(`Failed to sync archived person projection: ${personError.message}`);
+    throw new Error(`Failed to archive person: ${personError.message}`);
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// mapSystemRoleToLegacyProfileRole
+// Compatibilidad con código que usa el campo role del PersonProfile
+// ─────────────────────────────────────────────────────────────
+
+export function mapSystemRoleToLegacyProfileRole(systemRole: SystemRole): PersonProfile['role'] {
+  return systemRole;
 }

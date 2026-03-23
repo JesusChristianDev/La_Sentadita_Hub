@@ -33,10 +33,11 @@ type EmployeeMutationServiceDeps = {
 
 export function createEmploymentMutationService(deps: EmployeeMutationServiceDeps) {
   async function createEmployeeFromDraft(params: {
+    chainId: string;
     effectiveRestaurantId: string | null;
     input: CreateEmployeeDraftInput;
   }): Promise<Result<string>> {
-    const validated = validateCreateEmployeeInput(params.input);
+    const validated = validateCreateEmployeeInput(params.input, params.chainId);
     if (!validated.ok) {
       return validated;
     }
