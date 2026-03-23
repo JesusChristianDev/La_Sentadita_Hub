@@ -3,13 +3,17 @@
 import { redirect } from 'next/navigation';
 
 import { getCurrentUserContext } from '@/modules/auth_users';
-import { deleteEmployee, setEmployeeActive, updateEmployee } from '@/modules/employees';
-import { createEmployeeMutationService } from '@/modules/employees/application/employeeMutationService';
 import {
   assertCanManageTarget,
   canManageUsers,
   getRoleSlotConflictCode,
 } from '@/modules/employees/application/guards';
+import {
+  createEmployeeMutationService,
+  setEmployeeActive,
+  updateEmployee,
+} from '@/modules/employment';
+import { archivePerson } from '@/modules/people';
 import { getRestaurantStatus } from '@/modules/restaurants';
 import {
   employeeDetailPathWithError,
@@ -19,9 +23,9 @@ import {
 export async function updateEmployeeAction(userId: string, formData: FormData) {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
-  if (!canManageUsers(ctx.profile.role)) redirect('/employees');
+  if (!canManageUsers(ctx.requestContext)) redirect('/employees');
 
-  const target = await assertCanManageTarget(ctx.profile, userId);
+  const target = await assertCanManageTarget(ctx.requestContext, userId);
 
   const fullName = String(formData.get('fullName') ?? '').trim();
   const restaurantId = String(formData.get('restaurantId') ?? '').trim();
@@ -31,7 +35,6 @@ export async function updateEmployeeAction(userId: string, formData: FormData) {
   const password = String(formData.get('password') ?? '');
 
   const zoneId = String(formData.get('zoneId') ?? '').trim() || null;
-  const isAreaLead = formData.get('isAreaLead') === '1';
   const service = createEmployeeMutationService({
     createEmployee: async () => userId,
     getRestaurantStatus,
@@ -39,18 +42,17 @@ export async function updateEmployeeAction(userId: string, formData: FormData) {
     updateEmployee,
   });
   const result = await service.updateEmployeeFromDraft({
-    actorRestaurantId: ctx.profile.restaurant_id,
-    actorRole: ctx.profile.role,
+    actorRestaurantId: ctx.requestContext.effectiveRestaurantId,
+    actorRole: ctx.requestContext.systemRole,
     input: {
       email,
       fullName,
-      isAreaLead,
       password,
       restaurantId,
       roleRaw,
       zoneId,
     },
-    targetRole: target.role,
+    targetRole: target.editableRole ?? 'employee',
     userId,
   });
 
@@ -68,9 +70,9 @@ export async function updateEmployeeAction(userId: string, formData: FormData) {
 export async function deactivateEmployeeAction(userId: string) {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
-  if (!canManageUsers(ctx.profile.role)) redirect('/employees');
+  if (!canManageUsers(ctx.requestContext)) redirect('/employees');
 
-  await assertCanManageTarget(ctx.profile, userId);
+  await assertCanManageTarget(ctx.requestContext, userId);
 
   await setEmployeeActive(userId, false);
   redirect(`/employees/${userId}`);
@@ -79,9 +81,9 @@ export async function deactivateEmployeeAction(userId: string) {
 export async function reactivateEmployeeAction(userId: string) {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
-  if (!canManageUsers(ctx.profile.role)) redirect('/employees');
+  if (!canManageUsers(ctx.requestContext)) redirect('/employees');
 
-  await assertCanManageTarget(ctx.profile, userId);
+  await assertCanManageTarget(ctx.requestContext, userId);
 
   await setEmployeeActive(userId, true);
   redirect(`/employees/${userId}`);
@@ -90,10 +92,10 @@ export async function reactivateEmployeeAction(userId: string) {
 export async function softDeleteEmployeeAction(userId: string) {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
-  if (!canManageUsers(ctx.profile.role)) redirect('/employees');
+  if (!canManageUsers(ctx.requestContext)) redirect('/employees');
 
-  await assertCanManageTarget(ctx.profile, userId);
+  await assertCanManageTarget(ctx.requestContext, userId);
 
-  await deleteEmployee(userId, { soft: true });
+  await archivePerson({ personId: userId, soft: true });
   redirect('/employees');
 }

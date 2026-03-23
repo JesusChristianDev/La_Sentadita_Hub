@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 
-import type { Profile } from '../domain/profile';
+import { deriveSystemRole } from '@/modules/authz';
+import type { Profile } from '@/modules/people';
 
 /**
  * Resolves the effective restaurant ID for a given user profile.
@@ -8,14 +9,12 @@ import type { Profile } from '../domain/profile';
  * - For admin/office users (global roles), it attempts to read the 'active_restaurant_id' cookie.
  */
 export async function getEffectiveRestaurantId(profile: Profile): Promise<string | null> {
-  // If the profile has a fixed restaurant_id, it always takes precedence.
   if (profile.restaurant_id) {
     return profile.restaurant_id;
   }
 
-  // Otherwise, if the user is a global role (admin/office), check the cookie.
-  const isGlobalRole = profile.role === 'admin' || profile.role === 'office';
-  if (isGlobalRole) {
+  const systemRole = deriveSystemRole(profile);
+  if (systemRole === 'admin' || systemRole === 'office' || systemRole === 'chain_owner') {
     const store = await cookies();
     return store.get('active_restaurant_id')?.value ?? null;
   }

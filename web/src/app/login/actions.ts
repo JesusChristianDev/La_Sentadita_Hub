@@ -2,6 +2,8 @@
 
 import { redirect } from 'next/navigation';
 
+import { loadLegacyPersonAccessState } from '@/shared/db/persons';
+import { serverEnv } from '@/shared/env.server';
 import { loginPathWithError } from '@/shared/feedbackMessages';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
@@ -52,18 +54,13 @@ async function isDisabledByEmail(email: string): Promise<boolean> {
   const authUserId = await findAuthUserIdByEmail(admin, email);
   if (!authUserId) return false;
 
-  const { data: profile, error: profileError } = await admin
-    .from('profiles')
-    .select('is_active')
-    .eq('id', authUserId)
-    .maybeSingle();
-
-  if (profileError || !profile) return false;
-  return profile.is_active === false;
+  const person = await loadLegacyPersonAccessState(authUserId);
+  if (!person) return false;
+  return person.is_archived || person.is_active === false;
 }
 
 export async function login(formData: FormData) {
-  const e2eDelayMs = Number(process.env.E2E_LOGIN_DELAY_MS ?? '0');
+  const e2eDelayMs = serverEnv.e2eLoginDelayMs;
   if (Number.isFinite(e2eDelayMs) && e2eDelayMs > 0) {
     await new Promise((resolve) => setTimeout(resolve, e2eDelayMs));
   }
@@ -86,19 +83,14 @@ export async function login(formData: FormData) {
   }
 
   // Post-login check uses admin client to bypass RLS.
-  const admin = createSupabaseAdminClient();
-  const { data: profile, error: profileError } = await admin
-    .from('profiles')
-    .select('is_active')
-    .eq('id', data.user.id)
-    .single();
+  const person = await loadLegacyPersonAccessState(data.user.id);
 
-  if (profileError || !profile) {
+  if (!person) {
     await supabase.auth.signOut();
     redirect(loginPathWithError('bad'));
   }
 
-  if (profile.is_active === false) {
+  if (person.is_archived || person.is_active === false) {
     await supabase.auth.signOut();
     redirect(loginPathWithError('disabled'));
   }

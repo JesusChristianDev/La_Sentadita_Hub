@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  buildEmployeeProfilePayload,
   mapEmployeeMutationErrorCode,
   normalizeEmployeeAssignment,
   validateCreateEmployeeInput,
@@ -10,36 +9,15 @@ import {
   validateUpdateEmployeeInput,
 } from './employeeMutationRules';
 
-test('normalizeEmployeeAssignment clears zone and area lead for management roles', () => {
-  assert.deepEqual(normalizeEmployeeAssignment('manager', 'zone-1', true), {
-    isAreaLead: false,
+test('normalizeEmployeeAssignment maps system_role into simplified assignment payload', () => {
+  assert.deepEqual(normalizeEmployeeAssignment('manager', 'zone-1'), {
+    systemRole: 'manager',
     zoneId: null,
   });
-  assert.deepEqual(normalizeEmployeeAssignment('employee', 'zone-1', true), {
-    isAreaLead: true,
+  assert.deepEqual(normalizeEmployeeAssignment('area_lead', 'zone-1'), {
+    systemRole: 'area_lead',
     zoneId: 'zone-1',
   });
-});
-
-test('buildEmployeeProfilePayload reuses normalized assignment and optional password flag', () => {
-  assert.deepEqual(
-    buildEmployeeProfilePayload({
-      fullName: 'Paula',
-      isAreaLead: true,
-      mustChangePassword: true,
-      restaurantId: 'restaurant-1',
-      role: 'manager',
-      zoneId: 'zone-1',
-    }),
-    {
-      full_name: 'Paula',
-      is_area_lead: false,
-      must_change_password: true,
-      restaurant_id: 'restaurant-1',
-      role: 'manager',
-      zone_id: null,
-    },
-  );
 });
 
 test('validateCreateEmployeeInput rejects invalid area lead assignments and weak credentials', () => {
@@ -47,7 +25,6 @@ test('validateCreateEmployeeInput rejects invalid area lead assignments and weak
     validateCreateEmployeeInput({
       email: 'bad-email',
       fullName: 'Paula',
-      isAreaLead: false,
       password: '12345678',
       restaurantId: 'restaurant-1',
       roleRaw: 'employee',
@@ -60,28 +37,26 @@ test('validateCreateEmployeeInput rejects invalid area lead assignments and weak
     validateCreateEmployeeInput({
       email: 'paula@example.com',
       fullName: 'Paula',
-      isAreaLead: true,
       password: '12345678',
       restaurantId: 'restaurant-1',
-      roleRaw: 'manager',
-      zoneId: 'zone-1',
+      roleRaw: 'area_lead',
+      zoneId: '',
     }),
-    { ok: false, errorCode: 'area_lead_only_employee' },
+    { ok: false, errorCode: 'area_lead_requires_zone' },
   );
 });
 
-test('validateUpdateEmployeeInput rejects area lead changes for non-employee roles', () => {
+test('validateUpdateEmployeeInput rejects area lead changes without a zone assignment', () => {
   assert.deepEqual(
     validateUpdateEmployeeInput({
       email: '  ',
       fullName: 'Paula',
-      isAreaLead: true,
       password: '',
       restaurantId: 'restaurant-1',
-      roleRaw: 'sub_manager',
-      zoneId: 'zone-1',
+      roleRaw: 'area_lead',
+      zoneId: '',
     }),
-    { ok: false, errorCode: 'area_lead_only_employee' },
+    { ok: false, errorCode: 'area_lead_requires_zone' },
   );
 });
 
@@ -103,7 +78,7 @@ test('validateScopedEmployeeManagement blocks restaurant hopping and role change
       actorRole: 'sub_manager',
       requestedRestaurantId: 'restaurant-1',
       requestedRole: 'manager',
-      targetRole: 'employee',
+      targetRole: 'area_lead',
     }),
     'invalid_role',
   );
@@ -116,6 +91,10 @@ test('mapEmployeeMutationErrorCode recognizes slot conflicts from service and da
       new Error('duplicate key value violates unique constraint ux_profiles_one_sub_manager_per_restaurant'),
     ),
     'sub_manager_exists',
+  );
+  assert.equal(
+    mapEmployeeMutationErrorCode(new Error('area_lead_zone_full')),
+    'area_lead_zone_full',
   );
   assert.equal(mapEmployeeMutationErrorCode(new Error('unknown')), null);
 });

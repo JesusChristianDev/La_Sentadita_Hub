@@ -2,6 +2,8 @@
 
 import {
   CalendarDays,
+  CheckSquare,
+  FileText,
   LayoutDashboard,
   type LucideIcon,
   UserCircle,
@@ -11,6 +13,8 @@ import {
 type BuildAppNavigationItemsParams = {
   canSeeEmployees: boolean;
   canSeeSchedules: boolean;
+  canSeeTasks?: boolean;
+  canSeeProcedures?: boolean;
   includeProfile?: boolean;
 };
 
@@ -33,6 +37,8 @@ export function isAppNavigationItemActive(pathname: string, href: string): boole
 export function buildAppNavigationItems({
   canSeeEmployees,
   canSeeSchedules,
+  canSeeTasks = true, // We will map these correctly from ACL soon
+  canSeeProcedures = true,
   includeProfile = false,
 }: BuildAppNavigationItemsParams): AppNavigationItem[] {
   return [
@@ -62,6 +68,28 @@ export function buildAppNavigationItems({
             label: 'Horarios',
             mobileDescription: 'Operacion semanal',
             shortLabel: 'Horarios',
+          },
+        ]
+      : []),
+    ...(canSeeTasks
+      ? [
+          {
+            href: '/tasks',
+            icon: CheckSquare,
+            label: 'Tareas',
+            mobileDescription: 'Operaciones diarias',
+            shortLabel: 'Tareas',
+          },
+        ]
+      : []),
+    ...(canSeeProcedures
+      ? [
+          {
+            href: '/procedures',
+            icon: FileText,
+            label: 'Trámites',
+            mobileDescription: 'Solicitudes y más',
+            shortLabel: 'Trámites',
           },
         ]
       : []),

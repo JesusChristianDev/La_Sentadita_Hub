@@ -1,6 +1,6 @@
 import Image from 'next/image';
 
-import type { AppRole } from '@/modules/auth_users';
+import type { AppRole } from '@/modules/people';
 
 type Props = {
   fullName?: string | null;
@@ -27,8 +27,10 @@ function roleBadge(role?: AppRole | null): string {
   if (!role) return 'US';
   if (role === 'admin') return 'AD';
   if (role === 'office') return 'OF';
+  if (role === 'chain_owner') return 'CH';
   if (role === 'manager') return 'GE';
   if (role === 'sub_manager') return 'SG';
+  if (role === 'area_lead') return 'AL';
   return 'EM';
 }
 

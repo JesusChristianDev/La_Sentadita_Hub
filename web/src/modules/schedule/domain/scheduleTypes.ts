@@ -1,3 +1,5 @@
+import type { SystemRole } from '@/modules/authz';
+
 export type DayType =
   | 'work'
   | 'rest'
@@ -85,8 +87,8 @@ export interface ScheduleActorPermissions {
   can_manage_templates: boolean;
   can_publish: boolean;
   can_review: boolean;
-  is_area_lead: boolean;
   is_employee_view: boolean;
+  system_role: SystemRole;
   view_scope?: 'restaurant' | 'zone' | 'self';
 }
 
@@ -115,6 +117,7 @@ export interface ScheduleEntry {
   id: string;
   schedule_id: string;
   employee_id: string;
+  employment_id?: string | null;
   date: string; // ISO date
   day_type: DayType;
   shift_template_id?: string | null;

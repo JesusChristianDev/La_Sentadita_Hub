@@ -71,14 +71,13 @@ test('forceUnlock releases the lock only when actor rank is strictly higher', as
       locked_by: 'user-2',
     }),
     getActorRank: (actor) => {
-      if (actor.role === 'admin') return 50;
-      if (actor.role === 'manager') return 40;
+      if (actor.system_role === 'admin') return 50;
+      if (actor.system_role === 'manager') return 40;
       return 10;
     },
     getLockOwnerActor: async () => ({
       id: 'user-2',
-      is_area_lead: false,
-      role: 'manager',
+      system_role: 'manager',
       zone_id: null,
     }),
   });
@@ -86,8 +85,7 @@ test('forceUnlock releases the lock only when actor rank is strictly higher', as
   await service.forceUnlock({
     actor: {
       id: 'user-1',
-      is_area_lead: false,
-      role: 'admin',
+      system_role: 'admin',
       zone_id: null,
     },
     scheduleId: 'schedule-1',
@@ -105,13 +103,12 @@ test('forceUnlock rejects when actor rank is not higher than the lock owner', as
       locked_by: 'user-2',
     }),
     getActorRank: (actor) => {
-      if (actor.role === 'manager') return 40;
+      if (actor.system_role === 'manager') return 40;
       return 10;
     },
     getLockOwnerActor: async () => ({
       id: 'user-2',
-      is_area_lead: false,
-      role: 'manager',
+      system_role: 'manager',
       zone_id: null,
     }),
   });
@@ -121,8 +118,7 @@ test('forceUnlock rejects when actor rank is not higher than the lock owner', as
       service.forceUnlock({
         actor: {
           id: 'user-1',
-          is_area_lead: false,
-          role: 'manager',
+          system_role: 'manager',
           zone_id: null,
         },
         scheduleId: 'schedule-1',

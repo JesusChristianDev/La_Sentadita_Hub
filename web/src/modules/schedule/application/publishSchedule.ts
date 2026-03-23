@@ -72,7 +72,11 @@ export async function publishScheduleWeek(
     const outboxPayload = input.affectedEmployeeIds.map((employeeId) => ({
       body,
       employee_id: employeeId,
+      entity_id: input.schedule.id,
+      entity_type: 'schedule',
+      notification_type: isUpdate ? 'schedule_updated' : 'schedule_published',
       publish_event_id: publishEvent?.id ?? null,
+      recipient_person_id: employeeId,
       schedule_id: input.schedule.id,
       title,
     }));

@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 
-import type { AppRole } from '@/modules/auth_users';
+import type { SystemRole } from '@/modules/authz';
 import type { EmployeeListItem } from '@/modules/employees';
 import {
   MOBILE_VIEWPORT_MEDIA_QUERY,
@@ -156,7 +156,7 @@ export default function ScheduleEditor({
   });
   const [searchValue, setSearchValue] = useState('');
   const deferredSearch = useDeferredValue(searchValue);
-  const [roleFilter, setRoleFilter] = useState<'all' | AppRole>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | SystemRole>('all');
   const [cellTypeFilter, setCellTypeFilter] =
     useState<ScheduleCellTypeFilter>('all');
   const [minHoursFilter, setMinHoursFilter] = useState('');
@@ -354,7 +354,7 @@ export default function ScheduleEditor({
       .sort((left, right) => left.full_name.localeCompare(right.full_name, 'es'))
       .filter((employee) => {
         if (search && !employee.full_name.toLowerCase().includes(search)) return false;
-        if (roleFilter !== 'all' && employee.role !== roleFilter) return false;
+        if (roleFilter !== 'all' && employee.system_role !== roleFilter) return false;
         if (problemFilter === 'issues' && !problemEmployeeIds.has(employee.id)) {
           return false;
         }

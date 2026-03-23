@@ -1,13 +1,36 @@
 import { redirect } from 'next/navigation';
 
+import {
+  buildRequestContextFromLegacyProfile,
+  type RequestContext,
+} from '@/modules/authz';
+import type { Profile } from '@/modules/people';
+import { loadLegacyPersonProfileByIdWithClient } from '@/shared/db/persons';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
-import type { Profile } from '../domain/profile';
+import { getEffectiveRestaurantId } from './getEffectiveRestaurantId';
 
-export type UserContext = {
-  userId: string;
+export type CurrentSession = {
+  person: Profile;
   profile: Profile;
+  requestContext: RequestContext;
+  userId: string;
 };
+
+export type UserContext = CurrentSession;
+
+function buildCurrentSession(params: {
+  person: Profile;
+  requestContext: RequestContext;
+  userId: string;
+}): CurrentSession {
+  return {
+    person: params.person,
+    profile: params.person,
+    requestContext: params.requestContext,
+    userId: params.userId,
+  };
+}
 
 export async function getCurrentUserContext(): Promise<UserContext | null> {
   const supabase = await createSupabaseServerClient();
@@ -15,24 +38,17 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
 
   if (!data.user) return null;
 
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select(
-      'id, role, restaurant_id, employee_code, full_name, avatar_path, must_change_password, is_active, zone_id, is_area_lead',
-    )
-    .eq('id', data.user.id)
-    .single();
+  const person = await loadLegacyPersonProfileByIdWithClient(supabase, data.user.id);
 
-  if (error) {
-    throw new Error(`Failed to load profile: ${error.message}`);
-  }
-
-  const typed = profile as Profile;
-
-  // Usuario desactivado => lo echamos mediante Route Handler (cookie-safe)
-  if (typed.is_active === false) {
+  if (person.is_archived || person.is_active === false) {
     redirect('/api/auth/signout?next=/login?e=disabled');
   }
 
-  return { userId: data.user.id, profile: typed };
+  const effectiveRestaurantId = await getEffectiveRestaurantId(person);
+
+  return buildCurrentSession({
+    person,
+    requestContext: buildRequestContextFromLegacyProfile(person, effectiveRestaurantId),
+    userId: data.user.id,
+  });
 }

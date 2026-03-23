@@ -15,7 +15,7 @@ type SchedulableRole = Parameters<typeof requiresScheduledCells>[0];
 
 export type ScheduleIssueEmployee = {
   id: string;
-  role: SchedulableRole;
+  system_role: SchedulableRole;
 };
 
 export type SchedulePublicationEmployee = {
@@ -35,7 +35,7 @@ export function summarizeScheduleIssues(params: {
   const requiredEmployeeIds = new Set<string>();
 
   for (const employee of params.employees) {
-    if (!requiresScheduledCells(employee.role)) continue;
+    if (!requiresScheduledCells(employee.system_role)) continue;
 
     requiredEmployeeIds.add(employee.id);
     for (const date of getWeekDates(params.weekStart)) {

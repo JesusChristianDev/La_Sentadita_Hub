@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
 
-import type { AppRole } from '@/modules/auth_users';
+import type { AppRole } from '@/modules/people';
 import { Button, Select } from '@/shared/ui';
 
 import { ScreenNav } from './screen-nav';

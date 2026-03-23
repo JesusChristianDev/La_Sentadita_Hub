@@ -3,12 +3,9 @@
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { type AppRole, getCurrentUserContext } from '@/modules/auth_users';
+import { getCurrentUserContext } from '@/modules/auth_users';
+import { can } from '@/modules/authz';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
-
-function isAdminOrOffice(role: AppRole): boolean {
-  return role === 'admin' || role === 'office';
-}
 
 async function getReturnPath(): Promise<string> {
   const h = await headers();
@@ -34,7 +31,7 @@ export async function setActiveRestaurant(formData: FormData) {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
 
-  if (!isAdminOrOffice(ctx.profile.role)) redirect(returnPath);
+  if (!can(ctx.requestContext, 'restaurant_context.select')) redirect(returnPath);
 
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
@@ -48,8 +45,8 @@ export async function setActiveRestaurant(formData: FormData) {
   const store = await cookies();
   store.set('active_restaurant_id', restaurantId, {
     httpOnly: true,
-    sameSite: 'lax',
     path: '/',
+    sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
   });
 

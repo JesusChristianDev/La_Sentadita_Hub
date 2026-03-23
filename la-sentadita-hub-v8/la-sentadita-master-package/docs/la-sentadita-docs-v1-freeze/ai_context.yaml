@@ -1,0 +1,57 @@
+project:
+  name: La Sentadita Hub
+  status: core_architecture_freeze_v1
+
+roles:
+  - employee
+  - area_lead
+  - sub_manager
+  - manager
+  - office
+  - chain_owner
+  - admin
+
+scopes:
+  - platform
+  - chain
+  - company
+  - restaurant
+  - zone
+
+core_rules:
+  single_active_system_role: true
+  single_active_employment_relationship: true
+  notifications_not_equal_audit: true
+  documents_no_physical_delete_v1: true
+  procedures_no_self_approval: true
+  published_schedule_is_official_truth: true
+
+task_statuses:
+  - pending
+  - needs_reassignment
+  - completed
+  - overdue
+  - cancelled
+
+task_cancel_reasons:
+  - schedule_change
+  - employment_change
+  - template_deactivated
+  - manual_cancel
+
+task_reassignment_reasons:
+  - employment_change
+  - procedure_conflict
+  - shift_swap
+  - manual_reassignment_required
+
+document_visibility:
+  - employee_visible
+  - management_visible
+  - restricted_management
+  - administrative_only
+
+document_statuses:
+  - active
+  - superseded
+  - archived

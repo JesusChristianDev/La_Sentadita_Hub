@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 
 import { getCurrentUserContext } from '@/modules/auth_users';
+import { can, deriveSystemRole } from '@/modules/authz';
 import { listRestaurants } from '@/modules/restaurants';
+import { loadLegacyPersonProfileById } from '@/shared/db/persons';
 import {
   type EmployeeErrorCode,
   employeesPathWithError,
@@ -33,17 +35,13 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
 
-  if (ctx.profile.role === 'employee') redirect('/app');
+  const canPickRestaurant = can(ctx.requestContext, 'restaurant_context.select');
+  if (!can(ctx.requestContext, 'employees.view')) redirect('/app');
 
   const admin = createSupabaseAdminClient();
+  const profile = await loadLegacyPersonProfileById(id).catch(() => null);
 
-  const { data: profile, error } = await admin
-    .from('profiles')
-    .select('id, full_name, role, restaurant_id, is_active, zone_id, is_area_lead')
-    .eq('id', id)
-    .single();
-
-  if (error || !profile) {
+  if (!profile) {
     return (
       <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
         <h1 className="page-title">Empleado</h1>
@@ -57,12 +55,25 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
     );
   }
 
-  if (profile.role === 'admin' || profile.role === 'office') {
+  const targetSystemRole = deriveSystemRole(profile);
+  const editableRole =
+    targetSystemRole === 'employee' ||
+    targetSystemRole === 'area_lead' ||
+    targetSystemRole === 'manager' ||
+    targetSystemRole === 'sub_manager'
+      ? targetSystemRole
+      : 'employee';
+  const isGlobalProfile =
+    targetSystemRole === 'admin' ||
+    targetSystemRole === 'office' ||
+    targetSystemRole === 'chain_owner';
+
+  if (isGlobalProfile) {
     return (
       <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
         <h1 className="page-title">Usuario global</h1>
         <Notice>
-          Este usuario es {roleLabel(profile.role)} (global) y no se gestiona desde
+          Este usuario es {roleLabel(targetSystemRole)} (global) y no se gestiona desde
           Equipo.
         </Notice>
         <p className="text-sm">
@@ -75,34 +86,32 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
   }
 
   if (
-    profile.role === 'manager' &&
-    ctx.profile.role !== 'admin' &&
-    ctx.profile.role !== 'office'
+    !can(ctx.requestContext, 'employees.manage_target', {
+      targetRestaurantId: profile.restaurant_id,
+      targetSystemRole,
+    })
   ) {
-    redirect(employeesPathWithError('manager_protected'));
-  }
-
-  if (
-    (ctx.profile.role === 'manager' || ctx.profile.role === 'sub_manager') &&
-    profile.restaurant_id !== ctx.profile.restaurant_id
-  ) {
-    redirect(employeesPathWithError('restaurant_mismatch'));
+    redirect(
+      employeesPathWithError(
+        targetSystemRole === 'manager' ? 'manager_protected' : 'restaurant_mismatch',
+      ),
+    );
   }
 
   const { data: authUser } = await admin.auth.admin.getUserById(id);
   const email = authUser.user?.email ?? '';
 
   const allRestaurants = await listRestaurants();
-  const restaurants =
-    ctx.profile.role === 'manager' || ctx.profile.role === 'sub_manager'
-      ? allRestaurants.filter((r) => r.id === ctx.profile.restaurant_id)
-      : allRestaurants;
+  const restaurants = canPickRestaurant
+    ? allRestaurants
+    : allRestaurants.filter(
+        (restaurant) => restaurant.id === ctx.requestContext.effectiveRestaurantId,
+      );
 
-  // Obtener zonas del restaurante para el combo
   const { data: restaurantZones } = await admin
     .from('restaurant_zones')
     .select('id, name')
-    .eq('restaurant_id', profile.restaurant_id || '')
+    .eq('restaurant_id', profile.restaurant_id ?? '')
     .eq('is_active', true);
 
   const errorMsg = getEmployeeErrorMessage(sp.e);
@@ -156,30 +165,31 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
             />
           </label>
 
-          {ctx.profile.role === 'manager' || ctx.profile.role === 'sub_manager' ? (
+          {!canPickRestaurant ? (
             <label className="field">
               <span>Rol</span>
-              <input type="hidden" name="role" value={profile.role} />
-              <input className="input" value={roleLabel(profile.role)} readOnly />
+              <input type="hidden" name="role" value={editableRole} />
+              <input className="input" value={roleLabel(targetSystemRole)} readOnly />
             </label>
           ) : (
             <label className="field">
               <span>Rol</span>
-              <Select defaultValue={profile.role} name="role">
+              <Select defaultValue={editableRole} name="role">
                 <option value="employee">Empleado</option>
+                <option value="area_lead">Encargado de zona</option>
                 <option value="sub_manager">Subgerente</option>
                 <option value="manager">Gerente</option>
               </Select>
             </label>
           )}
 
-          {ctx.profile.role === 'manager' || ctx.profile.role === 'sub_manager' ? (
+          {!canPickRestaurant ? (
             <label className="field">
               <span>Restaurante</span>
               <input
                 type="hidden"
                 name="restaurantId"
-                value={ctx.profile.restaurant_id ?? ''}
+                value={ctx.requestContext.effectiveRestaurantId ?? ''}
               />
               <input
                 className="input"
@@ -198,10 +208,10 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
                   Selecciona...
                 </option>
                 {restaurants
-                  .filter((r) => r.is_active)
-                  .map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
+                  .filter((restaurant) => restaurant.is_active)
+                  .map((restaurant) => (
+                    <option key={restaurant.id} value={restaurant.id}>
+                      {restaurant.name}
                     </option>
                   ))}
               </Select>
@@ -210,8 +220,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
 
           <hr className="my-2 border-muted/20" />
 
-          {profile.role === 'employee' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {editableRole === 'employee' || editableRole === 'area_lead' ? (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <label className="field">
                 <span>Zona predeterminada</span>
                 <Select
@@ -219,32 +229,19 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
                   defaultValue={profile.zone_id ?? ''}
                 >
                   <option value="">(Sin zona)</option>
-                  {restaurantZones?.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name}
+                  {restaurantZones?.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.name}
                     </option>
                   ))}
                 </Select>
-                <p className="text-2xs muted mt-1">
+                <p className="mt-1 text-2xs muted">
                   Categorias sugeridas: Cocina, Sala, Barra.
                 </p>
               </label>
-
-              <div className="flex items-center gap-2 mt-auto pb-2">
-                <label className="inline-flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="isAreaLead"
-                    value="1"
-                    defaultChecked={profile.is_area_lead}
-                    className="checkbox"
-                  />
-                  <span>Es encargado de zona</span>
-                </label>
-              </div>
             </div>
           ) : (
-            <p className="text-sm muted py-2">
+            <p className="py-2 text-sm muted">
               Los roles de gestion no tienen zona asignada ni pueden ser encargados.
             </p>
           )}

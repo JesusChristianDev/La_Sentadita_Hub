@@ -1,4 +1,6 @@
-import type { AppRole } from '@/modules/auth_users';
+import type { ScheduleActorProjection } from '@/shared/db/employment';
+import { loadScheduleActorProjection } from '@/shared/db/employment';
+import { loadProjectedPersonDisplayName } from '@/shared/db/persons';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
@@ -28,6 +30,7 @@ type EntryGuardRow = {
   date: string;
   day_type: string;
   employee_id: string;
+  employment_id: string | null;
   end_time: string | null;
   id: string;
   schedule_id: string;
@@ -57,13 +60,6 @@ type EntryGuardRow = {
 type ActiveLockRow = {
   expires_at: string;
   locked_by: string;
-};
-
-type LockOwnerProfileRow = {
-  id: string;
-  is_area_lead: boolean;
-  role: AppRole;
-  zone_id: string | null;
 };
 
 function intervalToMinutes(value: string | null | undefined, fallback: number): number {
@@ -238,7 +234,7 @@ export async function getEntryWithSchedule(entryId: string) {
   const { data, error } = await supabase
     .from('schedule_entries')
     .select(
-      'id, schedule_id, employee_id, date, day_type, start_time, end_time, split_start_time, split_end_time, zone_id, shift_template_id, source, version, schedules(id, status, restaurant_id, week_start)',
+      'id, schedule_id, employee_id, employment_id, date, day_type, start_time, end_time, split_start_time, split_end_time, zone_id, shift_template_id, source, version, schedules(id, status, restaurant_id, week_start)',
     )
     .eq('id', entryId)
     .maybeSingle();
@@ -251,6 +247,7 @@ export async function getEntryWithSchedule(entryId: string) {
     date: typed.date,
     day_type: typed.day_type,
     employee_id: typed.employee_id,
+    employment_id: typed.employment_id,
     end_time: typed.end_time,
     id: typed.id,
     schedule: normalizeScheduleJoin(typed),
@@ -551,34 +548,20 @@ export async function getActiveScheduleLock(
   if (!data) return null;
 
   const typed = data as ActiveLockRow;
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', typed.locked_by)
-    .maybeSingle();
+  const displayName = await loadProjectedPersonDisplayName(typed.locked_by);
 
   return {
     acquired: false,
     expires_at: typed.expires_at,
     locked_by: typed.locked_by,
-    locked_by_name: (profile?.full_name as string | undefined) ?? null,
+    locked_by_name: displayName,
   };
 }
 
 export async function getScheduleLockOwnerActor(
   userId: string,
-): Promise<LockOwnerProfileRow | null> {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, role, zone_id, is_area_lead')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (error && error.code !== 'PGRST116') throw error;
-  if (!data) return null;
-
-  return data as LockOwnerProfileRow;
+): Promise<ScheduleActorProjection | null> {
+  return loadScheduleActorProjection(userId);
 }
 
 export async function forceReleaseLock(scheduleId: string): Promise<void> {

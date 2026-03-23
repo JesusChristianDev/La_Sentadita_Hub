@@ -46,8 +46,8 @@ function makeEntry(
 
 test('summarizeScheduleIssues treats unscheduled cells as pending for required roles only', () => {
   const employees: ScheduleIssueEmployee[] = [
-    { id: 'emp-1', role: 'employee' },
-    { id: 'mgr-1', role: 'manager' },
+    { id: 'emp-1', system_role: 'employee' },
+    { id: 'mgr-1', system_role: 'manager' },
   ];
   const entries: ScheduleEntry[] = [
     makeEntry({

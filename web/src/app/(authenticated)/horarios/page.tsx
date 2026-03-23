@@ -2,14 +2,13 @@ import '../../../modules/schedule/ui/schedule.css';
 
 import { redirect } from 'next/navigation';
 
-import { getCurrentUserContext, getEffectiveRestaurantId } from '@/modules/auth_users';
+import { getCurrentUserContext } from '@/modules/auth_users';
+import { can } from '@/modules/authz';
 import {
   loadEmployeeScheduleWeekAction,
   loadScheduleHomeAction,
 } from '@/modules/schedule/application/serverActions';
 import ScheduleEditor from '@/modules/schedule/ui/ScheduleEditor';
-import { canPickRestaurantHeader } from '@/shared/headerPolicy';
-import { canAccessSchedulesModule } from '@/shared/schedulePolicy';
 import { RestaurantContextEmptyState } from '@/shared/ui';
 
 export default async function SchedulePage() {
@@ -19,11 +18,11 @@ export default async function SchedulePage() {
     redirect('/login');
   }
 
-  if (!canAccessSchedulesModule(ctx.profile)) {
+  if (!can(ctx.requestContext, 'schedule.view')) {
     redirect('/app');
   }
 
-  const restaurantId = await getEffectiveRestaurantId(ctx.profile);
+  const restaurantId = ctx.requestContext.effectiveRestaurantId;
   if (!restaurantId) {
     return (
       <main
@@ -41,24 +40,24 @@ export default async function SchedulePage() {
         </section>
 
         <RestaurantContextEmptyState
-          canPickRestaurant={canPickRestaurantHeader(ctx.profile.role)}
+          canPickRestaurant={can(ctx.requestContext, 'restaurant_context.select')}
           moduleLabel="Horarios"
         />
       </main>
     );
   }
 
-  const initialHome = await loadScheduleHomeAction(restaurantId ?? undefined);
+  const initialHome = await loadScheduleHomeAction(restaurantId);
   const initialEmployeeWeek = initialHome.permissions.is_employee_view
     ? await loadEmployeeScheduleWeekAction(
         initialHome.current_week.week_start,
-        restaurantId ?? undefined,
+        restaurantId,
       )
     : null;
 
   return (
     <ScheduleEditor
-      actorName={ctx.profile.full_name || 'Empleado'}
+      actorName={ctx.person.full_name || 'Empleado'}
       initialEmployeeWeek={initialEmployeeWeek}
       initialHome={initialHome}
     />

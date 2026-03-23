@@ -1,3 +1,7 @@
+import './src/shared/env';
+import './src/shared/env.server';
+
+import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
 const contentSecurityPolicy = [
@@ -10,7 +14,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.supabase.co",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.open-meteo.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.open-meteo.com https://*.sentry.io",
   "manifest-src 'self'",
   "worker-src 'self' blob:",
   'upgrade-insecure-requests',
@@ -63,4 +67,9 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  sourcemaps: {
+    disable: true,
+  },
+});

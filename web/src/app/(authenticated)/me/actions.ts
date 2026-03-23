@@ -3,11 +3,11 @@
 import { redirect } from 'next/navigation';
 
 import {
+  updatePersonIdentity,
   validateEmailChangeInput,
   validatePasswordChangeInput,
-} from '@/modules/auth_users/application/selfProfileMutationRules';
+} from '@/modules/people';
 import { mePathWithError, mePathWithSuccess } from '@/shared/feedbackMessages';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 async function requireAuthenticatedUser(): Promise<{
@@ -94,12 +94,11 @@ export async function changeAvatarAction(formData: FormData) {
 
   const bytes = Buffer.from(await file.arrayBuffer());
 
-  const admin = createSupabaseAdminClient();
-
   // Un archivo por usuario (simple): sobrescribe siempre
   const path = `${userId}/avatar`;
 
-  const { error: uploadError } = await admin.storage.from('avatars').upload(path, bytes, {
+  const supabase = await createSupabaseServerClient();
+  const { error: uploadError } = await supabase.storage.from('avatars').upload(path, bytes, {
     upsert: true,
     contentType: file.type,
   });
@@ -108,14 +107,7 @@ export async function changeAvatarAction(formData: FormData) {
     throw new Error(`Failed to upload avatar: ${uploadError.message}`);
   }
 
-  const { error: profileError } = await admin
-    .from('profiles')
-    .update({ avatar_path: path })
-    .eq('id', userId);
-
-  if (profileError) {
-    throw new Error(`Failed to save avatar_path: ${profileError.message}`);
-  }
+  await updatePersonIdentity({ avatarPath: path, personId: userId });
 
   redirect(mePathWithSuccess('avatar'));
 }

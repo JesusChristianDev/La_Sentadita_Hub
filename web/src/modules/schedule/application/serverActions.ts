@@ -1,22 +1,21 @@
 'use server';
 
-import type { AppRole, UserContext } from '@/modules/auth_users';
+import {
+  AUDIT_ACTIONS,
+  type AuditAction,
+  type AuditJsonValue,
+  writeAuditLog,
+} from '@/modules/audit';
+import type { UserContext } from '@/modules/auth_users';
 import {
   getCurrentUserContext,
-  getEffectiveRestaurantId,
 } from '@/modules/auth_users';
+import { assertCan } from '@/modules/authz';
+import { deriveResponsibilityLevel } from '@/modules/authz';
 import type { EmployeeListItem } from '@/modules/employees';
 import { listEmployees } from '@/modules/employees';
 import { getRestaurantStatus } from '@/modules/restaurants';
-import {
-  canAccessScheduleEditor,
-  canAccessSchedulesModule,
-  canEditEmployeeSchedule,
-  canManageShiftTemplates,
-  canPublishSchedules,
-  getScheduleActorRank,
-} from '@/shared/schedulePolicy';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
+import { loadLegacyEmployeeScopeProjection } from '@/shared/db/employment';
 
 import type {
   EmployeeScheduleWeekView,
@@ -77,43 +76,80 @@ import { validateShiftText } from './shiftValidation';
 import { updateEntry } from './updateScheduleEntry';
 
 type EmployeeScopeRow = {
-  full_name: string;
   restaurant_id: string | null;
-  role: AppRole;
   zone_id: string | null;
 };
 
-function isRestaurantScopedActor(ctx: UserContext): boolean {
-  return (
-    ctx.profile.role === 'manager' ||
-    ctx.profile.role === 'sub_manager' ||
-    ctx.profile.role === 'employee' ||
-    ctx.profile.is_area_lead
-  );
+function isSingleRestaurantActor(ctx: UserContext): boolean {
+  return ctx.requestContext.scopeType !== 'platform';
+}
+
+async function writeScheduleAuditLog(params: {
+  action: AuditAction;
+  newValue?: AuditJsonValue;
+  previousValue?: AuditJsonValue;
+  reason?: string | null;
+  restaurantId: string;
+  scheduleId: string;
+}): Promise<void> {
+  const result = await writeAuditLog({
+    action: params.action,
+    entityId: params.scheduleId,
+    entityType: 'schedule',
+    newValue: params.newValue,
+    previousValue: params.previousValue,
+    reason: params.reason,
+    scopeId: params.restaurantId,
+    scopeType: 'restaurant',
+  });
+
+  if (result.status === 'error') {
+    console.error('Failed to write schedule audit log', {
+      action: params.action,
+      error: result.error,
+      scheduleId: params.scheduleId,
+    });
+  }
+}
+
+async function writeScheduleEntryAuditLog(params: {
+  newValue?: AuditJsonValue;
+  previousValue?: AuditJsonValue;
+  restaurantId: string;
+  scheduleEntryId: string;
+}): Promise<void> {
+  const result = await writeAuditLog({
+    action: AUDIT_ACTIONS.scheduleEntryUpdated,
+    entityId: params.scheduleEntryId,
+    entityType: 'schedule_entry',
+    newValue: params.newValue,
+    previousValue: params.previousValue,
+    scopeId: params.restaurantId,
+    scopeType: 'restaurant',
+  });
+
+  if (result.status === 'error') {
+    console.error('Failed to write schedule entry audit log', {
+      error: result.error,
+      scheduleEntryId: params.scheduleEntryId,
+    });
+  }
 }
 
 function assertCanAccessModule(ctx: UserContext): void {
-  if (!canAccessSchedulesModule(ctx.profile)) {
-    throw new Error('FORBIDDEN: No tienes permisos para acceder a horarios.');
-  }
+  assertCan(ctx.requestContext, 'schedule.view');
 }
 
 function assertCanManageDraft(ctx: UserContext): void {
-  if (!canAccessScheduleEditor(ctx.profile)) {
-    throw new Error('FORBIDDEN: No tienes permisos para editar borradores.');
-  }
+  assertCan(ctx.requestContext, 'schedule.edit_draft');
 }
 
 function assertCanManageTemplates(ctx: UserContext): void {
-  if (!canManageShiftTemplates(ctx.profile)) {
-    throw new Error('FORBIDDEN: No tienes permisos para gestionar plantillas de turno.');
-  }
+  assertCan(ctx.requestContext, 'schedule.manage_templates');
 }
 
 function assertCanPublish(ctx: UserContext): void {
-  if (!canPublishSchedules(ctx.profile)) {
-    throw new Error('FORBIDDEN: No tienes permisos para publicar horarios.');
-  }
+  assertCan(ctx.requestContext, 'schedule.publish');
 }
 
 async function resolveTargetRestaurantId(
@@ -121,7 +157,7 @@ async function resolveTargetRestaurantId(
   restaurantId?: string,
 ): Promise<string | null> {
   if (restaurantId) return restaurantId;
-  return getEffectiveRestaurantId(ctx.profile);
+  return ctx.requestContext.effectiveRestaurantId;
 }
 
 async function assertRestaurantAccess(
@@ -131,9 +167,9 @@ async function assertRestaurantAccess(
   assertCanAccessModule(ctx);
 
   if (
-    isRestaurantScopedActor(ctx) &&
-    ctx.profile.restaurant_id &&
-    ctx.profile.restaurant_id !== restaurantId
+    isSingleRestaurantActor(ctx) &&
+    ctx.requestContext.restaurantId &&
+    ctx.requestContext.restaurantId !== restaurantId
   ) {
     throw new Error('FORBIDDEN: No puedes acceder a horarios de otro restaurante.');
   }
@@ -181,22 +217,13 @@ async function loadEmployeeScope(
   employeeId: string,
   restaurantId: string,
 ): Promise<EmployeeScopeRow> {
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('profiles')
-    .select('full_name, restaurant_id, role, zone_id')
-    .eq('id', employeeId)
-    .maybeSingle();
+  const employeeScope = await loadLegacyEmployeeScopeProjection(employeeId);
 
-  if (error) {
-    throw new Error(`Failed to load employee scope: ${error.message}`);
-  }
-
-  if (!data) {
+  if (!employeeScope) {
     throw new Error('EMPLOYEE_NOT_FOUND: El empleado no existe.');
   }
 
-  const typed = data as EmployeeScopeRow;
+  const typed = employeeScope as EmployeeScopeRow;
   if (typed.restaurant_id !== restaurantId) {
     throw new Error('FORBIDDEN: El empleado no pertenece al restaurante del horario.');
   }
@@ -210,14 +237,11 @@ async function assertCanEditEmployeeDraft(
   restaurantId: string,
 ): Promise<EmployeeScopeRow> {
   const employee = await loadEmployeeScope(employeeId, restaurantId);
-  if (
-    !canEditEmployeeSchedule(ctx.profile, {
-      id: employeeId,
-      zone_id: employee.zone_id,
-    })
-  ) {
-    throw new Error('FORBIDDEN: No puedes editar horarios fuera de tu alcance.');
-  }
+  assertCan(ctx.requestContext, 'schedule.edit_employee', {
+    targetUserId: employeeId,
+    targetZoneId: employee.zone_id,
+    zoneId: employee.zone_id,
+  });
 
   return employee;
 }
@@ -236,8 +260,13 @@ function filterEmployeesForDraftScope(
   ctx: UserContext,
   employees: EmployeeListItem[],
 ): EmployeeListItem[] {
-  if (!ctx.profile.is_area_lead || !ctx.profile.zone_id) return employees;
-  return employees.filter((employee) => employee.zone_id === ctx.profile.zone_id);
+  if (ctx.requestContext.systemRole !== 'area_lead' || !ctx.requestContext.zoneId) {
+    return employees;
+  }
+
+  return employees.filter(
+    (employee) => employee.zone_id === ctx.requestContext.zoneId,
+  );
 }
 
 function buildShiftTemplateText(input: ShiftTemplateDraftInput): string {
@@ -369,7 +398,7 @@ function getScheduleLockService() {
     acquireLock,
     forceReleaseLock,
     getActiveScheduleLock,
-    getActorRank: getScheduleActorRank,
+    getActorRank: (actor) => deriveResponsibilityLevel(actor.system_role),
     getLockOwnerActor: getScheduleLockOwnerActor,
   });
 }
@@ -381,7 +410,7 @@ export async function loadScheduleHomeAction(
   if (!ctx) throw new Error('Unauthorized');
 
   const targetRestaurantId = await resolveTargetRestaurantId(ctx, restaurantId);
-  const permissions = buildSchedulePermissions(ctx.profile);
+  const permissions = buildSchedulePermissions(ctx.requestContext);
   const { currentWeekStart, nextWeekStart } = getCurrentAndNextWeekStarts();
 
   if (!targetRestaurantId) {
@@ -523,7 +552,7 @@ export async function createScheduleDraftAction(
   restaurantId?: string,
 ): Promise<ScheduleWithEntries> {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanManageDraft(ctx);
 
@@ -604,7 +633,7 @@ export async function loadScheduleDataAction(
   weekStart: string,
 ): Promise<ScheduleEditorPayload<EmployeeListItem>> {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanManageDraft(ctx);
 
@@ -629,8 +658,8 @@ export async function loadScheduleDataAction(
 
   const scopedEmployees = filterEmployeesForDraftScope(ctx, employees);
   const scopedZones =
-    ctx.profile.is_area_lead && ctx.profile.zone_id
-      ? zones.filter((zone) => zone.id === ctx.profile.zone_id)
+    ctx.requestContext.systemRole === 'area_lead' && ctx.requestContext.zoneId
+      ? zones.filter((zone) => zone.id === ctx.requestContext.zoneId)
       : zones;
   const issues = summarizeScheduleIssues({
     config,
@@ -648,7 +677,7 @@ export async function loadScheduleDataAction(
     config,
     employees: scopedEmployees,
     issues,
-    permissions: buildSchedulePermissions(ctx.profile),
+    permissions: buildSchedulePermissions(ctx.requestContext),
     publication_state,
     schedule,
     shift_templates: templates,
@@ -661,7 +690,7 @@ export async function loadPublishedScheduleDataAction(
   weekStart: string,
 ): Promise<ScheduleEditorPayload<EmployeeListItem>> {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanAccessModule(ctx);
 
@@ -690,8 +719,8 @@ export async function loadPublishedScheduleDataAction(
 
   const scopedEmployees = filterEmployeesForDraftScope(ctx, employees);
   const scopedZones =
-    ctx.profile.is_area_lead && ctx.profile.zone_id
-      ? zones.filter((zone) => zone.id === ctx.profile.zone_id)
+    ctx.requestContext.systemRole === 'area_lead' && ctx.requestContext.zoneId
+      ? zones.filter((zone) => zone.id === ctx.requestContext.zoneId)
       : zones;
   const publishedEntries = await getPublishedEntriesForSchedule(schedule);
   const issues = summarizeScheduleIssues({
@@ -705,7 +734,7 @@ export async function loadPublishedScheduleDataAction(
     config,
     employees: scopedEmployees,
     issues,
-    permissions: buildSchedulePermissions(ctx.profile),
+    permissions: buildSchedulePermissions(ctx.requestContext),
     publication_state: {
       affected_employee_count: 0,
       can_publish: false,
@@ -729,7 +758,7 @@ export async function saveScheduleCellDraftAction(
   rawValue: string,
 ): Promise<ScheduleSaveCellResult> {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanManageDraft(ctx);
 
@@ -742,7 +771,7 @@ export async function saveScheduleCellDraftAction(
     schedule.restaurant_id,
   );
 
-  return getScheduleDraftService().saveCellDraft({
+  const result = await getScheduleDraftService().saveCellDraft({
     actorUserId: ctx.userId,
     date,
     employee: {
@@ -753,6 +782,22 @@ export async function saveScheduleCellDraftAction(
     schedule,
     scopeEmployees: (employees) => filterEmployeesForDraftScope(ctx, employees),
   });
+
+  await writeScheduleEntryAuditLog({
+    newValue: {
+      date,
+      day_type: result.entry.day_type,
+      employee_id: employeeId,
+      employment_id: result.entry.employment_id ?? null,
+      schedule_id: schedule.id,
+      version: result.entry.version,
+      zone_id: result.entry.zone_id ?? null,
+    },
+    restaurantId: schedule.restaurant_id,
+    scheduleEntryId: result.entry.id,
+  });
+
+  return result;
 }
 
 export async function upsertScheduleCellAction(
@@ -762,7 +807,7 @@ export async function upsertScheduleCellAction(
   updates: Partial<ScheduleEntry>,
 ) {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanManageDraft(ctx);
 
@@ -774,7 +819,7 @@ export async function upsertScheduleCellAction(
     schedule.restaurant_id,
   );
 
-  return getScheduleDraftService().upsertCell({
+  const result = await getScheduleDraftService().upsertCell({
     actorUserId: ctx.userId,
     date,
     employeeId,
@@ -782,6 +827,22 @@ export async function upsertScheduleCellAction(
     updates,
     zoneId: employee.zone_id,
   });
+
+  await writeScheduleEntryAuditLog({
+    newValue: {
+      date,
+      day_type: result.entry.day_type,
+      employee_id: employeeId,
+      employment_id: result.entry.employment_id ?? null,
+      schedule_id: schedule.id,
+      version: result.entry.version,
+      zone_id: result.entry.zone_id ?? null,
+    },
+    restaurantId: schedule.restaurant_id,
+    scheduleEntryId: result.entry.id,
+  });
+
+  return result;
 }
 
 export async function updateScheduleCellAction(
@@ -790,24 +851,44 @@ export async function updateScheduleCellAction(
   updates: Partial<ScheduleEntry>,
 ) {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanManageDraft(ctx);
 
   const entry = await loadAuthorizedEntry(ctx, entryId);
   await assertScheduleLockOwnedByUser(entry.schedule_id, ctx.userId);
 
-  return updateEntry(entryId, version, {
+  const updatedEntry = await updateEntry(entryId, version, {
     ...updates,
     source: 'manual',
   });
+
+  await writeScheduleEntryAuditLog({
+    newValue: {
+      day_type: updatedEntry.day_type,
+      employment_id: updatedEntry.employment_id ?? null,
+      schedule_id: entry.schedule_id,
+      version: updatedEntry.version,
+      zone_id: updatedEntry.zone_id ?? null,
+    },
+    previousValue: {
+      day_type: entry.day_type,
+      employment_id: entry.employment_id ?? null,
+      version: entry.version,
+      zone_id: entry.zone_id ?? null,
+    },
+    restaurantId: entry.schedule!.restaurant_id,
+    scheduleEntryId: updatedEntry.id,
+  });
+
+  return updatedEntry;
 }
 
 export async function loadPublishReviewAction(
   scheduleId: string,
 ): Promise<SchedulePublishReview> {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanPublish(ctx);
 
@@ -832,7 +913,7 @@ export async function publishScheduleAction(
   comment?: string,
 ) {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanPublish(ctx);
 
@@ -845,12 +926,36 @@ export async function publishScheduleAction(
     publishScheduleWeek,
   });
 
-  return publicationService.publishSchedule({
+  const publicationKind = schedule.published_at ? 'republish' : 'initial';
+  const publishedSchedule = await publicationService.publishSchedule({
     actorUserId: ctx.userId,
     comment,
     schedule,
     scopeEmployees: (employees) => filterEmployeesForDraftScope(ctx, employees),
   });
+
+  await writeScheduleAuditLog({
+    action:
+      publicationKind === 'republish'
+        ? AUDIT_ACTIONS.scheduleRepublished
+        : AUDIT_ACTIONS.schedulePublished,
+    newValue: {
+      comment: comment?.trim() || null,
+      publication_kind: publicationKind,
+      published_at: publishedSchedule.published_at ?? null,
+      week_start: schedule.week_start,
+    },
+    previousValue: schedule.published_at
+      ? {
+          published_at: schedule.published_at,
+        }
+      : undefined,
+    reason: comment?.trim() || null,
+    restaurantId: schedule.restaurant_id,
+    scheduleId: schedule.id,
+  });
+
+  return publishedSchedule;
 }
 
 export async function loadEmployeeScheduleWeekAction(
@@ -858,7 +963,7 @@ export async function loadEmployeeScheduleWeekAction(
   restaurantId?: string,
 ): Promise<EmployeeScheduleWeekView> {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanAccessModule(ctx);
 
@@ -890,7 +995,7 @@ export async function loadEmployeeScheduleWeekAction(
 
 export async function lockScheduleAction(scheduleId: string) {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanManageDraft(ctx);
 
@@ -903,25 +1008,34 @@ export async function lockScheduleAction(scheduleId: string) {
 
 export async function forceUnlockScheduleAction(scheduleId: string) {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanManageDraft(ctx);
 
   const schedule = await loadAuthorizedSchedule(ctx, scheduleId);
   await getScheduleLockService().forceUnlock({
     actor: {
-      id: ctx.profile.id,
-      is_area_lead: ctx.profile.is_area_lead,
-      role: ctx.profile.role,
-      zone_id: ctx.profile.zone_id,
+      id: ctx.person.id,
+      system_role: ctx.requestContext.systemRole,
+      zone_id: ctx.requestContext.zoneId,
     },
+    scheduleId: schedule.id,
+  });
+
+  await writeScheduleAuditLog({
+    action: AUDIT_ACTIONS.scheduleLockForceReleased,
+    newValue: {
+      released_by: ctx.userId,
+      week_start: schedule.week_start,
+    },
+    restaurantId: schedule.restaurant_id,
     scheduleId: schedule.id,
   });
 }
 
 export async function unlockScheduleAction(scheduleId: string) {
   const ctx = await getCurrentUserContext();
-  if (!ctx || !ctx.profile.id) throw new Error('Unauthorized');
+  if (!ctx?.userId) throw new Error('Unauthorized');
 
   assertCanManageDraft(ctx);
 

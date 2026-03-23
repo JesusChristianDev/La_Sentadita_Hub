@@ -1,0 +1,222 @@
+﻿[93m[4mUnused files[24m[39m (44)
+public/sw.js                                                
+scripts/capture-dashboard-hero-preview.cjs                  
+src/modules/announcements/index.ts                          
+src/modules/audit_log/index.ts                              
+src/modules/documents/index.ts                              
+src/modules/hours_reports/index.ts                          
+src/modules/incidents/index.ts                              
+src/modules/notifications/index.ts                          
+src/modules/policies/index.ts                               
+src/modules/requests/index.ts                               
+src/modules/schedule/index.ts                               
+src/modules/suppliers/index.ts                              
+src/modules/tasks/index.ts                                  
+src/shared/supabase/browser.ts                              
+src/modules/authz/application/assertCan.ts                  
+src/modules/authz/application/index.ts                      
+src/modules/documents/application/documentService.ts        
+src/modules/documents/domain/documentTypes.ts               
+src/modules/employees/application/createEmployee.ts         
+src/modules/employees/application/listEmployees.ts          
+src/modules/employees/application/setEmployeeActive.ts      
+src/modules/employees/application/updateEmployee.ts         
+src/modules/employees/domain/employeeListItem.ts            
+src/modules/incidents/application/incidentService.ts        
+src/modules/incidents/domain/incidentTypes.ts               
+src/modules/notifications/application/notificationService.ts
+src/modules/notifications/domain/notificationTypes.ts       
+src/modules/requests/application/procedureService.ts        
+src/modules/requests/domain/procedureTypes.ts               
+src/modules/suppliers/application/confirmDeliveryNote.ts    
+src/modules/suppliers/application/createDeliveryNote.ts     
+src/modules/suppliers/application/createProduct.ts          
+src/modules/suppliers/application/createSupplier.ts         
+src/modules/suppliers/application/internal.ts               
+src/modules/suppliers/application/listProducts.ts           
+src/modules/suppliers/application/listSuppliers.ts          
+src/modules/suppliers/application/rejectDeliveryNote.ts     
+src/modules/suppliers/application/reviewDeliveryNote.ts     
+src/modules/suppliers/application/supplierService.ts        
+src/modules/tasks/application/taskService.ts                
+src/modules/suppliers/domain/deliveryNoteTypes.ts           
+src/modules/suppliers/domain/productTypes.ts                
+src/modules/suppliers/domain/supplierTypes.ts               
+src/modules/tasks/domain/taskTypes.ts                       
+[93m[4mUnused dependencies[24m[39m (11)
+@hookform/resolvers       package.json:26:6
+@react-email/components   package.json:27:6
+@tanstack/react-query     package.json:32:6
+@tanstack/react-table     package.json:33:6
+class-variance-authority  package.json:36:6
+mindee                    package.json:40:6
+react-hook-form           package.json:44:6
+recharts                  package.json:45:6
+resend                    package.json:46:6
+tw-animate-css            package.json:49:6
+web-push                  package.json:50:6
+[93m[4mUnused devDependencies[24m[39m (2)
+@testing-library/react       package.json:57:6
+@testing-library/user-event  package.json:58:6
+[93m[4mUnlisted dependencies[24m[39m (1)
+postcss  postcss.config.mjs
+[93m[4mUnused exports[24m[39m (94)
+rawEnv                                             src/shared/env.ts:37:14                                              
+rawServerEnv                                       src/shared/env.server.ts:44:14                                       
+getEffectiveRestaurantId                           src/modules/auth_users/index.ts:3:10                                 
+buildRequestContextFromLegacyUserConteÔÇª            src/modules/authz/index.ts:11:3                                      
+deriveActiveScopes                                 src/modules/authz/index.ts:12:3                                      
+deriveScopeType                                    src/modules/authz/index.ts:13:3                                      
+assertRestaurantAccess                             src/modules/authz/index.ts:18:3                                      
+assertRestaurantManagement                         src/modules/authz/index.ts:19:3                                      
+assertSelfOrManagement                             src/modules/authz/index.ts:20:3                                      
+assertZoneAccess                                   src/modules/authz/index.ts:21:3                                      
+canAccessRestaurant                                src/modules/authz/index.ts:22:3                                      
+canAccessZone                                      src/modules/authz/index.ts:23:3                                      
+canManageRestaurant                                src/modules/authz/index.ts:24:3                                      
+isAreaLeadSystemRole                               src/modules/authz/index.ts:25:3                                      
+isGlobalSystemRole                                 src/modules/authz/index.ts:26:3                                      
+isManagementSystemRole                             src/modules/authz/index.ts:27:3                                      
+isRestaurantManagementRole                         src/modules/authz/index.ts:28:3                                      
+isSelfScope                                        src/modules/authz/index.ts:29:3                                      
+isSystemRole                                       src/modules/authz/index.ts:34:10                                     
+SYSTEM_ROLES                                       src/modules/authz/index.ts:34:23                                     
+isMobileDeviceUserAgent                  function  src/shared/deviceDetection.ts:12:17                                  
+deleteEmployee                                     src/modules/employees/index.ts:1:10                                  
+createEmployee                                     src/modules/employees/index.ts:2:10                                  
+setEmployeeActive                                  src/modules/employees/index.ts:4:10                                  
+updateEmployee                                     src/modules/employees/index.ts:6:10                                  
+upsertScheduleCellAction                 function  src/modules/schedule/application/serverActions.ts:811:23             
+updateScheduleCellAction                 function  src/modules/schedule/application/serverActions.ts:855:23             
+forceUnlockScheduleAction                function  src/modules/schedule/application/serverActions.ts:1014:23            
+deriveScopeType                          function  src/modules/authz/application/requestContext.ts:45:17                
+deriveActiveScopes                       function  src/modules/authz/application/requestContext.ts:52:17                
+EDITABLE_DAY_TYPES                                 src/modules/schedule/domain/scheduleTypes.ts:11:14                   
+getActorScopeType                        function  src/modules/authz/application/aclRules.ts:40:17                      
+getAllowedScopeForAction                 function  src/modules/authz/application/aclRules.ts:141:17                     
+isGlobalSystemRole                       function  src/modules/authz/application/scopeGuards.ts:13:17                   
+isRestaurantManagementRole               function  src/modules/authz/application/scopeGuards.ts:17:17                   
+isManagementSystemRole                   function  src/modules/authz/application/scopeGuards.ts:21:17                   
+isAreaLeadSystemRole                     function  src/modules/authz/application/scopeGuards.ts:25:17                   
+isSelfScope                              function  src/modules/authz/application/scopeGuards.ts:29:17                   
+canAccessRestaurant                      function  src/modules/authz/application/scopeGuards.ts:33:17                   
+canManageRestaurant                      function  src/modules/authz/application/scopeGuards.ts:42:17                   
+canAccessZone                            function  src/modules/authz/application/scopeGuards.ts:51:17                   
+assertRestaurantAccess                   function  src/modules/authz/application/scopeGuards.ts:65:17                   
+assertRestaurantManagement               function  src/modules/authz/application/scopeGuards.ts:75:17                   
+assertZoneAccess                         function  src/modules/authz/application/scopeGuards.ts:85:17                   
+assertSelfOrManagement                   function  src/modules/authz/application/scopeGuards.ts:96:17                   
+SYSTEM_ROLES                                       src/modules/authz/domain/systemRoles.ts:11:14                        
+isSystemRole                             function  src/modules/authz/domain/systemRoles.ts:20:17                        
+deleteEmployee                           function  src/modules/employees/application/deleteEmployee.ts:3:23             
+createEmploymentRelationship             function  ÔÇª/modules/employment/application/createEmploymentRelationship.ts:7:23
+listEmploymentForRestaurant              function  ÔÇªc/modules/employment/application/listEmploymentForRestaurant.ts:5:23
+setEmploymentActive                      function  src/modules/employment/application/setEmploymentActive.ts:3:23       
+updateEmployment                         function  src/modules/employment/application/updateEmployment.ts:11:23         
+loadTarget                               function  src/modules/employees/application/guards.ts:28:23                    
+hasActiveAreaLead                        function  src/modules/employees/application/guards.ts:79:23                    
+createEmploymentRelationship                       src/modules/employment/index.ts:1:25                                 
+buildEmployeeProfilePayload                        src/modules/employment/index.ts:10:3                                 
+buildLegacyEmploymentProfilePayload                src/modules/employment/index.ts:11:3                                 
+mapEmployeeMutationErrorCode                       src/modules/employment/index.ts:12:3                                 
+normalizeEmployeeAssignment                        src/modules/employment/index.ts:13:3                                 
+parseEditableEmployeeRole                          src/modules/employment/index.ts:14:3                                 
+validateCreateEmployeeInput                        src/modules/employment/index.ts:15:3                                 
+validateScopedEmployeeManagement                   src/modules/employment/index.ts:16:3                                 
+validateUpdateEmployeeInput                        src/modules/employment/index.ts:17:3                                 
+createEmploymentMutationService                    src/modules/employment/index.ts:19:41                                
+listEmployees                                      src/modules/employment/index.ts:20:10                                
+listEmploymentForRestaurant                        src/modules/employment/index.ts:20:25                                
+setEmploymentActive                                src/modules/employment/index.ts:21:29                                
+terminateEmployment                                src/modules/employment/index.ts:22:10                                
+updateEmployment                                   src/modules/employment/index.ts:24:26                                
+deriveEmploymentSystemRole                         src/modules/employment/index.ts:33:10                                
+isAreaLead                               function  src/shared/schedulePolicy.ts:37:17                                   
+canAccessSchedulesModule                 function  src/shared/schedulePolicy.ts:41:17                                   
+canEditEmployeeSchedule                  function  src/shared/schedulePolicy.ts:75:17                                   
+canViewEmployeeScheduleDraft             function  src/shared/schedulePolicy.ts:86:17                                   
+upsertScheduleEntries                    function  src/modules/schedule/infrastructure/scheduleRepository.ts:302:23     
+getSchedule                              function  src/modules/schedule/application/getSchedule.ts:7:23                 
+lockSchedule                             function  src/modules/schedule/application/lockActions.ts:3:23                 
+getWeekDates                                       src/modules/schedule/application/scheduleWorkspace.ts:52:3           
+getWeekEnd                                         src/modules/schedule/application/scheduleWorkspace.ts:53:3           
+getWeekStart                                       src/modules/schedule/application/scheduleWorkspace.ts:55:3           
+parseEditableEmployeeRole                function  src/modules/employment/application/employeeMutationRules.ts:69:17    
+normalizeEmployeeAssignment              function  src/modules/employment/application/employeeMutationRules.ts:77:17    
+buildLegacyEmploymentProfilePayload      function  src/modules/employment/application/employeeMutationRules.ts:101:17   
+buildEmployeeProfilePayload                        src/modules/employment/application/employeeMutationRules.ts:271:14   
+createEmploymentMutationService          function  src/modules/employment/application/employeeMutationService.ts:34:17  
+formatCalendarLabel                      function  src/modules/dashboard/ui/dashboardHeroModels.ts:301:17               
+getLegacyAreaLeadZoneConflictCode        function  src/shared/db/employment.ts:76:23                                    
+terminateEmployment                      function  src/modules/employment/application/terminateEmployment.ts:3:23       
+formatCellDraftInput                     function  src/modules/schedule/ui/scheduleCellHelpers.ts:231:17                
+resolveCellSelectionContext              function  src/modules/schedule/ui/scheduleCellHelpers.ts:315:17                
+appendSplitDraftInput                    function  src/modules/schedule/ui/scheduleCellHelpers.ts:350:17                
+deleteCellDraftContent                   function  src/modules/schedule/ui/scheduleCellHelpers.ts:376:17                
+MIN_ACCOUNT_PASSWORD_LENGTH                        src/modules/auth_users/application/accountCredentialRules.ts:2:14    
+buildDashboardLocationLabel              function  src/modules/dashboard/ui/dashboardHeroLocation.ts:80:17              
+[93m[4mUnused exported types[24m[39m (56)
+CurrentSession                type       src/modules/auth_users/index.ts:1:15                              
+AppRole                       type       src/modules/auth_users/index.ts:4:15                              
+Profile                       type       src/modules/auth_users/index.ts:5:15                              
+RequestContext                type       src/modules/auth_users/index.ts:6:15                              
+AuthzAction                   type       src/modules/authz/index.ts:1:15                                   
+AuthzResource                 type       src/modules/authz/index.ts:1:28                                   
+ActiveScope                   type       src/modules/authz/index.ts:4:3                                    
+LegacyUserContextLike         type       src/modules/authz/index.ts:6:3                                    
+ResponsibilityLevel           type       src/modules/authz/index.ts:31:15                                  
+ScopeType                     type       src/modules/authz/index.ts:33:15                                  
+RestaurantStatus              type       src/modules/restaurants/index.ts:1:16                             
+Restaurant                    type       src/modules/restaurants/index.ts:4:15                             
+UpdateEmployeeInput           type       src/modules/employees/index.ts:5:40                               
+EmailChangeDraftInput         type       src/modules/people/index.ts:4:3                                   
+EmailChangeValidatedInput     type       src/modules/people/index.ts:5:3                                   
+PasswordChangeDraftInput      type       src/modules/people/index.ts:6:3                                   
+PasswordChangeValidatedInput  type       src/modules/people/index.ts:7:3                                   
+ArchivePersonInput            type       src/modules/people/index.ts:16:3                                  
+CreatePersonInput             type       src/modules/people/index.ts:17:3                                  
+Person                        type       src/modules/people/index.ts:18:3                                  
+PersonIdentity                type       src/modules/people/index.ts:19:3                                  
+UpdatePersonIdentityInput     type       src/modules/people/index.ts:20:3                                  
+EmailChangeDraftInput         type       src/modules/auth_users/application/selfProfileMutationRules.ts:2:3
+EmailChangeValidatedInput     type       src/modules/auth_users/application/selfProfileMutationRules.ts:3:3
+PasswordChangeDraftInput      type       src/modules/auth_users/application/selfProfileMutationRules.ts:4:3
+PasswordChangeValidatedInput  type       src/modules/auth_users/application/selfProfileMutationRules.ts:5:3
+EditableDayType               type       src/modules/schedule/domain/scheduleTypes.ts:19:13                
+ScheduleViewMode              type       src/modules/schedule/domain/scheduleTypes.ts:23:13                
+WeekDayIso                    type       src/modules/schedule/domain/scheduleTypes.ts:213:13               
+ScheduleLoadPayload           interface  src/modules/schedule/domain/scheduleTypes.ts:226:18               
+ScheduleSaveCellInput         interface  src/modules/schedule/domain/scheduleTypes.ts:240:18               
+PersistDraftEntryResult       type       src/modules/schedule/application/scheduleDraftService.ts:20:13    
+AppRole                       type       src/modules/auth_users/domain/appRole.ts:1:15                     
+Profile                       type       src/modules/auth_users/domain/profile.ts:1:32                     
+UpdateEmploymentInput         type       src/modules/employment/application/updateEmployment.ts:7:13       
+RoleScopeAssignment           type       src/modules/employment/domain/employmentTypes.ts:11:13            
+EmploymentRelationship        type       src/modules/employment/domain/employmentTypes.ts:16:13            
+CreateEmployeeDraftInput      type       src/modules/employment/index.ts:3:3                               
+CreateEmployeeValidatedInput  type       src/modules/employment/index.ts:4:3                               
+EmployeeMutationErrorCode     type       src/modules/employment/index.ts:5:3                               
+UpdateEmployeeDraftInput      type       src/modules/employment/index.ts:6:3                               
+UpdateEmployeeValidatedInput  type       src/modules/employment/index.ts:7:3                               
+UpdateEmploymentInput         type       src/modules/employment/index.ts:23:15                             
+EditableEmployeeRole          type       src/modules/employment/index.ts:26:3                              
+EmploymentListItem            type       src/modules/employment/index.ts:27:3                              
+EmploymentRelationship        type       src/modules/employment/index.ts:28:3                              
+EmploymentStatusFilter        type       src/modules/employment/index.ts:29:3                              
+EmploymentSystemRole          type       src/modules/employment/index.ts:30:3                              
+RoleScopeAssignment           type       src/modules/employment/index.ts:31:3                              
+WriteAuditLogResult           type       src/modules/audit/index.ts:1:15                                   
+AuditScopeType                type       src/modules/audit/index.ts:6:3                                    
+WriteAuditLogInput            type       src/modules/audit/index.ts:7:3                                    
+Person                        type       src/modules/people/domain/personTypes.ts:5:13                     
+PersonIdentity                type       src/modules/people/domain/personTypes.ts:9:13                     
+ScheduleCellSelectionContext  type       src/modules/schedule/ui/scheduleCellHelpers.ts:25:13              
+DashboardWeatherSnapshot      type       src/modules/dashboard/ui/dashboardHeroWeatherData.ts:20:13        
+[93m[4mDuplicate exports[24m[39m (6)
+createEmploymentRelationship|createEmployee                 ÔÇªules/employment/application/createEmploymentRelationship.ts
+listEmploymentForRestaurant|listEmployees                   ÔÇªdules/employment/application/listEmploymentForRestaurant.ts
+setEmploymentActive|setEmployeeActive                       src/modules/employment/application/setEmploymentActive.ts   
+updateEmployment|updateEmployee                             src/modules/employment/application/updateEmployment.ts      
+buildLegacyEmploymentProfilePayload|buildEmployeeProfilePÔÇª  src/modules/employment/application/employeeMutationRules.ts 
+createEmploymentMutationService|createEmployeeMutationSerÔÇª  ÔÇªc/modules/employment/application/employeeMutationService.ts
+[33m[4mConfiguration hints[24m (1)[39m

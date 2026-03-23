@@ -2,7 +2,7 @@
 
 import { type RefObject,useEffect, useMemo, useState } from 'react';
 
-import type { AppRole } from '@/modules/auth_users';
+import type { SystemRole } from '@/modules/authz';
 import type { EmployeeListItem } from '@/modules/employees';
 import { Notice } from '@/shared/ui';
 
@@ -57,7 +57,7 @@ type ScheduleEditorWorkspaceProps = {
   onMinHoursFilterChange: (value: string) => void;
   onProblemFilterChange: (value: ScheduleProblemFilter) => void;
   onReviewPublish: () => void;
-  onRoleFilterChange: (value: 'all' | AppRole) => void;
+  onRoleFilterChange: (value: 'all' | SystemRole) => void;
   onSaveCell: (employeeId: string, date: string, rawValue: string) => Promise<boolean>;
   onSearchValueChange: (value: string) => void;
   onSelectedDayIndexChange: (value: number) => void;
@@ -65,7 +65,7 @@ type ScheduleEditorWorkspaceProps = {
   problemFilter: ScheduleProblemFilter;
   publicationState: SchedulePublicationState;
   publishPulse: number;
-  roleFilter: 'all' | AppRole;
+  roleFilter: 'all' | SystemRole;
   searchValue: string;
   selectedDayIndex: number;
   totalEmployees: number;

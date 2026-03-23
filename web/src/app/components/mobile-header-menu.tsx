@@ -11,7 +11,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import type { AppRole } from '@/modules/auth_users';
+import type { AppRole } from '@/modules/people';
 import { roleLabel } from '@/shared/roleLabel';
 import { Button, Select } from '@/shared/ui';
 

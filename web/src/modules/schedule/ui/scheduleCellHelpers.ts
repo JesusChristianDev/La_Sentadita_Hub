@@ -442,7 +442,7 @@ export function parseCellInput(
   const trimmed = rawValue.trim();
 
   if (!trimmed) {
-    if (!requiresScheduledCells(employee.role)) {
+    if (!requiresScheduledCells(employee.system_role)) {
       return {
         normalizedValue: '',
         ok: true,

@@ -1,5 +1,5 @@
-import type { AppRole } from '@/modules/auth_users';
+import type { SystemRole } from '@/modules/authz';
 
-export function requiresScheduledCells(role: AppRole): boolean {
+export function requiresScheduledCells(role: SystemRole): boolean {
   return role !== 'manager' && role !== 'sub_manager';
 }

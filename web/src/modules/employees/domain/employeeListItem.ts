@@ -1,12 +1,1 @@
-import type { AppRole } from '@/modules/auth_users';
-
-export type EmployeeListItem = {
-  avatar_path: string | null;
-  employee_code: number;
-  full_name: string;
-  id: string;
-  restaurant_id: string | null;
-  role: AppRole;
-  zone_id: string | null;
-  is_area_lead: boolean;
-};
+export type { EmploymentListItem as EmployeeListItem } from '@/modules/employment/domain/employmentTypes';

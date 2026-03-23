@@ -17,8 +17,8 @@ export default defineConfig({
   },
   webServer: {
     command: process.env.CI
-      ? 'npm run build && npm run start -- --hostname 127.0.0.1 --port 3000'
-      : 'npm run dev',
+      ? 'pnpm run build && pnpm run start -- --hostname 127.0.0.1 --port 3000'
+      : 'pnpm run dev',
     url: 'http://127.0.0.1:3000/login',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

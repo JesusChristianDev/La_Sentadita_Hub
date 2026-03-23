@@ -1,12 +1,10 @@
-﻿import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { getCurrentUserContext } from '@/modules/auth_users';
+import { can } from '@/modules/authz';
 import { DashboardHeroWidget } from '@/modules/dashboard';
 import { listRestaurants } from '@/modules/restaurants';
-import { canPickRestaurantHeader } from '@/shared/headerPolicy';
-import { canAccessSchedulesModule } from '@/shared/schedulePolicy';
 
 import { ClearInitialFocus } from '../../components/clear-initial-focus';
 
@@ -14,16 +12,17 @@ export default async function AppPage() {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
 
-  const store = await cookies();
-  const activeRestaurantId = store.get('active_restaurant_id')?.value ?? null;
-
   const restaurants = await listRestaurants();
-  const restaurantsById = new Map(restaurants.map((r) => [r.id, r.name]));
+  const restaurantsById = new Map(restaurants.map((restaurant) => [restaurant.id, restaurant.name]));
 
-  const showSelector = canPickRestaurantHeader(ctx.profile.role);
-  const effectiveRestaurantId = showSelector
-    ? (activeRestaurantId ?? ctx.profile.restaurant_id)
-    : ctx.profile.restaurant_id;
+  const showSelector = can(ctx.requestContext, 'restaurant_context.select');
+  const effectiveRestaurantId = ctx.requestContext.effectiveRestaurantId;
+  const canViewEmployees = can(ctx.requestContext, 'employees.view');
+  const canViewSchedules = can(ctx.requestContext, 'schedule.view');
+  
+  // TODO: Map exactly against ACL dictionary once definitions are locked
+  const canViewTasks = true;
+  const canViewProcedures = true;
 
   const effectiveRestaurantName = effectiveRestaurantId
     ? (restaurantsById.get(effectiveRestaurantId) ?? 'Sucursal asignada')
@@ -44,14 +43,14 @@ export default async function AppPage() {
         canPickRestaurant={showSelector}
         effectiveRestaurantName={effectiveRestaurantName}
         hasEffectiveRestaurant={Boolean(effectiveRestaurantId)}
-        userName={ctx.profile.full_name || 'Sin nombre'}
+        userName={ctx.person.full_name || 'Sin nombre'}
       />
 
       <section className="panel">
         <h2 className="panel-title">Modulos</h2>
         <p className="panel-subtitle">Navega rapidamente hacia cada bloque funcional.</p>
         <div className="quick-grid">
-          {ctx.profile.role !== 'employee' ? (
+          {canViewEmployees ? (
             <Link href="/employees" className="quick-card">
               <h3>Gestion de empleados</h3>
               <p>Alta, edicion y estado de usuarios operativos por restaurante.</p>
@@ -59,7 +58,7 @@ export default async function AppPage() {
             </Link>
           ) : null}
 
-          {canAccessSchedulesModule(ctx.profile.role) ? (
+          {canViewSchedules ? (
             <Link href="/horarios" className="quick-card">
               <h3>Horarios</h3>
               <p>Consulta o gestiona el horario semanal segun tus permisos.</p>
@@ -67,17 +66,21 @@ export default async function AppPage() {
             </Link>
           ) : null}
 
-          <article className="quick-card disabled">
-            <h3>Tramites</h3>
-            <p>Solicitudes internas y aprobaciones.</p>
-            <span className="tag">Proximamente</span>
-          </article>
+          {canViewTasks ? (
+            <Link href="/tasks" className="quick-card">
+              <h3>Tareas</h3>
+              <p>Operaciones diarias y comprobantes.</p>
+              <span className="tag">Disponible</span>
+            </Link>
+          ) : null}
 
-          <article className="quick-card disabled">
-            <h3>Documentos</h3>
-            <p>Repositorio y consulta de archivos operativos.</p>
-            <span className="tag">Proximamente</span>
-          </article>
+          {canViewProcedures ? (
+            <Link href="/procedures" className="quick-card">
+              <h3>Trámites</h3>
+              <p>Solicitudes internas y aprobaciones.</p>
+              <span className="tag">Disponible</span>
+            </Link>
+          ) : null}
         </div>
       </section>
     </main>

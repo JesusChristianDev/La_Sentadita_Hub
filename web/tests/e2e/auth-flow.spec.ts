@@ -49,6 +49,7 @@ test.describe('Authenticated flow', () => {
     const targetValue = enabledOptionValues.find((value) => value !== currentValue);
     if (!targetValue) {
       test.skip(true, 'No hay otra sucursal para cambiar en este entorno.');
+      return;
     }
 
     await restaurantSelect.selectOption(targetValue);

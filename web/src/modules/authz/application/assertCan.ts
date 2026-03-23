@@ -1,0 +1,1 @@
+export { assertCan } from './can';

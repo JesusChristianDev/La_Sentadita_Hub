@@ -6,17 +6,35 @@ Aplicacion web de operacion interna para La Sentadita Hub, construida con Next.j
 
 - Next.js 16
 - React 19
-- TypeScript estricto
+- TypeScript 5.9
+- pnpm 10
 - Supabase (auth + datos)
+- Zod 4 + @t3-oss/env-nextjs
+- Sentry (@sentry/nextjs)
+- shadcn/ui base readiness
+- React Hook Form + @hookform/resolvers
+- TanStack Query + @tanstack/react-table
+- Recharts
+- Resend + @react-email/components
+- web-push
+- Mindee
+- Vitest + Testing Library
 - Playwright (E2E)
 - Vercel Analytics + Speed Insights
 
 ## Requisitos
 
-- Node.js 20+
+- Node.js 24 LTS (objetivo de `v8`)
+- pnpm 10
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SENTRY_DSN` opcional
+- `RESEND_API_KEY` opcional
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` opcional
+- `VAPID_PRIVATE_KEY` opcional
+- `VAPID_SUBJECT` opcional
+- `MINDEE_API_KEY` opcional
 
 Variables opcionales para pruebas:
 
@@ -25,18 +43,20 @@ Variables opcionales para pruebas:
 - `E2E_LOGIN_DELAY_MS`
 
 Usa `./.env.example` como plantilla para `./.env.local`.
+Si usas `nvm`, ejecuta `nvm use` dentro de `web/`.
 
 ## Scripts
 
-- `npm run dev`: desarrollo local
-- `npm run build`: build de produccion
-- `npm run start`: ejecutar el build
-- `npm run lint`: lint del proyecto
-- `npm run lint:fix`: auto-fix de lint
-- `npm run format`: formateo con Prettier
-- `npm run test:unit`: suite unitaria compilada con `node --test`
-- `npm run test:e2e`: pruebas E2E con Playwright
-- `npm run test:e2e:ui`: Playwright en modo UI
+- `pnpm run dev`: desarrollo local
+- `pnpm run build`: build de produccion
+- `pnpm run start`: ejecutar el build
+- `pnpm run lint`: lint del proyecto
+- `pnpm run lint:fix`: auto-fix de lint
+- `pnpm run format`: formateo con Prettier
+- `pnpm run test:unit`: suite legacy compilada con `node --test`
+- `pnpm run test:vitest`: suite nueva de Vitest
+- `pnpm run test:e2e`: pruebas E2E con Playwright
+- `pnpm run test:e2e:ui`: Playwright en modo UI
 
 ## PWA y sesion
 
@@ -51,4 +71,5 @@ Usa `./.env.example` como plantilla para `./.env.local`.
 
 - El repositorio se versiona desde la raiz `C:\la-sentadita-hub`.
 - La app que se despliega en Vercel es esta carpeta: `web/`.
+- El gestor de paquetes objetivo desde esta migracion es `pnpm`.
 - La guia operativa esta en `../docs/19_GIT_Y_VERCEL_SETUP.md`.

@@ -104,11 +104,11 @@ function formatHours(hours: number): string {
 }
 
 function isRequiredCellPending(
-  employee: Pick<EmployeeListItem, 'role'>,
+  employee: Pick<EmployeeListItem, 'system_role'>,
   value: string,
   entry?: ScheduleEntry,
 ): boolean {
-  if (!requiresScheduledCells(employee.role) || value.trim()) return false;
+  if (!requiresScheduledCells(employee.system_role) || value.trim()) return false;
   return !entry || entry.day_type === 'unscheduled';
 }
 
@@ -432,8 +432,7 @@ export const ScheduleGrid = forwardRef<ScheduleGridHandle, ScheduleGridProps>(fu
                 {employee.full_name}
               </p>
               <p className="mt-1 text-xs text-muted">
-                {roleLabel(employee.role)}
-                {employee.is_area_lead ? ' / Encargado de zona' : ''}
+                {roleLabel(employee.system_role)}
               </p>
             </div>
             <span className="rounded-full border border-border/70 bg-background/25 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
@@ -561,8 +560,7 @@ export const ScheduleGrid = forwardRef<ScheduleGridHandle, ScheduleGridProps>(fu
                           {employee.full_name}
                         </span>
                         <span className="text-xs text-muted">
-                          {roleLabel(employee.role)}
-                          {employee.is_area_lead ? ' / Encargado de zona' : ''}
+                          {roleLabel(employee.system_role)}
                         </span>
                       </div>
                     </td>
@@ -642,7 +640,7 @@ export const ScheduleGrid = forwardRef<ScheduleGridHandle, ScheduleGridProps>(fu
                         {employee.full_name}
                       </span>
                       <span className="text-xs text-muted">
-                        {roleLabel(employee.role)}
+                        {roleLabel(employee.system_role)}
                       </span>
                     </div>
                   </td>

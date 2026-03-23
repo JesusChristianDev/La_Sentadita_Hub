@@ -74,29 +74,29 @@ export default async function MePage({ searchParams }: Props) {
 
   const admin = createSupabaseAdminClient();
   let avatarUrl: string | null = null;
-  if (ctx.profile.avatar_path) {
+  if (ctx.person.avatar_path) {
     const { data } = await admin.storage
       .from('avatars')
-      .createSignedUrl(ctx.profile.avatar_path, 60 * 60);
+      .createSignedUrl(ctx.person.avatar_path, 60 * 60);
     avatarUrl = data?.signedUrl ?? null;
   }
 
   let restaurantName: string | null = null;
-  if (ctx.profile.restaurant_id) {
+  if (ctx.person.restaurant_id) {
     const { data } = await admin
       .from('restaurants')
       .select('name')
-      .eq('id', ctx.profile.restaurant_id)
+      .eq('id', ctx.person.restaurant_id)
       .maybeSingle();
 
     restaurantName = data?.name ?? null;
   }
 
   const msg = getProfileSuccessMessage(sp.ok) ?? getProfileErrorMessage(sp.e);
-  const displayName = ctx.profile.full_name?.trim() || 'Cuenta';
-  const displayRole = roleLabel(ctx.profile.role);
-  const contextLabel = restaurantName ?? (ctx.profile.restaurant_id ? 'Sucursal asignada' : 'Global');
-  const passwordStatus = ctx.profile.must_change_password ? 'Cambio pendiente' : 'Correcta';
+  const displayName = ctx.person.full_name?.trim() || 'Cuenta';
+  const displayRole = roleLabel(ctx.requestContext.systemRole);
+  const contextLabel = restaurantName ?? (ctx.person.restaurant_id ? 'Sucursal asignada' : 'Global');
+  const passwordStatus = ctx.person.must_change_password ? 'Cambio pendiente' : 'Correcta';
 
   return (
     <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
@@ -106,8 +106,8 @@ export default async function MePage({ searchParams }: Props) {
             <div className="flex shrink-0 justify-center">
               <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-3 shadow-[0_22px_54px_-36px_rgba(0,0,0,0.85)]">
                 <UserAvatar
-                  fullName={ctx.profile.full_name}
-                  role={ctx.profile.role}
+                  fullName={ctx.person.full_name}
+                  role={ctx.requestContext.systemRole}
                   avatarUrl={avatarUrl}
                   size="lg"
                 />
@@ -152,8 +152,8 @@ export default async function MePage({ searchParams }: Props) {
               <div className="rounded-[1.5rem] border border-border/70 bg-surface-muted/45 p-4">
                 <div className="flex flex-col items-center gap-3 text-center">
                   <UserAvatar
-                    fullName={ctx.profile.full_name}
-                    role={ctx.profile.role}
+                    fullName={ctx.person.full_name}
+                    role={ctx.requestContext.systemRole}
                     avatarUrl={avatarUrl}
                     size="lg"
                   />
@@ -196,7 +196,7 @@ export default async function MePage({ searchParams }: Props) {
           >
             <div className="meta-grid">
               <MetaItem label="Email actual" value={email || '(sin email)'} />
-              <MetaItem label="Codigo interno" value={String(ctx.profile.employee_code)} />
+              <MetaItem label="Codigo interno" value={String(ctx.person.employee_code)} />
               <MetaItem label="Sucursal" value={contextLabel} />
               <MetaItem label="Cambio de clave" value={passwordStatus} />
             </div>

@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
 
+import { serverEnv } from '@/shared/env.server';
+
 import {
   DashboardHeroPreviewPage,
   type DashboardHeroPreviewState,
@@ -18,10 +20,7 @@ export default async function DashboardHeroPreviewRoute({
 }: {
   params: Promise<{ state: string }>;
 }) {
-  if (
-    process.env.NODE_ENV === 'production' &&
-    process.env.ALLOW_UI_PREVIEW !== '1'
-  ) {
+  if (process.env.NODE_ENV === 'production' && !serverEnv.allowUiPreview) {
     notFound();
   }
 

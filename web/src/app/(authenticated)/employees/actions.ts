@@ -1,38 +1,21 @@
-﻿'use server';
+'use server';
 
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { type AppRole, getCurrentUserContext } from '@/modules/auth_users';
-import { createEmployee } from '@/modules/employees';
-import { createEmployeeMutationService } from '@/modules/employees/application/employeeMutationService';
-import {
-  canCreate,
-  getRoleSlotConflictCode,
-  isAdminOrOffice,
-} from '@/modules/employees/application/guards';
+import { getCurrentUserContext } from '@/modules/auth_users';
+import { canCreate, getRoleSlotConflictCode } from '@/modules/employees/application/guards';
+import { createEmployee, createEmployeeMutationService } from '@/modules/employment';
 import { getRestaurantStatus } from '@/modules/restaurants';
 import {
   employeesPathWithError,
   employeesPathWithSuccess,
 } from '@/shared/feedbackMessages';
 
-async function getEffectiveRestaurantId(
-  role: AppRole,
-  profileRestaurantId: string | null,
-) {
-  const store = await cookies();
-  const active = store.get('active_restaurant_id')?.value ?? null;
-
-  if (isAdminOrOffice(role)) return active ?? profileRestaurantId;
-  return profileRestaurantId;
-}
-
 export async function createEmployeeAction(formData: FormData) {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
 
-  if (!canCreate(ctx.profile.role)) redirect('/employees');
+  if (!canCreate(ctx.requestContext)) redirect('/employees');
 
   const email = String(formData.get('email') ?? '').trim();
   const fullName = String(formData.get('fullName') ?? '').trim();
@@ -40,13 +23,7 @@ export async function createEmployeeAction(formData: FormData) {
   const restaurantId = String(formData.get('restaurantId') ?? '').trim();
   const roleRaw = String(formData.get('role') ?? '');
   const zoneId = String(formData.get('zoneId') ?? '').trim() || null;
-  const isAreaLead = formData.get('isAreaLead') === '1';
 
-  // Anti-tamper: el restaurante del form debe coincidir con el restaurante "efectivo" del server
-  const effectiveRestaurantId = await getEffectiveRestaurantId(
-    ctx.profile.role,
-    ctx.profile.restaurant_id,
-  );
   const service = createEmployeeMutationService({
     createEmployee,
     getRestaurantStatus,
@@ -54,11 +31,10 @@ export async function createEmployeeAction(formData: FormData) {
     updateEmployee: async () => undefined,
   });
   const result = await service.createEmployeeFromDraft({
-    effectiveRestaurantId,
+    effectiveRestaurantId: ctx.requestContext.effectiveRestaurantId,
     input: {
       email,
       fullName,
-      isAreaLead,
       password,
       restaurantId,
       roleRaw,

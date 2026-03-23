@@ -1,11 +1,10 @@
-import type { AppRole } from '@/modules/auth_users';
+import type { SystemRole } from '@/modules/authz';
 
 import type { ScheduleLock } from '../domain/scheduleTypes';
 
 type LockRankActor = {
   id: string;
-  is_area_lead: boolean;
-  role: AppRole;
+  system_role: SystemRole;
   zone_id: string | null;
 };
 

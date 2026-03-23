@@ -24,7 +24,6 @@ test('createEmployeeFromDraft validates effective restaurant and role slots befo
     input: {
       email: 'paula@example.com',
       fullName: 'Paula',
-      isAreaLead: false,
       password: '12345678',
       restaurantId: 'restaurant-1',
       roleRaw: 'manager',
@@ -49,7 +48,6 @@ test('createEmployeeFromDraft rejects when restaurant context is missing or mism
     input: {
       email: 'paula@example.com',
       fullName: 'Paula',
-      isAreaLead: false,
       password: '12345678',
       restaurantId: 'restaurant-1',
       roleRaw: 'employee',
@@ -62,7 +60,6 @@ test('createEmployeeFromDraft rejects when restaurant context is missing or mism
     input: {
       email: 'paula@example.com',
       fullName: 'Paula',
-      isAreaLead: false,
       password: '12345678',
       restaurantId: 'restaurant-1',
       roleRaw: 'employee',
@@ -92,7 +89,6 @@ test('updateEmployeeFromDraft enforces manager scope restrictions before updatin
     input: {
       email: 'user@example.com',
       fullName: 'Paula',
-      isAreaLead: false,
       password: '',
       restaurantId: 'restaurant-2',
       roleRaw: 'employee',
@@ -106,7 +102,7 @@ test('updateEmployeeFromDraft enforces manager scope restrictions before updatin
   assert.equal(updated, false);
 });
 
-test('updateEmployeeFromDraft rejects area lead changes for non-employee roles', async () => {
+test('updateEmployeeFromDraft rejects area lead assignments without a zone', async () => {
   const service = createEmployeeMutationService({
     createEmployee: async () => 'user-1',
     getRestaurantStatus: async () => ({ id: 'restaurant-1', is_active: true }),
@@ -120,17 +116,16 @@ test('updateEmployeeFromDraft rejects area lead changes for non-employee roles',
     input: {
       email: 'paula@example.com',
       fullName: 'Paula',
-      isAreaLead: true,
       password: '',
       restaurantId: 'restaurant-1',
-      roleRaw: 'manager',
-      zoneId: 'zone-1',
+      roleRaw: 'area_lead',
+      zoneId: '',
     },
-    targetRole: 'manager',
+    targetRole: 'area_lead',
     userId: 'user-1',
   });
 
-  assert.deepEqual(result, { ok: false, errorCode: 'area_lead_only_employee' });
+  assert.deepEqual(result, { ok: false, errorCode: 'area_lead_requires_zone' });
 });
 
 test('updateEmployeeFromDraft normalizes payload and checks slot conflicts for employee updates', async () => {
@@ -151,13 +146,12 @@ test('updateEmployeeFromDraft normalizes payload and checks slot conflicts for e
     input: {
       email: 'paula@example.com',
       fullName: 'Paula',
-      isAreaLead: true,
       password: '',
       restaurantId: 'restaurant-1',
-      roleRaw: 'employee',
+      roleRaw: 'area_lead',
       zoneId: 'zone-1',
     },
-    targetRole: 'employee',
+    targetRole: 'area_lead',
     userId: 'user-1',
   });
 
@@ -166,9 +160,8 @@ test('updateEmployeeFromDraft normalizes payload and checks slot conflicts for e
     {
       email: 'paula@example.com',
       fullName: 'Paula',
-      isAreaLead: true,
       restaurantId: 'restaurant-1',
-      role: 'employee',
+      role: 'area_lead',
       userId: 'user-1',
       zoneId: 'zone-1',
     },

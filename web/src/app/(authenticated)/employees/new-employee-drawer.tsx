@@ -20,7 +20,7 @@ export function NewEmployeeDrawer({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<
-    'employee' | 'sub_manager' | 'manager'
+    'employee' | 'area_lead' | 'sub_manager' | 'manager'
   >('employee');
 
   const closeDrawer = () => {
@@ -104,17 +104,22 @@ export function NewEmployeeDrawer({
                   value={selectedRole}
                   onChange={(event) => {
                     setSelectedRole(
-                      event.target.value as 'employee' | 'sub_manager' | 'manager',
+                      event.target.value as
+                        | 'employee'
+                        | 'area_lead'
+                        | 'sub_manager'
+                        | 'manager',
                     );
                   }}
                 >
                   <option value="employee">Empleado</option>
+                  <option value="area_lead">Encargado de zona</option>
                   <option value="sub_manager">Subgerente</option>
                   {canAssignManager ? <option value="manager">Gerente</option> : null}
                 </Select>
               </label>
 
-              {selectedRole === 'employee' ? (
+              {selectedRole === 'employee' || selectedRole === 'area_lead' ? (
                 <>
                   <hr className="my-2 border-muted/20" />
 
@@ -133,21 +138,10 @@ export function NewEmployeeDrawer({
                     </p>
                   </label>
 
-                  <div className="flex items-center gap-2 py-2">
-                    <label className="inline-flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        name="isAreaLead"
-                        value="1"
-                        className="checkbox"
-                      />
-                      <span>Es encargado de zona</span>
-                    </label>
-                  </div>
-
                   <p className="text-xs muted mb-4">
-                    El encargado de zona debe tener una zona predeterminada asignada para
-                    aparecer correctamente en los horarios.
+                    {selectedRole === 'area_lead'
+                      ? 'Encargado de zona requiere una zona predeterminada asignada.'
+                      : 'Empleado sin zona quedara como no asignado en horarios.'}
                   </p>
                 </>
               ) : (

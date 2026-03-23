@@ -17,9 +17,8 @@ function makeEmployee(overrides: Partial<EmployeeListItem> = {}): EmployeeListIt
     employee_code: 1,
     full_name: 'Paula',
     id: 'emp-1',
-    is_area_lead: false,
     restaurant_id: 'restaurant-1',
-    role: 'employee',
+    system_role: 'employee',
     zone_id: 'zone-1',
     ...overrides,
   };

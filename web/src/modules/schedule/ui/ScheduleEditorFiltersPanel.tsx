@@ -2,7 +2,7 @@
 
 import { Search, ShieldAlert } from 'lucide-react';
 
-import type { AppRole } from '@/modules/auth_users';
+import type { SystemRole } from '@/modules/authz';
 import type { EmployeeListItem } from '@/modules/employees';
 import { roleLabel } from '@/shared/roleLabel';
 import { ChipButton, Select } from '@/shared/ui';
@@ -24,11 +24,11 @@ type ScheduleEditorFiltersPanelProps = {
   onMaxHoursFilterChange: (value: string) => void;
   onMinHoursFilterChange: (value: string) => void;
   onProblemFilterChange: (value: ScheduleProblemFilter) => void;
-  onRoleFilterChange: (value: 'all' | AppRole) => void;
+  onRoleFilterChange: (value: 'all' | SystemRole) => void;
   onSearchValueChange: (value: string) => void;
   onZoneFilterChange: (value: ScheduleZoneFilter) => void;
   problemFilter: ScheduleProblemFilter;
-  roleFilter: 'all' | AppRole;
+  roleFilter: 'all' | SystemRole;
   searchValue: string;
   totalEmployees: number;
   unassignedCount: number;
@@ -138,16 +138,15 @@ export function ScheduleEditorFiltersPanel({
             <span className="text-sm font-semibold">Rol</span>
             <Select
               onChange={(event) =>
-                onRoleFilterChange(event.target.value as 'all' | AppRole)
+                onRoleFilterChange(event.target.value as 'all' | SystemRole)
               }
               value={roleFilter}
             >
               <option value="all">Todos</option>
               <option value="employee">{roleLabel('employee')}</option>
+              <option value="area_lead">{roleLabel('area_lead')}</option>
               <option value="manager">{roleLabel('manager')}</option>
               <option value="sub_manager">{roleLabel('sub_manager')}</option>
-              <option value="office">{roleLabel('office')}</option>
-              <option value="admin">{roleLabel('admin')}</option>
             </Select>
           </label>
           <label className="field">

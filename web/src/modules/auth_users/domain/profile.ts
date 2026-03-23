@@ -1,14 +1,1 @@
-import type { AppRole } from './appRole';
-
-export type Profile = {
-  avatar_path: string | null;
-  id: string;
-  employee_code: number;
-  full_name: string;
-  role: AppRole;
-  is_active: boolean;
-  restaurant_id: string | null;
-  must_change_password: boolean;
-  zone_id: string | null;
-  is_area_lead: boolean;
-};
+export type { PersonProfile as Profile } from '@/modules/people/domain/personProfile';

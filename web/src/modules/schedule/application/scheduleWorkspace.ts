@@ -4,8 +4,8 @@ import {
   canManageShiftTemplates,
   canPublishSchedules,
   canReviewSchedules,
+  getScheduleRequestContext,
   hasRestaurantWideScheduleAccess,
-  isAreaLead,
 } from '@/shared/schedulePolicy';
 
 import type {
@@ -59,18 +59,19 @@ export {
 export function buildSchedulePermissions(
   actor: Parameters<typeof canAccessScheduleEditor>[0],
 ): ScheduleActorPermissions {
-  const role = typeof actor === 'string' ? actor : actor.role;
+  const requestContext = getScheduleRequestContext(actor);
+  const areaLead = requestContext.systemRole === 'area_lead';
 
   return {
     can_manage: canAccessScheduleEditor(actor),
     can_manage_templates: canManageShiftTemplates(actor),
     can_publish: canPublishSchedules(actor),
     can_review: canReviewSchedules(actor),
-    is_area_lead: isAreaLead(actor),
-    is_employee_view: role === 'employee' && !isAreaLead(actor),
+    is_employee_view: requestContext.systemRole === 'employee',
+    system_role: requestContext.systemRole,
     view_scope: hasRestaurantWideScheduleAccess(actor)
       ? 'restaurant'
-      : isAreaLead(actor)
+      : areaLead
         ? 'zone'
         : 'self',
   };
@@ -79,7 +80,7 @@ export function buildSchedulePermissions(
 export function buildWeekSummary(params: {
   config: ScheduleConfig;
   displayStatus?: ScheduleHomeStatus;
-  employees: Array<Pick<EmployeeListItem, 'id' | 'role'>>;
+  employees: Array<Pick<EmployeeListItem, 'id' | 'system_role'>>;
   schedule: Schedule | null;
   scheduleEntries: ScheduleEntry[];
   weekStart: string;

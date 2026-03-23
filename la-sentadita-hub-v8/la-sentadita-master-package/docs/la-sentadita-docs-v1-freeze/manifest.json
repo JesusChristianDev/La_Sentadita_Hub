@@ -1,0 +1,29 @@
+{
+  "package_name": "la-sentadita-docs-v1-freeze",
+  "version": "1.0.0",
+  "status": "core_architecture_freeze_v1",
+  "recommended_use": {
+    "human_source_of_truth": [
+      "01_SYSTEM_OVERVIEW.md",
+      "02_DOMAIN_MODEL.md",
+      "03_GLOSSARY.md",
+      "04_ROLES_SCOPES_AND_ACL.md",
+      "05_PEOPLE_EMPLOYMENT.md",
+      "06_SCHEDULING.md",
+      "07_TASKS.md",
+      "08_PROCEDURES_AND_SHIFT_SWAP.md",
+      "09_INCIDENTS.md",
+      "10_DOCUMENTS_AND_SECURITY.md",
+      "11_NOTIFICATIONS.md",
+      "12_AUDIT_AND_INVARIANTS.md",
+      "13_DATA_MODEL_BLUEPRINT.md"
+    ],
+    "ai_context_files": [
+      "02_DOMAIN_MODEL.md",
+      "04_ROLES_SCOPES_AND_ACL.md",
+      "12_AUDIT_AND_INVARIANTS.md",
+      "13_DATA_MODEL_BLUEPRINT.md",
+      "ai_context.yaml"
+    ]
+  }
+}

@@ -1,1 +1,1 @@
-export type AppRole = 'employee' | 'manager' | 'sub_manager' | 'office' | 'admin';
+export type { AppRole } from '@/modules/people/domain/personProfile';

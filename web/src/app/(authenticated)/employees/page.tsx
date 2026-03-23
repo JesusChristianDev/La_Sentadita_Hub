@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
-import { getCurrentUserContext, getEffectiveRestaurantId } from '@/modules/auth_users';
+import { getCurrentUserContext } from '@/modules/auth_users';
+import { can } from '@/modules/authz';
 import { listEmployees } from '@/modules/employees';
 import {
   type EmployeeErrorCode,
@@ -9,7 +10,6 @@ import {
   getEmployeeErrorMessage,
   getEmployeeSuccessMessage,
 } from '@/shared/feedbackMessages';
-import { canPickRestaurantHeader } from '@/shared/headerPolicy';
 import { roleLabel } from '@/shared/roleLabel';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 import { ButtonLink, ChipLink, Notice, RestaurantContextEmptyState } from '@/shared/ui';
@@ -28,10 +28,6 @@ type Props = {
   searchParams: Promise<SearchParams>;
 };
 
-function canCreate(role: string): boolean {
-  return role === 'admin' || role === 'office';
-}
-
 export default async function EmployeesPage({ searchParams }: Props) {
   const sp = await searchParams;
   const status = sp.status ?? 'active';
@@ -39,9 +35,11 @@ export default async function EmployeesPage({ searchParams }: Props) {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
 
-  if (ctx.profile.role === 'employee') redirect('/app');
+  const canPickRestaurant = can(ctx.requestContext, 'restaurant_context.select');
+  const canManage = can(ctx.requestContext, 'employees.create');
+  if (!can(ctx.requestContext, 'employees.view')) redirect('/app');
 
-  const restaurantId = await getEffectiveRestaurantId(ctx.profile);
+  const restaurantId = ctx.requestContext.effectiveRestaurantId;
   const admin = createSupabaseAdminClient();
 
   if (!restaurantId) {
@@ -55,7 +53,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
         </section>
 
         <RestaurantContextEmptyState
-          canPickRestaurant={canPickRestaurantHeader(ctx.profile.role)}
+          canPickRestaurant={canPickRestaurant}
           moduleLabel="Equipo"
         />
       </main>
@@ -65,7 +63,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
   const employees = await listEmployees(restaurantId, status);
   const avatarPaths = [
     ...new Set(
-      employees.map((e) => e.avatar_path).filter((path): path is string => Boolean(path)),
+      employees.map((employee) => employee.avatar_path).filter((path): path is string => Boolean(path)),
     ),
   ];
   const avatarUrlByPath = new Map<string, string>();
@@ -85,7 +83,6 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
   const errorMsg = getEmployeeErrorMessage(sp.e);
   const successMsg = getEmployeeSuccessMessage(sp.ok);
-  const canManage = canCreate(ctx.profile.role);
 
   return (
     <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
@@ -126,7 +123,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
               <NewEmployeeDrawer
                 restaurantId={restaurantId}
                 restaurantZones={restaurantZones || []}
-                canAssignManager={canPickRestaurantHeader(ctx.profile.role)}
+                canAssignManager={canPickRestaurant}
                 createEmployeeAction={createEmployeeAction}
               />
             ) : null}
@@ -144,26 +141,30 @@ export default async function EmployeesPage({ searchParams }: Props) {
             </thead>
             <tbody>
               {employees.length ? (
-                employees.map((e) => (
-                  <tr key={e.id}>
+                employees.map((employee) => (
+                  <tr key={employee.id}>
                     <td>
                       <div className="inline-flex items-center gap-2">
                         <UserAvatar
-                          fullName={e.full_name}
-                          role={e.role}
+                          fullName={employee.full_name}
+                          role={employee.system_role}
                           avatarUrl={
-                            e.avatar_path
-                              ? (avatarUrlByPath.get(e.avatar_path) ?? null)
+                            employee.avatar_path
+                              ? (avatarUrlByPath.get(employee.avatar_path) ?? null)
                               : null
                           }
                           size="sm"
                         />
-                        <span>{e.full_name || '(sin nombre)'}</span>
+                        <span>{employee.full_name || '(sin nombre)'}</span>
                       </div>
                     </td>
-                    <td>{roleLabel(e.role)}</td>
+                    <td>{roleLabel(employee.system_role)}</td>
                     <td>
-                      <ButtonLink href={`/employees/${e.id}`} size="small" variant="secondary">
+                      <ButtonLink
+                        href={`/employees/${employee.id}`}
+                        size="small"
+                        variant="secondary"
+                      >
                         Editar
                       </ButtonLink>
                     </td>
@@ -182,25 +183,31 @@ export default async function EmployeesPage({ searchParams }: Props) {
 
         <div className="mobile-employee-list mt-3">
           {employees.length ? (
-            employees.map((e) => (
-              <article key={e.id} className="mobile-employee-card">
+            employees.map((employee) => (
+              <article key={employee.id} className="mobile-employee-card">
                 <div className="mb-2 inline-flex items-center gap-2">
                   <UserAvatar
-                    fullName={e.full_name}
-                    role={e.role}
+                    fullName={employee.full_name}
+                    role={employee.system_role}
                     avatarUrl={
-                      e.avatar_path ? (avatarUrlByPath.get(e.avatar_path) ?? null) : null
+                      employee.avatar_path
+                        ? (avatarUrlByPath.get(employee.avatar_path) ?? null)
+                        : null
                     }
                     size="md"
                   />
-                  <strong>{e.full_name || '(sin nombre)'}</strong>
+                  <strong>{employee.full_name || '(sin nombre)'}</strong>
                 </div>
 
                 <p className="text-xs muted">rol</p>
-                <p>{roleLabel(e.role)}</p>
+                <p>{roleLabel(employee.system_role)}</p>
 
                 <div className="form-actions mt-3">
-                  <ButtonLink className="w-full" href={`/employees/${e.id}`} variant="secondary">
+                  <ButtonLink
+                    className="w-full"
+                    href={`/employees/${employee.id}`}
+                    variant="secondary"
+                  >
                     Ver detalle
                   </ButtonLink>
                 </div>
