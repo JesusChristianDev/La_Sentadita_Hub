@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUserContext } from '@/modules/auth_users';
 import { can, deriveSystemRole } from '@/modules/authz';
 import { listRestaurants } from '@/modules/restaurants';
-import { loadLegacyPersonProfileById } from '@/shared/db/persons';
+import { loadPersonProfileById } from '@/shared/db/persons';
 import {
   type EmployeeErrorCode,
   employeesPathWithError,
@@ -39,7 +39,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
   if (!can(ctx.requestContext, 'employees.view')) redirect('/app');
 
   const admin = createSupabaseAdminClient();
-  const profile = await loadLegacyPersonProfileById(id).catch(() => null);
+  const profile = await loadPersonProfileById(id).catch(() => null);
 
   if (!profile) {
     return (
@@ -59,14 +59,13 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
   const editableRole =
     targetSystemRole === 'employee' ||
     targetSystemRole === 'area_lead' ||
-    targetSystemRole === 'manager' ||
-    targetSystemRole === 'sub_manager'
+    targetSystemRole === 'manager'
       ? targetSystemRole
       : 'employee';
   const isGlobalProfile =
     targetSystemRole === 'admin' ||
     targetSystemRole === 'office' ||
-    targetSystemRole === 'chain_owner';
+    targetSystemRole === 'owner';
 
   if (isGlobalProfile) {
     return (
@@ -177,7 +176,6 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
               <Select defaultValue={editableRole} name="role">
                 <option value="employee">Empleado</option>
                 <option value="area_lead">Encargado de zona</option>
-                <option value="sub_manager">Subgerente</option>
                 <option value="manager">Gerente</option>
               </Select>
             </label>

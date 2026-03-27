@@ -1,7 +1,5 @@
-import type { AppRole } from '@/modules/people';
-
 import type { ScopeType, SystemRole } from '../domain/systemRoles';
-import type { LegacyActorLike, RequestContext } from './requestContext';
+import type { ActorLike, RequestContext } from './requestContext';
 
 export type AuthzAction =
   | 'restaurant_context.select'
@@ -23,7 +21,6 @@ export type AuthzAction =
 export type AuthzResource = {
   restaurantId?: string | null;
   targetRestaurantId?: string | null;
-  targetRole?: AppRole;
   targetSystemRole?: SystemRole;
   targetUserId?: string | null;
   targetZoneId?: string | null;
@@ -31,35 +28,39 @@ export type AuthzResource = {
 };
 
 function isGlobalRole(role: RequestContext['systemRole']): boolean {
-  return role === 'admin' || role === 'office' || role === 'chain_owner';
+  return role === 'admin' || role === 'owner' || role === 'office';
 }
 
 function isRestaurantWideRole(role: RequestContext['systemRole']): boolean {
-  return role === 'admin' || role === 'manager' || role === 'sub_manager';
+  return isGlobalRole(role) || role === 'manager';
 }
 
 function isAreaLead(role: RequestContext['systemRole']): boolean {
   return role === 'area_lead';
 }
 
-export function getActorScopeType(actor: LegacyActorLike): ScopeType {
+export function getActorScopeType(actor: ActorLike): ScopeType {
   if (typeof actor === 'string') {
-    return actor === 'admin' || actor === 'office' || actor === 'chain_owner'
-      ? 'platform'
-      : actor === 'manager' || actor === 'sub_manager'
+    return actor === 'admin' || actor === 'owner' || actor === 'office'
+      ? 'organization'
+      : actor === 'manager' || actor === 'employee'
         ? 'restaurant'
-        : 'self';
+        : 'zone';
   }
 
   if ('systemRole' in actor) return actor.scopeType;
 
-  const profile = 'profile' in actor ? actor.profile : actor;
-  const role = profile.role;
+  if ('requestContext' in actor) return actor.requestContext.scopeType;
 
-  if (role === 'admin' || role === 'office' || role === 'chain_owner') return 'platform';
-  if (role === 'manager' || role === 'sub_manager') return 'restaurant';
-  if (role === 'area_lead') return 'zone';
-  return 'self';
+  if (actor.systemRole === 'admin' || actor.systemRole === 'owner' || actor.systemRole === 'office') {
+    return 'organization';
+  }
+
+  if (actor.systemRole === 'manager' || actor.systemRole === 'employee') {
+    return 'restaurant';
+  }
+
+  return 'zone';
 }
 
 export function can(
@@ -72,37 +73,30 @@ export function can(
       return isGlobalRole(ctx.systemRole);
 
     case 'employees.view':
-      return (
-        isGlobalRole(ctx.systemRole) ||
-        ctx.systemRole === 'manager' ||
-        ctx.systemRole === 'sub_manager'
-      );
+      return isRestaurantWideRole(ctx.systemRole);
 
     case 'employees.create':
       return isGlobalRole(ctx.systemRole);
 
     case 'employees.manage':
-      return (
-        isGlobalRole(ctx.systemRole) ||
-        ctx.systemRole === 'manager' ||
-        ctx.systemRole === 'sub_manager'
-      );
+      return isRestaurantWideRole(ctx.systemRole);
 
-    case 'employees.manage_target':
-      const targetRole = resource?.targetSystemRole ?? resource?.targetRole;
+    case 'employees.manage_target': {
+      const targetRole = resource?.targetSystemRole;
       if (isGlobalRole(ctx.systemRole)) return true;
       if (
-        (ctx.systemRole === 'manager' || ctx.systemRole === 'sub_manager') &&
+        ctx.systemRole === 'manager' &&
         resource?.targetRestaurantId &&
         resource.targetRestaurantId === ctx.effectiveRestaurantId &&
         targetRole !== 'manager' &&
         targetRole !== 'admin' &&
         targetRole !== 'office' &&
-        targetRole !== 'chain_owner'
+        targetRole !== 'owner'
       ) {
         return true;
       }
       return false;
+    }
 
     case 'schedule.view':
     case 'tasks.view':
@@ -111,41 +105,15 @@ export function can(
 
     case 'tasks.manage':
     case 'procedures.manage':
-      return (
-        isGlobalRole(ctx.systemRole) ||
-        ctx.systemRole === 'manager' ||
-        ctx.systemRole === 'sub_manager' ||
-        isAreaLead(ctx.systemRole)
-      );
+      return isRestaurantWideRole(ctx.systemRole) || isAreaLead(ctx.systemRole);
 
     case 'schedule.edit_draft':
-      return (
-        isGlobalRole(ctx.systemRole) ||
-        ctx.systemRole === 'manager' ||
-        ctx.systemRole === 'sub_manager' ||
-        isAreaLead(ctx.systemRole)
-      );
+      return isRestaurantWideRole(ctx.systemRole) || isAreaLead(ctx.systemRole);
 
     case 'schedule.manage_templates':
-      return (
-        isGlobalRole(ctx.systemRole) ||
-        ctx.systemRole === 'manager' ||
-        ctx.systemRole === 'sub_manager'
-      );
-
     case 'schedule.publish':
-      return (
-        isGlobalRole(ctx.systemRole) ||
-        ctx.systemRole === 'manager' ||
-        ctx.systemRole === 'sub_manager'
-      );
-
     case 'schedule.review':
-      return (
-        isGlobalRole(ctx.systemRole) ||
-        ctx.systemRole === 'manager' ||
-        ctx.systemRole === 'sub_manager'
-      );
+      return isRestaurantWideRole(ctx.systemRole);
 
     case 'schedule.edit_employee':
       if (isRestaurantWideRole(ctx.systemRole)) return true;
@@ -158,27 +126,27 @@ export function can(
 export function getAllowedScopeForAction(action: AuthzAction): ScopeType[] {
   switch (action) {
     case 'restaurant_context.select':
-      return ['platform'];
+      return ['organization'];
     case 'employees.view':
     case 'employees.create':
     case 'employees.manage':
     case 'employees.manage_target':
-      return ['platform', 'restaurant'];
+      return ['organization', 'restaurant'];
     case 'schedule.view':
     case 'tasks.view':
     case 'procedures.view':
-      return ['platform', 'restaurant', 'zone', 'self'];
+      return ['organization', 'company', 'restaurant', 'zone'];
     case 'schedule.edit_draft':
     case 'tasks.manage':
     case 'procedures.manage':
-      return ['platform', 'restaurant', 'zone'];
+      return ['organization', 'restaurant', 'zone'];
     case 'schedule.manage_templates':
     case 'schedule.publish':
     case 'schedule.review':
-      return ['platform', 'restaurant'];
+      return ['organization', 'restaurant'];
     case 'schedule.edit_employee':
-      return ['platform', 'restaurant', 'zone'];
+      return ['organization', 'restaurant', 'zone'];
     default:
-      return ['platform', 'restaurant', 'zone', 'self'];
+      return ['organization', 'company', 'restaurant', 'zone'];
   }
 }

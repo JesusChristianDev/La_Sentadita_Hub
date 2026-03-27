@@ -1,18 +1,19 @@
 import { redirect } from 'next/navigation';
 
 import {
-  buildRequestContextFromLegacyProfile,
+  createRequestContext,
+  deriveSystemRole,
   type RequestContext,
 } from '@/modules/authz';
-import type { Profile } from '@/modules/people';
-import { loadLegacyPersonProfileByIdWithClient } from '@/shared/db/persons';
+import type { PersonProfile } from '@/modules/people';
+import { loadPersonProfileByIdWithClient } from '@/shared/db/persons';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 import { getEffectiveRestaurantId } from './getEffectiveRestaurantId';
 
 export type CurrentSession = {
-  person: Profile;
-  profile: Profile;
+  person: PersonProfile;
+  profile: PersonProfile;
   requestContext: RequestContext;
   userId: string;
 };
@@ -20,7 +21,7 @@ export type CurrentSession = {
 export type UserContext = CurrentSession;
 
 function buildCurrentSession(params: {
-  person: Profile;
+  person: PersonProfile;
   requestContext: RequestContext;
   userId: string;
 }): CurrentSession {
@@ -38,7 +39,7 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
 
   if (!data.user) return null;
 
-  const person = await loadLegacyPersonProfileByIdWithClient(supabase, data.user.id);
+  const person = await loadPersonProfileByIdWithClient(supabase, data.user.id);
 
   if (person.is_archived || person.is_active === false) {
     redirect('/api/auth/signout?next=/login?e=disabled');
@@ -48,7 +49,15 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
 
   return buildCurrentSession({
     person,
-    requestContext: buildRequestContextFromLegacyProfile(person, effectiveRestaurantId),
+    requestContext: createRequestContext({
+      chainId: person.chain_id ?? null,
+      effectiveRestaurantId,
+      personId: person.id,
+      restaurantId: person.restaurant_id ?? null,
+      systemRole: deriveSystemRole(person),
+      userId: data.user.id,
+      zoneId: person.zone_id ?? null,
+    }),
     userId: data.user.id,
   });
 }

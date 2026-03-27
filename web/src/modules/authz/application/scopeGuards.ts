@@ -1,8 +1,9 @@
+import type { ScopeType } from '../domain/systemRoles';
 import type { RequestContext } from './requestContext';
 
 function hasActiveScope(
   ctx: RequestContext,
-  scopeType: 'platform' | 'restaurant' | 'zone' | 'self',
+  scopeType: ScopeType,
   scopeId: string | null,
 ): boolean {
   return ctx.activeScopes.some(
@@ -11,11 +12,11 @@ function hasActiveScope(
 }
 
 export function isGlobalSystemRole(ctx: RequestContext): boolean {
-  return ctx.systemRole === 'admin' || ctx.systemRole === 'office';
+  return ctx.systemRole === 'admin' || ctx.systemRole === 'owner' || ctx.systemRole === 'office';
 }
 
 export function isRestaurantManagementRole(ctx: RequestContext): boolean {
-  return ctx.systemRole === 'manager' || ctx.systemRole === 'sub_manager';
+  return ctx.systemRole === 'manager';
 }
 
 export function isManagementSystemRole(ctx: RequestContext): boolean {
@@ -27,7 +28,7 @@ export function isAreaLeadSystemRole(ctx: RequestContext): boolean {
 }
 
 export function isSelfScope(ctx: RequestContext, personId: string): boolean {
-  return hasActiveScope(ctx, 'self', personId) || ctx.personId === personId;
+  return ctx.personId === personId;
 }
 
 export function canAccessRestaurant(

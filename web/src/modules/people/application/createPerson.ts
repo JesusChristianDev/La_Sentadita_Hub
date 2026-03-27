@@ -1,9 +1,9 @@
-import { createLegacyPerson } from '@/shared/db/persons';
+import { createPerson } from '@/shared/db/persons';
 
 import type { CreatePersonInput } from '../domain/personTypes';
 
 export async function createPerson(input: CreatePersonInput): Promise<string> {
-  return createLegacyPerson({
+  return createPerson({
     email: input.email,
     emailConfirm: input.emailConfirm,
     fullName: input.fullName,

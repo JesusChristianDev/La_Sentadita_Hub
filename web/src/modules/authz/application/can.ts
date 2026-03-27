@@ -1,85 +1,53 @@
-import type { AppRole, Profile } from '@/modules/people';
-
 import type { AuthzAction, AuthzResource } from './aclRules';
 import { can as canAgainstContext } from './aclRules';
 import {
-  buildRequestContextFromLegacyProfile,
-  buildRequestContextFromLegacyUserContext,
+  type ActorLike,
+  createRequestContext,
+  deriveSystemRole,
   isRequestContext,
-  type LegacyActorLike,
   type RequestContext,
 } from './requestContext';
 
-function isProfileLike(actor: LegacyActorLike): actor is Pick<
-  Profile,
-  'id' | 'restaurant_id' | 'role' | 'zone_id'
-> {
-  return typeof actor !== 'string' && !('systemRole' in actor) && 'role' in actor;
-}
-
-function normalizeActor(actor: LegacyActorLike): RequestContext {
+function normalizeActor(actor: ActorLike): RequestContext {
   if (isRequestContext(actor)) return actor;
 
   if (typeof actor === 'string') {
-    return buildRequestContextFromLegacyProfile({
-      avatar_path: null,
-      employee_code: 0,
-      full_name: '',
-      id: '',
-      is_active: true,
-      must_change_password: false,
-      restaurant_id: null,
-      role: actor,
-      zone_id: null,
+    return createRequestContext({
+      personId: '',
+      systemRole: deriveSystemRole(actor),
     });
   }
 
-  if ('profile' in actor) {
-    return buildRequestContextFromLegacyUserContext(actor);
+  if ('requestContext' in actor) {
+    return actor.requestContext;
   }
 
-  if (isProfileLike(actor)) {
-    return buildRequestContextFromLegacyProfile({
-      avatar_path: null,
-      employee_code: 0,
-      full_name: '',
-      id: actor.id,
-      is_active: true,
-      must_change_password: false,
-      restaurant_id: actor.restaurant_id ?? null,
-      role: actor.role,
-      zone_id: actor.zone_id ?? null,
-    });
-  }
-
-  const fallbackRole = (actor as { role: AppRole }).role;
-  return buildRequestContextFromLegacyProfile({
-    avatar_path: null,
-    employee_code: 0,
-    full_name: '',
-    id: '',
-    is_active: true,
-    must_change_password: false,
-    restaurant_id: null,
-    role: fallbackRole,
-    zone_id: null,
+  return createRequestContext({
+    accessStatus: actor.accessStatus,
+    chainId: actor.chainId,
+    effectiveRestaurantId: actor.effectiveRestaurantId,
+    personId: actor.personId,
+    restaurantId: actor.restaurantId,
+    systemRole: deriveSystemRole(actor.systemRole),
+    userId: actor.userId,
+    zoneId: actor.zoneId,
   });
 }
 
 export function can(
-  actor: LegacyActorLike,
+  actor: ActorLike,
   action: AuthzAction,
   resource?: AuthzResource,
 ): boolean {
   return canAgainstContext(normalizeActor(actor), action, resource);
 }
 
-export function isAreaLead(actor: LegacyActorLike): boolean {
+export function isAreaLead(actor: ActorLike): boolean {
   return normalizeActor(actor).systemRole === 'area_lead';
 }
 
 export function assertCan(
-  actor: LegacyActorLike,
+  actor: ActorLike,
   action: AuthzAction,
   resource?: AuthzResource,
 ): void {
@@ -87,6 +55,6 @@ export function assertCan(
   throw new Error(`FORBIDDEN: No tienes permisos para ${action}.`);
 }
 
-export function toRequestContext(actor: LegacyActorLike): RequestContext {
+export function toRequestContext(actor: ActorLike): RequestContext {
   return normalizeActor(actor);
 }

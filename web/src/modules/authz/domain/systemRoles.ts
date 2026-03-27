@@ -1,20 +1,18 @@
 export type SystemRole =
   | 'admin'
+  | 'owner'
   | 'office'
-  | 'chain_owner'
   | 'manager'
-  | 'sub_manager'
   | 'area_lead'
   | 'employee';
 
-export type ScopeType = 'platform' | 'restaurant' | 'zone' | 'self';
+export type ScopeType = 'organization' | 'company' | 'restaurant' | 'zone';
 
 export const SYSTEM_ROLES: SystemRole[] = [
   'admin',
+  'owner',
   'office',
-  'chain_owner',
   'manager',
-  'sub_manager',
   'area_lead',
   'employee',
 ];

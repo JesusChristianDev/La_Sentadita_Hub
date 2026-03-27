@@ -1,5 +1,5 @@
 import type {
-  LegacyActorLike,
+  ActorLike,
   RequestContext,
   SystemRole,
 } from '@/modules/authz';
@@ -9,12 +9,12 @@ import {
   toRequestContext,
 } from '@/modules/authz';
 import type { EmployeeListItem } from '@/modules/employees';
-import type { Profile } from '@/modules/people';
+import type { PersonProfile } from '@/modules/people';
 
 type ScheduleActor =
   | SystemRole
   | RequestContext
-  | (Pick<Profile, 'id' | 'role' | 'zone_id'> & {
+  | (Pick<PersonProfile, 'id' | 'role' | 'zone_id'> & {
       restaurant_id?: string | null;
     })
   | (Pick<EmployeeListItem, 'id' | 'system_role' | 'zone_id'> & {
@@ -28,9 +28,9 @@ type ScheduleActor =
       restaurant_id?: string | null;
     });
 
-function normalizeActor(actor: ScheduleActor): LegacyActorLike {
+function normalizeActor(actor: ScheduleActor): ActorLike {
   if (typeof actor === 'string' || isRequestContext(actor)) {
-    return actor as LegacyActorLike;
+    return actor as ActorLike;
   }
 
   return {

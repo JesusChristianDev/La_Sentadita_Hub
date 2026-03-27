@@ -1,4 +1,7 @@
-export { createEmployee,createEmploymentRelationship } from './application/createEmploymentRelationship';
+export {
+  createEmployee,
+  createEmploymentRelationship,
+} from './application/createEmploymentRelationship';
 export type {
   CreateEmployeeDraftInput,
   CreateEmployeeValidatedInput,
@@ -20,6 +23,10 @@ export { setEmployeeActive, setEmploymentActive } from './application/setEmploym
 export { terminateEmployment } from './application/terminateEmployment';
 export type { UpdateEmploymentInput } from './application/updateEmployment';
 export { updateEmployee, updateEmployment } from './application/updateEmployment';
+export type {
+  CanonicalEmploymentRelationship,
+  CanonicalRoleScopeAssignment,
+} from './domain/employmentCanonical';
 export type {
   EditableEmployeeRole,
   EditableEmploymentSystemRole,

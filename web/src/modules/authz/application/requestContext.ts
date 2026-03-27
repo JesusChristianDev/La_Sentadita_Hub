@@ -1,8 +1,9 @@
-import type { AppRole, Profile } from '@/modules/people';
+import type { AccessStatus } from '@/modules/people';
 
 import type { ResponsibilityLevel } from '../domain/responsibilityLevel';
 import { deriveResponsibilityLevel } from '../domain/responsibilityLevel';
 import type { ScopeType, SystemRole } from '../domain/systemRoles';
+import { isSystemRole } from '../domain/systemRoles';
 
 export type ActiveScope = {
   scopeId: string | null;
@@ -10,13 +11,12 @@ export type ActiveScope = {
 };
 
 export type RequestContext = {
+  accessStatus: AccessStatus;
   activeScopes: ActiveScope[];
-  chainId: string | null;          // v6 — cadena a la que pertenece el actor
+  chainId: string | null;
   effectiveRestaurantId: string | null;
-  legacyRole: AppRole;
   now: Date;
   personId: string;
-  profile: Profile;
   responsibilityLevel: ResponsibilityLevel;
   restaurantId: string | null;
   scopeType: ScopeType;
@@ -26,98 +26,128 @@ export type RequestContext = {
   zoneId: string | null;
 };
 
-export type LegacyUserContextLike = {
-  profile: Profile;
+export type RequestContextSeed = {
+  accessStatus?: AccessStatus;
+  chainId?: string | null;
+  effectiveRestaurantId?: string | null;
+  personId: string;
+  restaurantId?: string | null;
+  systemRole: SystemRole;
+  userId?: string;
+  zoneId?: string | null;
+};
+
+export type UserContextLike = {
+  requestContext: RequestContext;
   userId: string;
 };
 
-export type LegacyActorLike =
-  | AppRole
-  | LegacyUserContextLike
-  | RequestContext
-  | Pick<Profile, 'id' | 'restaurant_id' | 'role' | 'zone_id'>;
+export type ActorLike = SystemRole | RequestContext | RequestContextSeed | UserContextLike;
 
-export function deriveSystemRole(profile: Profile): SystemRole {
-  return profile.system_role ?? (profile.role as SystemRole);
+export function deriveSystemRole(
+  value: SystemRole | { role?: string | null; system_role?: string | null },
+): SystemRole {
+  if (typeof value === 'string') return value;
+
+  const candidate = value.system_role ?? value.role;
+  if (candidate === 'chain_owner') return 'owner';
+  if (candidate === 'sub_manager') return 'manager';
+  if (isSystemRole(candidate)) return candidate;
+
+  return 'employee';
 }
 
-export function deriveScopeType(profile: Profile, systemRole: SystemRole): ScopeType {
-  if (systemRole === 'admin' || systemRole === 'office') return 'platform';
-  if (systemRole === 'manager' || systemRole === 'sub_manager') return 'restaurant';
-  if (systemRole === 'area_lead') return 'zone';
-  return 'self';
+export function deriveScopeType(systemRole: SystemRole): ScopeType {
+  if (systemRole === 'admin' || systemRole === 'owner' || systemRole === 'office') {
+    return 'organization';
+  }
+
+  if (systemRole === 'manager' || systemRole === 'employee') {
+    return 'restaurant';
+  }
+
+  return 'zone';
 }
 
-export function deriveActiveScopes(
-  profile: Profile,
-  systemRole: SystemRole,
-  effectiveRestaurantId: string | null,
-): ActiveScope[] {
-  if (systemRole === 'admin' || systemRole === 'office') {
+export function deriveActiveScopes(seed: {
+  effectiveRestaurantId: string | null;
+  personId: string;
+  restaurantId: string | null;
+  systemRole: SystemRole;
+  zoneId: string | null;
+}): ActiveScope[] {
+  if (seed.systemRole === 'admin' || seed.systemRole === 'owner' || seed.systemRole === 'office') {
     return [
-      { scopeId: null, scopeType: 'platform' },
-      ...(effectiveRestaurantId
-        ? [{ scopeId: effectiveRestaurantId, scopeType: 'restaurant' as const }]
+      { scopeId: null, scopeType: 'organization' },
+      ...(seed.effectiveRestaurantId
+        ? [{ scopeId: seed.effectiveRestaurantId, scopeType: 'restaurant' as const }]
         : []),
     ];
   }
 
-  if (systemRole === 'manager' || systemRole === 'sub_manager') {
+  if (seed.systemRole === 'manager') {
+    if (!seed.restaurantId && !seed.effectiveRestaurantId) {
+      throw new Error('INVALID_AUTHZ_CONTEXT: manager requires restaurant scope.');
+    }
+
     return [
       {
-        scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null,
+        scopeId: seed.effectiveRestaurantId ?? seed.restaurantId,
         scopeType: 'restaurant',
       },
     ];
   }
 
-  if (systemRole === 'area_lead') {
+  if (seed.systemRole === 'area_lead') {
+    if (!seed.zoneId) {
+      throw new Error('INVALID_AUTHZ_CONTEXT: area_lead requires zone scope.');
+    }
+
     return [
-      {
-        scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null,
-        scopeType: 'restaurant',
-      },
-      { scopeId: profile.zone_id ?? null, scopeType: 'zone' },
+      ...(seed.effectiveRestaurantId || seed.restaurantId
+        ? [
+            {
+              scopeId: seed.effectiveRestaurantId ?? seed.restaurantId,
+              scopeType: 'restaurant' as const,
+            },
+          ]
+        : []),
+      { scopeId: seed.zoneId, scopeType: 'zone' },
     ];
   }
 
-  return [{ scopeId: profile.id, scopeType: 'self' }];
+  // employee: sin self-scope estructural; contexto deriva de employment
+  return seed.restaurantId
+    ? [{ scopeId: seed.restaurantId, scopeType: 'restaurant' }]
+    : [];
 }
 
-export function buildRequestContextFromLegacyProfile(
-  profile: Profile,
-  effectiveRestaurantId: string | null = profile.restaurant_id ?? null,
-): RequestContext {
-  const systemRole = deriveSystemRole(profile);
-  const scopeType = deriveScopeType(profile, systemRole);
+export function createRequestContext(seed: RequestContextSeed): RequestContext {
+  const effectiveRestaurantId = seed.effectiveRestaurantId ?? seed.restaurantId ?? null;
+  const restaurantId = seed.restaurantId ?? null;
+  const zoneId = seed.zoneId ?? null;
 
   return {
-    activeScopes: deriveActiveScopes(profile, systemRole, effectiveRestaurantId),
-    chainId: profile.chain_id ?? null,   // v6
+    accessStatus: seed.accessStatus ?? 'active',
+    activeScopes: deriveActiveScopes({
+      effectiveRestaurantId,
+      personId: seed.personId,
+      restaurantId,
+      systemRole: seed.systemRole,
+      zoneId,
+    }),
+    chainId: seed.chainId ?? null,
     effectiveRestaurantId,
-    legacyRole: profile.role,
     now: new Date(),
-    personId: profile.id,
-    profile,
-    responsibilityLevel: deriveResponsibilityLevel(systemRole),
-    restaurantId: profile.restaurant_id ?? null,
-    scopeType,
-    systemRole,
+    personId: seed.personId,
+    responsibilityLevel: deriveResponsibilityLevel(seed.systemRole),
+    restaurantId,
+    scopeType: deriveScopeType(seed.systemRole),
+    systemRole: seed.systemRole,
     traceId: crypto.randomUUID(),
-    userId: profile.id,
-    zoneId: profile.zone_id ?? null,
+    userId: seed.userId ?? seed.personId,
+    zoneId,
   };
-}
-
-// Bug fix: faltaba el cierre ) en el original
-export function buildRequestContextFromLegacyUserContext(
-  userContext: LegacyUserContextLike,
-  effectiveRestaurantId: string | null = userContext.profile.restaurant_id ?? null,
-): RequestContext {
-  return buildRequestContextFromLegacyProfile(
-    userContext.profile,
-    effectiveRestaurantId,
-  );
 }
 
 export function isRequestContext(value: unknown): value is RequestContext {
@@ -125,8 +155,8 @@ export function isRequestContext(value: unknown): value is RequestContext {
     value &&
       typeof value === 'object' &&
       'systemRole' in value &&
-      'legacyRole' in value &&
-      'profile' in value &&
+      'activeScopes' in value &&
+      'personId' in value &&
       'userId' in value,
   );
 }
