@@ -1,7 +1,7 @@
 import type { AppRole } from '@/modules/people';
 
 import type { ScopeType, SystemRole } from '../domain/systemRoles';
-import type { LegacyActorLike, RequestContext } from './requestContext';
+import type { ActorLike, RequestContext } from './requestContext';
 
 export type AuthzAction =
   | 'restaurant_context.select'
@@ -42,7 +42,7 @@ function isAreaLead(role: RequestContext['systemRole']): boolean {
   return role === 'area_lead';
 }
 
-export function getActorScopeType(actor: LegacyActorLike): ScopeType {
+export function getActorScopeType(actor: ActorLike): ScopeType {
   if (typeof actor === 'string') {
     return actor === 'admin' || actor === 'office' || actor === 'chain_owner'
       ? 'platform'

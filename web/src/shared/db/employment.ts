@@ -10,7 +10,7 @@ import {
 } from '@/modules/employment/domain/employmentTypes';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
-type UpdateLegacyEmploymentInput = {
+type UpdateEmploymentInput = {
   personId: string;
   restaurantId: string;
   role: EditableEmploymentSystemRole;
@@ -64,7 +64,7 @@ type ActiveEmploymentRecordRow = {
   employment_id: string;
 };
 
-type LegacyEmploymentActivationSeedRow = {
+type EmploymentActivationSeedRow = {
   restaurant_id: string | null;
   role: EditableEmployeeRole;
   zone_id: string | null;
@@ -82,14 +82,14 @@ export type EmploymentScopeProjection = {
   zone_id: string | null;
 };
 
-// Legacy types removed as profiles table is gone.
+// Deprecated profile-table types removed since profiles no longer exists.
 // Projection now comes from persons + employment_relationships.
 
 const BAN_100_YEARS = '876600h';
-const LEGACY_MIGRATED_CHAIN_ID = '00000000-0000-0000-0000-000000000001';
-const LEGACY_MIGRATED_COMPANY_ID = '00000000-0000-0000-0000-000000000002';
+const CANONICAL_MIGRATED_CHAIN_ID = '00000000-0000-0000-0000-000000000001';
+const CANONICAL_MIGRATED_COMPANY_ID = '00000000-0000-0000-0000-000000000002';
 
-function mapSystemRoleToLegacyEmployment(
+function mapSystemRoleToEmployment(
   systemRole: SystemRole,
 ): EmploymentSystemRole {
   if (
@@ -104,7 +104,7 @@ function mapSystemRoleToLegacyEmployment(
   return 'employee';
 }
 
-export async function getLegacyAreaLeadZoneConflictCode(params: {
+export async function getAreaLeadZoneConflictCode(params: {
   excludingUserId?: string;
   restaurantId: string;
   zoneId: string;
@@ -159,7 +159,7 @@ export async function getLegacyAreaLeadZoneConflictCode(params: {
   return ((personRows ?? []) as PersonIdRow[]).length >= 2 ? 'area_lead_zone_full' : null;
 }
 
-export async function hasLegacyActiveAreaLead(personId: string): Promise<boolean> {
+export async function hasActiveAreaLead(personId: string): Promise<boolean> {
   const admin = createSupabaseAdminClient();
   const [{ data: personRows, error: personError }, { data: employmentRows, error: employmentError }] =
     await Promise.all([
@@ -229,7 +229,7 @@ export async function loadEmploymentScopeProjection(
   };
 }
 
-export async function loadLegacyEmployeeScopeProjection(
+export async function loadEmployeeScopeProjection(
   personId: string,
 ): Promise<EmploymentScopeProjection | null> {
   // Now simply using the v6 projection as profiles is gone
@@ -247,7 +247,7 @@ export async function loadScheduleActorProjection(
       .eq('person_id', personId)
       .eq('is_archived', false)
       .maybeSingle(),
-    loadLegacyEmployeeScopeProjection(personId),
+    loadEmployeeScopeProjection(personId),
   ]);
 
   if (personError && personError.code !== 'PGRST116') {
@@ -341,7 +341,7 @@ async function listEmploymentFromProjection(
     const projectedPerson = personsById.get(employment.person_id);
     if (!projectedPerson) continue;
 
-    const projectedSystemRole = mapSystemRoleToLegacyEmployment(projectedPerson.system_role);
+    const projectedSystemRole = mapSystemRoleToEmployment(projectedPerson.system_role);
 
     const fullName = [projectedPerson.first_name, projectedPerson.last_name]
       .filter(Boolean)
@@ -369,7 +369,7 @@ async function listEmploymentFromProjection(
   return items.sort((left, right) => left.employee_code - right.employee_code);
 }
 
-export async function listLegacyEmploymentForRestaurant(
+export async function listEmploymentForRestaurant(
   restaurantId: string,
   status: EmploymentStatusFilter = 'active',
 ): Promise<EmploymentListItem[]> {
@@ -540,9 +540,9 @@ async function syncRoleScopeProjection(params: {
   }
 }
 
-async function loadLegacyEmploymentActivationSeed(
+async function loadEmploymentActivationSeed(
   personId: string,
-): Promise<LegacyEmploymentActivationSeedRow | null> {
+): Promise<EmploymentActivationSeedRow | null> {
   const admin = createSupabaseAdminClient();
   const [{ data: employment }, { data: scope }] = await Promise.all([
     admin
@@ -616,8 +616,8 @@ async function deactivateEmploymentProjection(personId: string): Promise<void> {
   }
 }
 
-export async function updateLegacyEmployment(
-  input: UpdateLegacyEmploymentInput,
+export async function updateEmployment(
+  input: UpdateEmploymentInput,
 ): Promise<void> {
   const normalizedZoneId =
     input.role === 'employee' || input.role === 'area_lead' ? input.zoneId : null;
@@ -627,7 +627,7 @@ export async function updateLegacyEmployment(
   }
 
   if (input.role === 'area_lead' && normalizedZoneId) {
-    const conflict = await getLegacyAreaLeadZoneConflictCode({
+    const conflict = await getAreaLeadZoneConflictCode({
       excludingUserId: input.personId,
       restaurantId: input.restaurantId,
       zoneId: normalizedZoneId,
@@ -639,7 +639,7 @@ export async function updateLegacyEmployment(
   }
 
   if (input.role === 'manager' || input.role === 'sub_manager') {
-    const conflict = await getLegacyEmploymentRoleSlotConflictCode(
+    const conflict = await getEmploymentRoleSlotConflictCode(
       input.restaurantId,
       input.role,
       input.personId,
@@ -652,12 +652,12 @@ export async function updateLegacyEmployment(
 
   const restaurant = await loadRestaurantProjection(input.restaurantId);
   await syncPersonEmploymentProjection({
-    chainId: restaurant.chain_id ?? LEGACY_MIGRATED_CHAIN_ID,
+    chainId: restaurant.chain_id ?? CANONICAL_MIGRATED_CHAIN_ID,
     personId: input.personId,
     systemRole: input.role,
   });
   await syncEmploymentRelationshipProjection({
-    companyId: restaurant.company_id ?? LEGACY_MIGRATED_COMPANY_ID,
+    companyId: restaurant.company_id ?? CANONICAL_MIGRATED_COMPANY_ID,
     personId: input.personId,
     restaurantId: input.restaurantId,
     systemRole: input.role,
@@ -670,7 +670,7 @@ export async function updateLegacyEmployment(
   });
 }
 
-export async function getLegacyEmploymentRoleSlotConflictCode(
+export async function getEmploymentRoleSlotConflictCode(
   restaurantId: string,
   role: Extract<EditableEmployeeRole, 'manager' | 'sub_manager'>,
   excludingUserId?: string,
@@ -715,17 +715,17 @@ export async function getLegacyEmploymentRoleSlotConflictCode(
   return null;
 }
 
-export async function setLegacyEmploymentActive(
+export async function setEmploymentActive(
   personId: string,
   isActive: boolean,
 ): Promise<void> {
   const admin = createSupabaseAdminClient();
 
   if (isActive) {
-    const seed = await loadLegacyEmploymentActivationSeed(personId);
+    const seed = await loadEmploymentActivationSeed(personId);
 
     if (seed?.restaurant_id) {
-      await updateLegacyEmployment({
+      await updateEmployment({
         personId,
         restaurantId: seed.restaurant_id,
         role: seed.role as EditableEmploymentSystemRole,

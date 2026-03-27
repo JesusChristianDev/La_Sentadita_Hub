@@ -1,5 +1,5 @@
 import { updatePersonIdentity } from '@/modules/people';
-import { updateLegacyEmployment } from '@/shared/db/employment';
+import { updateEmployment } from '@/shared/db/employment';
 
 import type { UpdateEmployeeValidatedInput } from './employeeMutationRules';
 import { mapEmployeeMutationErrorCode } from './employeeMutationRules';
@@ -17,7 +17,7 @@ export async function updateEmployment(input: UpdateEmploymentInput): Promise<vo
   });
 
   try {
-    await updateLegacyEmployment({
+    await updateEmployment({
       personId: input.userId,
       restaurantId: input.restaurantId,
       role: input.role,

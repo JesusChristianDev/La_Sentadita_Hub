@@ -1,14 +1,14 @@
 import { cookies } from 'next/headers';
 
 import { deriveSystemRole } from '@/modules/authz';
-import type { Profile } from '@/modules/people';
+import type { PersonProfile } from '@/modules/people';
 
 /**
  * Resolves the effective restaurant ID for a given user profile.
  * - For employees/managers assigned to a specific restaurant, it uses their profile's restaurant_id.
  * - For admin/office users (global roles), it attempts to read the 'active_restaurant_id' cookie.
  */
-export async function getEffectiveRestaurantId(profile: Profile): Promise<string | null> {
+export async function getEffectiveRestaurantId(profile: PersonProfile): Promise<string | null> {
   if (profile.restaurant_id) {
     return profile.restaurant_id;
   }
