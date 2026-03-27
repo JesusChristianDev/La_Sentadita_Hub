@@ -50,8 +50,6 @@ export function deriveSystemRole(
   if (typeof value === 'string') return value;
 
   const candidate = value.system_role ?? value.role;
-  if (candidate === 'chain_owner') return 'owner';
-  if (candidate === 'sub_manager') return 'manager';
   if (isSystemRole(candidate)) return candidate;
 
   return 'employee';
@@ -116,7 +114,7 @@ export function deriveActiveScopes(seed: {
     ];
   }
 
-  // employee: sin self-scope estructural; contexto deriva de employment
+  // employee: contexto deriva de employment, sin scope personal estructural
   return seed.restaurantId
     ? [{ scopeId: seed.restaurantId, scopeType: 'restaurant' }]
     : [];
