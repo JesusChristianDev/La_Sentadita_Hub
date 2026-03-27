@@ -1,4 +1,4 @@
-import type { AppRole, Profile } from '@/modules/people';
+import type { AppRole, PersonProfile } from '@/modules/people';
 
 import type { ResponsibilityLevel } from '../domain/responsibilityLevel';
 import { deriveResponsibilityLevel } from '../domain/responsibilityLevel';
@@ -13,10 +13,10 @@ export type RequestContext = {
   activeScopes: ActiveScope[];
   chainId: string | null;          // v6 — cadena a la que pertenece el actor
   effectiveRestaurantId: string | null;
-  legacyRole: AppRole;
+  appRole: AppRole;
   now: Date;
   personId: string;
-  profile: Profile;
+  profile: PersonProfile;
   responsibilityLevel: ResponsibilityLevel;
   restaurantId: string | null;
   scopeType: ScopeType;
@@ -26,22 +26,22 @@ export type RequestContext = {
   zoneId: string | null;
 };
 
-export type LegacyUserContextLike = {
-  profile: Profile;
+export type UserContextLike = {
+  profile: PersonProfile;
   userId: string;
 };
 
-export type LegacyActorLike =
+export type ActorLike =
   | AppRole
-  | LegacyUserContextLike
+  | UserContextLike
   | RequestContext
-  | Pick<Profile, 'id' | 'restaurant_id' | 'role' | 'zone_id'>;
+  | Pick<PersonProfile, 'id' | 'restaurant_id' | 'role' | 'zone_id'>;
 
-export function deriveSystemRole(profile: Profile): SystemRole {
+export function deriveSystemRole(profile: PersonProfile): SystemRole {
   return profile.system_role ?? (profile.role as SystemRole);
 }
 
-export function deriveScopeType(profile: Profile, systemRole: SystemRole): ScopeType {
+export function deriveScopeType(profile: PersonProfile, systemRole: SystemRole): ScopeType {
   if (systemRole === 'admin' || systemRole === 'office') return 'platform';
   if (systemRole === 'manager' || systemRole === 'sub_manager') return 'restaurant';
   if (systemRole === 'area_lead') return 'zone';
@@ -49,7 +49,7 @@ export function deriveScopeType(profile: Profile, systemRole: SystemRole): Scope
 }
 
 export function deriveActiveScopes(
-  profile: Profile,
+  profile: PersonProfile,
   systemRole: SystemRole,
   effectiveRestaurantId: string | null,
 ): ActiveScope[] {
@@ -84,8 +84,8 @@ export function deriveActiveScopes(
   return [{ scopeId: profile.id, scopeType: 'self' }];
 }
 
-export function buildRequestContextFromLegacyProfile(
-  profile: Profile,
+export function buildRequestContextFromProfile(
+  profile: PersonProfile,
   effectiveRestaurantId: string | null = profile.restaurant_id ?? null,
 ): RequestContext {
   const systemRole = deriveSystemRole(profile);
@@ -95,7 +95,7 @@ export function buildRequestContextFromLegacyProfile(
     activeScopes: deriveActiveScopes(profile, systemRole, effectiveRestaurantId),
     chainId: profile.chain_id ?? null,   // v6
     effectiveRestaurantId,
-    legacyRole: profile.role,
+    appRole: profile.role,
     now: new Date(),
     personId: profile.id,
     profile,
@@ -110,11 +110,11 @@ export function buildRequestContextFromLegacyProfile(
 }
 
 // Bug fix: faltaba el cierre ) en el original
-export function buildRequestContextFromLegacyUserContext(
-  userContext: LegacyUserContextLike,
+export function buildRequestContextFromUserContext(
+  userContext: UserContextLike,
   effectiveRestaurantId: string | null = userContext.profile.restaurant_id ?? null,
 ): RequestContext {
-  return buildRequestContextFromLegacyProfile(
+  return buildRequestContextFromProfile(
     userContext.profile,
     effectiveRestaurantId,
   );
@@ -125,7 +125,7 @@ export function isRequestContext(value: unknown): value is RequestContext {
     value &&
       typeof value === 'object' &&
       'systemRole' in value &&
-      'legacyRole' in value &&
+      'appRole' in value &&
       'profile' in value &&
       'userId' in value,
   );

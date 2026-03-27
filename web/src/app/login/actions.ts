@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 
-import { loadLegacyPersonAccessState } from '@/shared/db/persons';
+import { loadPersonAccessState } from '@/shared/db/persons';
 import { serverEnv } from '@/shared/env.server';
 import { loginPathWithError } from '@/shared/feedbackMessages';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
@@ -54,7 +54,7 @@ async function isDisabledByEmail(email: string): Promise<boolean> {
   const authUserId = await findAuthUserIdByEmail(admin, email);
   if (!authUserId) return false;
 
-  const person = await loadLegacyPersonAccessState(authUserId);
+  const person = await loadPersonAccessState(authUserId);
   if (!person) return false;
   return person.is_archived || person.is_active === false;
 }
@@ -83,7 +83,7 @@ export async function login(formData: FormData) {
   }
 
   // Post-login check uses admin client to bypass RLS.
-  const person = await loadLegacyPersonAccessState(data.user.id);
+  const person = await loadPersonAccessState(data.user.id);
 
   if (!person) {
     await supabase.auth.signOut();

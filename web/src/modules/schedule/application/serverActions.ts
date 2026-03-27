@@ -15,7 +15,7 @@ import { deriveResponsibilityLevel } from '@/modules/authz';
 import type { EmployeeListItem } from '@/modules/employees';
 import { listEmployees } from '@/modules/employees';
 import { getRestaurantStatus } from '@/modules/restaurants';
-import { loadLegacyEmployeeScopeProjection } from '@/shared/db/employment';
+import { loadEmployeeScopeProjection } from '@/shared/db/employment';
 
 import type {
   EmployeeScheduleWeekView,
@@ -217,7 +217,7 @@ async function loadEmployeeScope(
   employeeId: string,
   restaurantId: string,
 ): Promise<EmployeeScopeRow> {
-  const employeeScope = await loadLegacyEmployeeScopeProjection(employeeId);
+  const employeeScope = await loadEmployeeScopeProjection(employeeId);
 
   if (!employeeScope) {
     throw new Error('EMPLOYEE_NOT_FOUND: El empleado no existe.');

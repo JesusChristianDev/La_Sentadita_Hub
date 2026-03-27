@@ -20,6 +20,19 @@ export default defineConfig([
     rules: {
       'simple-import-sort/imports': 'error',
       'simple-import-sort/exports': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              importNames: ['Profile'],
+              message:
+                'No uses Profile from modules/people. Usa contratos canónicos o PersonProfile (projection) explícita.',
+              name: '@/modules/people',
+            },
+          ],
+        },
+      ],
 
       'unused-imports/no-unused-imports': 'error',
       'unused-imports/no-unused-vars': [

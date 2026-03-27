@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
 
-import { can, deriveSystemRole, type LegacyActorLike, type SystemRole, toRequestContext } from '@/modules/authz';
+import { type ActorLike, can, deriveSystemRole, type SystemRole, toRequestContext } from '@/modules/authz';
 import type { EditableEmploymentSystemRole } from '@/modules/employment';
 import {
-  getLegacyEmploymentRoleSlotConflictCode,
-  hasLegacyActiveAreaLead,
+  getEmploymentRoleSlotConflictCode,
+  hasActiveAreaLead as hasActiveAreaLeadInEmployment,
 } from '@/shared/db/employment';
-import { loadLegacyPersonProfileById } from '@/shared/db/persons';
+import { loadPersonProfileById } from '@/shared/db/persons';
 import { employeesPathWithError } from '@/shared/feedbackMessages';
 
 type EmployeeRoleSlotConflictCode = 'manager_exists' | 'sub_manager_exists';
@@ -27,11 +27,11 @@ function mapSystemRoleToEditableEmployeeRole(
 
 // --------------- Role checks ---------------
 
-export function canCreate(actor: LegacyActorLike): boolean {
+export function canCreate(actor: ActorLike): boolean {
   return can(actor, 'employees.create');
 }
 
-export function canManageUsers(actor: LegacyActorLike): boolean {
+export function canManageUsers(actor: ActorLike): boolean {
   return can(actor, 'employees.manage');
 }
 
@@ -46,7 +46,7 @@ export async function loadTarget(
   restaurant_id: string | null;
   systemRole: SystemRole;
 }> {
-  const profile = await loadLegacyPersonProfileById(userId);
+  const profile = await loadPersonProfileById(userId);
   const systemRole = deriveSystemRole(profile);
 
   return {
@@ -57,7 +57,7 @@ export async function loadTarget(
 }
 
 export async function assertCanManageTarget(
-  actor: LegacyActorLike,
+  actor: ActorLike,
   userId: string,
 ): Promise<{
   editableRole: EditableEmploymentSystemRole | null;
@@ -98,7 +98,7 @@ export async function getRoleSlotConflictCode(
   role: 'manager' | 'sub_manager',
   excludingUserId?: string,
 ): Promise<EmployeeRoleSlotConflictCode | null> {
-  return getLegacyEmploymentRoleSlotConflictCode(
+  return getEmploymentRoleSlotConflictCode(
     restaurantId,
     role,
     excludingUserId,
@@ -106,5 +106,5 @@ export async function getRoleSlotConflictCode(
 }
 
 export async function hasActiveAreaLead(userId: string): Promise<boolean> {
-  return hasLegacyActiveAreaLead(userId);
+  return hasActiveAreaLeadInEmployment(userId);
 }

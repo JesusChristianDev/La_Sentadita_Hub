@@ -36,7 +36,7 @@ type ActiveZoneScopeRow = {
 // Tipos públicos de input
 // ─────────────────────────────────────────────────────────────
 
-export type CreateLegacyPersonInput = {
+export type CreatePersonInput = {
   email: string;
   emailConfirm?: boolean;
   fullName: string;
@@ -48,7 +48,7 @@ export type CreateLegacyPersonInput = {
   agoraEmployeeId?: string;
 };
 
-export type UpdateLegacyPersonIdentityInput = {
+export type UpdatePersonIdentityInput = {
   avatarPath?: string | null;
   fullName?: string;
   phone?: string;
@@ -57,13 +57,13 @@ export type UpdateLegacyPersonIdentityInput = {
   personId: string;
 };
 
-export type UpdateLegacyPersonCredentialsInput = {
+export type UpdatePersonCredentialsInput = {
   email?: string;
   password?: string;
   personId: string;
 };
 
-export type ArchiveLegacyPersonInput = {
+export type ArchivePersonInput = {
   personId: string;
   soft?: boolean;
 };
@@ -94,14 +94,14 @@ function hasKeys(value: Record<string, unknown>): boolean {
 }
 
 // ─────────────────────────────────────────────────────────────
-// loadLegacyPersonProfileByIdWithClient
+// loadPersonProfileByIdWithClient
 // Construye el PersonProfile desde persons + employment + role_scope
 // Sin ninguna referencia a profiles
 // ─────────────────────────────────────────────────────────────
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
-export async function loadLegacyPersonProfileByIdWithClient(
+export async function loadPersonProfileByIdWithClient(
   supabase: ServerSupabaseClient,
   personId: string,
 ): Promise<PersonProfile> {
@@ -158,7 +158,7 @@ export async function loadLegacyPersonProfileByIdWithClient(
   });
 
   return {
-    // Campos legacy que el resto del código espera
+    // Campos compat que el resto del código espera
     id: p.person_id,
     employee_code: 0,              // sin equivalente en v6
     full_name: fullName || '(sin nombre)',
@@ -176,17 +176,17 @@ export async function loadLegacyPersonProfileByIdWithClient(
   };
 }
 
-export async function loadLegacyPersonProfileById(personId: string): Promise<PersonProfile> {
+export async function loadPersonProfileById(personId: string): Promise<PersonProfile> {
   const supabase = await createSupabaseServerClient();
-  return loadLegacyPersonProfileByIdWithClient(supabase, personId);
+  return loadPersonProfileByIdWithClient(supabase, personId);
 }
 
 // ─────────────────────────────────────────────────────────────
-// loadLegacyPersonAccessState
+// loadPersonAccessState
 // Usada en login para verificar si el usuario puede acceder
 // ─────────────────────────────────────────────────────────────
 
-export async function loadLegacyPersonAccessState(
+export async function loadPersonAccessState(
   personId: string,
 ): Promise<{ is_active: boolean; is_archived: boolean } | null> {
   const admin = createSupabaseAdminClient();
@@ -240,12 +240,12 @@ export async function loadProjectedPersonDisplayName(
 }
 
 // ─────────────────────────────────────────────────────────────
-// createLegacyPerson
+// createPerson
 // Flujo v6: auth.user + persons en una sola operación atómica
 // Si persons falla → elimina el auth.user para no dejar huérfanos
 // ─────────────────────────────────────────────────────────────
 
-export async function createLegacyPerson(input: CreateLegacyPersonInput): Promise<string> {
+export async function createPerson(input: CreatePersonInput): Promise<string> {
   const admin = createSupabaseAdminClient();
 
   // 1. Crear auth.user sin password → Supabase enviará email de activación
@@ -286,11 +286,11 @@ export async function createLegacyPerson(input: CreateLegacyPersonInput): Promis
 }
 
 // ─────────────────────────────────────────────────────────────
-// updateLegacyPersonIdentity
+// updatePersonIdentity
 // ─────────────────────────────────────────────────────────────
 
-export async function updateLegacyPersonIdentity(
-  input: UpdateLegacyPersonIdentityInput,
+export async function updatePersonIdentity(
+  input: UpdatePersonIdentityInput,
 ): Promise<void> {
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -323,11 +323,11 @@ export async function updateLegacyPersonIdentity(
 }
 
 // ─────────────────────────────────────────────────────────────
-// updateLegacyPersonCredentials
+// updatePersonCredentials
 // ─────────────────────────────────────────────────────────────
 
-export async function updateLegacyPersonCredentials(
-  input: UpdateLegacyPersonCredentialsInput,
+export async function updatePersonCredentials(
+  input: UpdatePersonCredentialsInput,
 ): Promise<void> {
   const attributes: { email?: string; password?: string } = {};
   if (input.email) attributes.email = input.email;
@@ -356,10 +356,10 @@ export async function updateLegacyPersonCredentials(
 }
 
 // ─────────────────────────────────────────────────────────────
-// archiveLegacyPerson
+// archivePerson
 // ─────────────────────────────────────────────────────────────
 
-export async function archiveLegacyPerson(input: ArchiveLegacyPersonInput): Promise<void> {
+export async function archivePerson(input: ArchivePersonInput): Promise<void> {
   const admin = createSupabaseAdminClient();
   const soft = input.soft ?? true;
   const timestamp = new Date().toISOString();
@@ -385,10 +385,10 @@ export async function archiveLegacyPerson(input: ArchiveLegacyPersonInput): Prom
 }
 
 // ─────────────────────────────────────────────────────────────
-// mapSystemRoleToLegacyProfileRole
+// mapSystemRoleToProfileRole
 // Compatibilidad con código que usa el campo role del PersonProfile
 // ─────────────────────────────────────────────────────────────
 
-export function mapSystemRoleToLegacyProfileRole(systemRole: SystemRole): PersonProfile['role'] {
+export function mapSystemRoleToProfileRole(systemRole: SystemRole): PersonProfile['role'] {
   return systemRole;
 }

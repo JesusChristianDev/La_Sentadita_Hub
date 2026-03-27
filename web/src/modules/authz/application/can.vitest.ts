@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { assertCan, can } from '@/modules/authz';
-import type { Profile } from '@/modules/people';
+import type { PersonProfile } from '@/modules/people';
 
-import { buildRequestContextFromLegacyProfile } from './requestContext';
+import { buildRequestContextFromProfile } from './requestContext';
 
-function buildProfile(overrides: Partial<Profile> = {}): Profile {
+function buildProfile(overrides: Partial<PersonProfile> = {}): PersonProfile {
   return {
     avatar_path: null,
     employee_code: 1001,
@@ -21,8 +21,8 @@ function buildProfile(overrides: Partial<Profile> = {}): Profile {
 }
 
 describe('authz can', () => {
-  it('maps legacy employee area lead profiles into zone-scoped request contexts', () => {
-    const ctx = buildRequestContextFromLegacyProfile(
+  it('maps area lead profiles into zone-scoped request contexts', () => {
+    const ctx = buildRequestContextFromProfile(
       buildProfile({
         role: 'area_lead',
         zone_id: 'zone-1',
@@ -44,12 +44,12 @@ describe('authz can', () => {
   });
 
   it('allows restaurant selection only for global roles', () => {
-    const admin = buildRequestContextFromLegacyProfile(
+    const admin = buildRequestContextFromProfile(
       buildProfile({
         role: 'admin',
       }),
     );
-    const manager = buildRequestContextFromLegacyProfile(
+    const manager = buildRequestContextFromProfile(
       buildProfile({
         role: 'manager',
       }),
@@ -64,7 +64,7 @@ describe('authz can', () => {
   });
 
   it('allows area leads to edit drafts only inside their own zone', () => {
-    const areaLead = buildRequestContextFromLegacyProfile(
+    const areaLead = buildRequestContextFromProfile(
       buildProfile({
         id: 'lead-1',
         role: 'area_lead',
@@ -88,14 +88,14 @@ describe('authz can', () => {
   });
 
   it('keeps employees management restricted to global and restaurant roles', () => {
-    const areaLead = buildRequestContextFromLegacyProfile(
+    const areaLead = buildRequestContextFromProfile(
       buildProfile({
         id: 'lead-1',
         role: 'area_lead',
         zone_id: 'zone-1',
       }),
     );
-    const manager = buildRequestContextFromLegacyProfile(
+    const manager = buildRequestContextFromProfile(
       buildProfile({
         id: 'manager-1',
         role: 'manager',
@@ -119,7 +119,7 @@ describe('authz can', () => {
   });
 
   it('rejects schedule draft editing for plain employees', () => {
-    const employee = buildRequestContextFromLegacyProfile(
+    const employee = buildRequestContextFromProfile(
       buildProfile({
         id: 'employee-1',
         role: 'employee',
