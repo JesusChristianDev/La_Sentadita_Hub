@@ -1,6 +1,6 @@
 import 'server-only';
 
-import type { SystemRole } from '@/modules/authz';
+import { coerceSystemRole, type SystemRole } from '@/modules/authz';
 import {
   type EditableEmployeeRole,
   type EditableEmploymentSystemRole,
@@ -35,18 +35,18 @@ type PersonIdRow = {
 
 type PersonProjectionRow = {
   person_id: string;
-  system_role: SystemRole;
+  system_role: string;
   first_name: string;
   last_name: string;
   avatar_url: string | null;
   agora_employee_id: string | null;
   is_archived: boolean;
-  onboarding_status: string;
+  access_status: string | null;
 };
 
 type PersonSystemRoleRow = {
   person_id: string;
-  system_role: SystemRole;
+  system_role: string;
 };
 
 type PersonZoneScopeAssignmentRow = {
@@ -82,12 +82,12 @@ export type EmploymentScopeProjection = {
   zone_id: string | null;
 };
 
-// Deprecated profile-table types removed since profiles no longer exists.
+// Profiles table is gone.
 // Projection now comes from persons + employment_relationships.
 
 const BAN_100_YEARS = '876600h';
-const CANONICAL_MIGRATED_CHAIN_ID = '00000000-0000-0000-0000-000000000001';
-const CANONICAL_MIGRATED_COMPANY_ID = '00000000-0000-0000-0000-000000000002';
+const LEGACY_MIGRATED_CHAIN_ID = '00000000-0000-0000-0000-000000000001';
+const LEGACY_MIGRATED_COMPANY_ID = '00000000-0000-0000-0000-000000000002';
 
 function mapSystemRoleToEmployment(
   systemRole: SystemRole,
@@ -95,12 +95,18 @@ function mapSystemRoleToEmployment(
   if (
     systemRole === 'area_lead' ||
     systemRole === 'manager' ||
-    systemRole === 'sub_manager' ||
     systemRole === 'employee'
   ) {
     return systemRole;
   }
 
+  return 'employee';
+}
+
+function normalizeEditableEmploymentRole(
+  value: string | null | undefined,
+): EditableEmploymentSystemRole {
+  if (value === 'area_lead' || value === 'manager') return value;
   return 'employee';
 }
 
@@ -260,7 +266,7 @@ export async function loadScheduleActorProjection(
   return {
     id: typedPerson.person_id,
     restaurant_id: scope?.restaurant_id ?? null,
-    system_role: typedPerson.system_role,
+    system_role: coerceSystemRole(typedPerson.system_role),
     zone_id: scope?.zone_id ?? null,
   };
 }
@@ -307,7 +313,7 @@ async function listEmploymentFromProjection(
     await Promise.all([
       admin
         .from('persons')
-        .select('person_id, system_role, first_name, last_name, avatar_url, agora_employee_id, is_archived, onboarding_status')
+        .select('person_id, system_role, first_name, last_name, avatar_url, agora_employee_id, is_archived, access_status')
         .in('person_id', personIds),
       admin
         .from('role_scope_assignments')
@@ -341,7 +347,9 @@ async function listEmploymentFromProjection(
     const projectedPerson = personsById.get(employment.person_id);
     if (!projectedPerson) continue;
 
-    const projectedSystemRole = mapSystemRoleToEmployment(projectedPerson.system_role);
+    const projectedSystemRole = mapSystemRoleToEmployment(
+      coerceSystemRole(projectedPerson.system_role),
+    );
 
     const fullName = [projectedPerson.first_name, projectedPerson.last_name]
       .filter(Boolean)
@@ -358,7 +366,7 @@ async function listEmploymentFromProjection(
       is_active:
         employment.active_principal &&
         !employment.is_archived &&
-        projectedPerson.onboarding_status === 'active' &&
+        projectedPerson.access_status === 'active' &&
         projectedPerson.is_archived !== true,
       restaurant_id: employment.restaurant_id,
       system_role: projectedSystemRole,
@@ -369,7 +377,7 @@ async function listEmploymentFromProjection(
   return items.sort((left, right) => left.employee_code - right.employee_code);
 }
 
-export async function listEmploymentForRestaurant(
+export async function listEmploymentForRestaurantProjection(
   restaurantId: string,
   status: EmploymentStatusFilter = 'active',
 ): Promise<EmploymentListItem[]> {
@@ -423,7 +431,7 @@ async function syncPersonEmploymentProjection(params: {
     return;
   }
 
-  const { error: bootstrapError } = await admin.rpc('sync_legacy_person_projection', {
+  const { error: bootstrapError } = await admin.rpc('sync_person_projection', {
     p_profile_id: params.personId,
   });
 
@@ -522,6 +530,10 @@ async function syncRoleScopeProjection(params: {
     throw new Error(`Failed to deactivate role scopes: ${deactivateError.message}`);
   }
 
+  if (params.systemRole === 'employee') {
+    return;
+  }
+
   const scopeType = params.systemRole === 'area_lead' ? 'zone' : 'restaurant';
   const scopeId =
     params.systemRole === 'area_lead' ? params.zoneId : params.restaurantId;
@@ -567,7 +579,7 @@ async function loadEmploymentActivationSeed(
 
   return {
     restaurant_id: typedEmployment.restaurant_id,
-    role: typedEmployment.job_title as EditableEmployeeRole,
+    role: normalizeEditableEmploymentRole(typedEmployment.job_title),
     zone_id: typedScope?.scope_id ?? null,
   };
 }
@@ -616,7 +628,7 @@ async function deactivateEmploymentProjection(personId: string): Promise<void> {
   }
 }
 
-export async function updateEmployment(
+export async function updateEmploymentProjection(
   input: UpdateEmploymentInput,
 ): Promise<void> {
   const normalizedZoneId =
@@ -638,10 +650,10 @@ export async function updateEmployment(
     }
   }
 
-  if (input.role === 'manager' || input.role === 'sub_manager') {
+  if (input.role === 'manager') {
     const conflict = await getEmploymentRoleSlotConflictCode(
       input.restaurantId,
-      input.role,
+      'manager',
       input.personId,
     );
 
@@ -652,12 +664,12 @@ export async function updateEmployment(
 
   const restaurant = await loadRestaurantProjection(input.restaurantId);
   await syncPersonEmploymentProjection({
-    chainId: restaurant.chain_id ?? CANONICAL_MIGRATED_CHAIN_ID,
+    chainId: restaurant.chain_id ?? LEGACY_MIGRATED_CHAIN_ID,
     personId: input.personId,
     systemRole: input.role,
   });
   await syncEmploymentRelationshipProjection({
-    companyId: restaurant.company_id ?? CANONICAL_MIGRATED_COMPANY_ID,
+    companyId: restaurant.company_id ?? LEGACY_MIGRATED_COMPANY_ID,
     personId: input.personId,
     restaurantId: input.restaurantId,
     systemRole: input.role,
@@ -672,9 +684,9 @@ export async function updateEmployment(
 
 export async function getEmploymentRoleSlotConflictCode(
   restaurantId: string,
-  role: Extract<EditableEmployeeRole, 'manager' | 'sub_manager'>,
+  _role: Extract<EditableEmployeeRole, 'manager'>,
   excludingUserId?: string,
-): Promise<'manager_exists' | 'sub_manager_exists' | null> {
+): Promise<'manager_exists' | null> {
   const admin = createSupabaseAdminClient();
 
   const { data: employmentRows, error: employmentError } = await admin
@@ -700,7 +712,7 @@ export async function getEmploymentRoleSlotConflictCode(
     .from('persons')
     .select('person_id')
     .in('person_id', personIds)
-    .eq('system_role', role)
+    .eq('system_role', 'manager')
     .eq('is_archived', false)
     .limit(1);
 
@@ -709,13 +721,13 @@ export async function getEmploymentRoleSlotConflictCode(
   }
 
   if (((personRows ?? []) as PersonIdRow[]).length > 0) {
-    return role === 'manager' ? 'manager_exists' : 'sub_manager_exists';
+    return 'manager_exists';
   }
 
   return null;
 }
 
-export async function setEmploymentActive(
+export async function setEmploymentActiveProjection(
   personId: string,
   isActive: boolean,
 ): Promise<void> {
@@ -725,7 +737,7 @@ export async function setEmploymentActive(
     const seed = await loadEmploymentActivationSeed(personId);
 
     if (seed?.restaurant_id) {
-      await updateEmployment({
+      await updateEmploymentProjection({
         personId,
         restaurantId: seed.restaurant_id,
         role: seed.role as EditableEmploymentSystemRole,

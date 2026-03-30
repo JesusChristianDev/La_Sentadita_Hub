@@ -5,8 +5,7 @@ export type E2EAuthRole =
   | 'default'
   | 'employee'
   | 'manager'
-  | 'office'
-  | 'sub_manager';
+  | 'office';
 
 type Credentials = {
   email: string;
@@ -32,10 +31,6 @@ const AUTH_ENV_BY_ROLE: Record<
   office: {
     email: 'E2E_OFFICE_EMAIL',
     password: 'E2E_OFFICE_PASSWORD',
-  },
-  sub_manager: {
-    email: 'E2E_SUB_MANAGER_EMAIL',
-    password: 'E2E_SUB_MANAGER_PASSWORD',
   },
 };
 
@@ -90,3 +85,6 @@ async function loginWithCredentials(page: Page, credentials: Credentials): Promi
   await expect(page).toHaveURL(/\/app/);
   await expect(page.getByRole('heading', { name: 'Panel principal' })).toBeVisible();
 }
+
+
+

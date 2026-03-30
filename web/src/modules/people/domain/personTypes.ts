@@ -8,7 +8,7 @@ export type Person = PersonProfile & {
 
 export type PersonIdentity = Pick<
   Person,
-  'avatar_path' | 'employee_code' | 'full_name' | 'must_change_password'
+  'avatar_path' | 'employee_code' | 'full_name'
 >;
 
 // v6: phone, identityDocument y chainId son obligatorios
@@ -30,7 +30,6 @@ export type UpdatePersonIdentityInput = {
   fullName?: string;
   phone?: string;
   identityDocument?: string;
-  mustChangePassword?: boolean;
   password?: string;
   personId: string;
 };

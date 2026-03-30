@@ -96,7 +96,20 @@ export default async function MePage({ searchParams }: Props) {
   const displayName = ctx.person.full_name?.trim() || 'Cuenta';
   const displayRole = roleLabel(ctx.requestContext.systemRole);
   const contextLabel = restaurantName ?? (ctx.person.restaurant_id ? 'Sucursal asignada' : 'Global');
-  const passwordStatus = ctx.person.must_change_password ? 'Cambio pendiente' : 'Correcta';
+  const accessStatusLabel =
+    ctx.person.access_status === 'pending_activation'
+      ? 'Pendiente de activacion'
+      : ctx.person.access_status === 'active'
+        ? 'Activo'
+        : ctx.person.access_status === 'suspended'
+          ? 'Suspendido'
+          : ctx.person.access_status === 'blocked'
+            ? 'Bloqueado'
+            : 'Archivado';
+  const securityStatus =
+    ctx.person.access_status === 'pending_activation'
+      ? 'Activacion pendiente'
+      : 'Correcta';
 
   return (
     <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
@@ -124,8 +137,8 @@ export default async function MePage({ searchParams }: Props) {
             <div className="meta-grid">
               <MetaItem label="Rol" value={displayRole} />
               <MetaItem label="Contexto" value={contextLabel} />
-              <MetaItem label="Estado" value="Activo" />
-              <MetaItem label="Seguridad" value={passwordStatus} />
+              <MetaItem label="Estado" value={accessStatusLabel} />
+              <MetaItem label="Seguridad" value={securityStatus} />
             </div>
           </div>
         </div>
@@ -198,7 +211,7 @@ export default async function MePage({ searchParams }: Props) {
               <MetaItem label="Email actual" value={email || '(sin email)'} />
               <MetaItem label="Codigo interno" value={String(ctx.person.employee_code)} />
               <MetaItem label="Sucursal" value={contextLabel} />
-              <MetaItem label="Cambio de clave" value={passwordStatus} />
+              <MetaItem label="Estado de acceso" value={accessStatusLabel} />
             </div>
           </MePanel>
         </div>

@@ -1,20 +1,20 @@
 export {
-  createProcedure,
+  createRequest,
   createShiftSwapRequest,
-  listMyProcedures,
+  listMyRequests,
   listMyShiftSwapRequests,
-  listRestaurantProcedures,
+  listRestaurantRequests,
   respondToShiftSwapPeer,
-  reviewProcedure,
+  reviewRequest,
   reviewShiftSwapRequest,
-} from './application/procedureService';
+} from './application/requestService';
 export type {
-  CreateProcedureInput,
+  CreateRequestInput,
   CreateShiftSwapRequestInput,
-  ProcedureRecord,
-  ProcedureStatus,
-  ProcedureType,
-  ReviewProcedureInput,
+  RequestRecord,
+  RequestStatus,
+  RequestType,
+  ReviewRequestInput,
   ShiftSwapRequestRecord,
   ShiftSwapStatus,
-} from './domain/procedureTypes';
+} from './domain/requestTypes';

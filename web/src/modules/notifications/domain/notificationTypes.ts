@@ -7,13 +7,13 @@ export type NotificationType =
   | 'task_overdue'
   | 'task_needs_reassignment'
   | 'task_cancelled'
-  | 'procedure_created'
-  | 'procedure_approved'
-  | 'procedure_rejected'
-  | 'procedure_cancelled'
-  | 'procedure_in_review'
-  | 'procedure_derived'
-  | 'procedure_dates_updated'
+  | 'request_created'
+  | 'request_approved'
+  | 'request_rejected'
+  | 'request_cancelled'
+  | 'request_in_review'
+  | 'request_derived'
+  | 'request_dates_updated'
   | 'shift_swap_request'
   | 'shift_swap_accepted'
   | 'shift_swap_rejected'
@@ -68,7 +68,7 @@ export type NotifyPersonInput = {
   notificationType: NotificationType;
   recipientPersonId: string;
   scopeId?: string | null;
-  scopeType?: 'chain' | 'company' | 'platform' | 'restaurant' | 'zone' | null;
+  scopeType?: 'organization' | 'company' | 'restaurant' | 'zone' | null;
   sendAfter?: string | null;
   sendPush?: boolean;
   title?: string | null;

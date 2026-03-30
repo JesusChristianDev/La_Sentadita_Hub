@@ -1,13 +1,9 @@
 import 'server-only';
 
-import type { SystemRole } from '@/modules/authz';
-import type { PersonProfile } from '@/modules/people';
+import { coerceSystemRole, type SystemRole } from '@/modules/authz';
+import type { AccessStatus, PersonProfile } from '@/modules/people';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
-
-// ─────────────────────────────────────────────────────────────
-// Tipos internos — filas raw de la BD v6
-// ─────────────────────────────────────────────────────────────
 
 type PersonRow = {
   person_id: string;
@@ -17,11 +13,10 @@ type PersonRow = {
   phone: string | null;
   identity_document: string | null;
   avatar_url: string | null;
-  system_role: SystemRole;
+  system_role: string;
   is_archived: boolean;
-  onboarding_status: 'draft' | 'pending_activation' | 'active' | 'suspended';
+  access_status: string | null;
   agora_employee_id: string | null;
-  chain_id: string | null;
 };
 
 type ActiveEmploymentRow = {
@@ -32,11 +27,11 @@ type ActiveZoneScopeRow = {
   scope_id: string | null;
 };
 
-// ─────────────────────────────────────────────────────────────
-// Tipos públicos de input
-// ─────────────────────────────────────────────────────────────
+type RestaurantChainRow = {
+  chain_id: string | null;
+};
 
-export type CreatePersonInput = {
+export type CreatePersonRecordInput = {
   email: string;
   emailConfirm?: boolean;
   fullName: string;
@@ -44,16 +39,14 @@ export type CreatePersonInput = {
   identityDocument: string;
   systemRole?: SystemRole;
   chainId: string;
-  mustChangePassword?: boolean;
   agoraEmployeeId?: string;
 };
 
-export type UpdatePersonIdentityInput = {
+export type UpdatePersonIdentityRecordInput = {
   avatarPath?: string | null;
   fullName?: string;
   phone?: string;
   identityDocument?: string;
-  mustChangePassword?: boolean;
   personId: string;
 };
 
@@ -63,14 +56,18 @@ export type UpdatePersonCredentialsInput = {
   personId: string;
 };
 
-export type ArchivePersonInput = {
+export type ArchivePersonRecordInput = {
   personId: string;
   soft?: boolean;
 };
 
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
+const PERSON_ACCESS_STATUSES = [
+  'pending_activation',
+  'active',
+  'suspended',
+  'archived',
+  'blocked',
+] as const satisfies AccessStatus[];
 
 function splitFullName(fullName: string): { firstName: string; lastName: string } {
   const trimmed = fullName.trim();
@@ -93,13 +90,39 @@ function hasKeys(value: Record<string, unknown>): boolean {
   return Object.keys(value).length > 0;
 }
 
-// ─────────────────────────────────────────────────────────────
-// loadPersonProfileByIdWithClient
-// Construye el PersonProfile desde persons + employment + role_scope
-// Sin ninguna referencia a profiles
-// ─────────────────────────────────────────────────────────────
+function parseAccessStatus(
+  value: string | undefined | null,
+  isArchived: boolean,
+): AccessStatus {
+  if (typeof value === 'string' && PERSON_ACCESS_STATUSES.includes(value as AccessStatus)) {
+    return value as AccessStatus;
+  }
+
+  return isArchived ? 'archived' : 'active';
+}
+
+export function isPersonAccessAllowed(accessStatus: AccessStatus): boolean {
+  return accessStatus === 'active';
+}
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
+export async function loadRestaurantChainIdByIdWithClient(
+  supabase: ServerSupabaseClient,
+  restaurantId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select('chain_id')
+    .eq('id', restaurantId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to load restaurant chain: ${error.message}`);
+  }
+
+  return ((data ?? null) as RestaurantChainRow | null)?.chain_id ?? null;
+}
 
 export async function loadPersonProfileByIdWithClient(
   supabase: ServerSupabaseClient,
@@ -113,7 +136,7 @@ export async function loadPersonProfileByIdWithClient(
     supabase
       .from('persons')
       .select(
-        'person_id, first_name, last_name, email, phone, identity_document, avatar_url, system_role, is_archived, onboarding_status, chain_id',
+        'person_id, first_name, last_name, email, phone, identity_document, avatar_url, system_role, is_archived, access_status',
       )
       .eq('person_id', personId)
       .maybeSingle(),
@@ -151,6 +174,11 @@ export async function loadPersonProfileByIdWithClient(
   const p = person as PersonRow;
   const emp = (employment ?? null) as ActiveEmploymentRow | null;
   const zone = (zoneScope ?? null) as ActiveZoneScopeRow | null;
+  const systemRole = coerceSystemRole(p.system_role);
+  const accessStatus = parseAccessStatus(p.access_status, p.is_archived);
+  const chainId = emp?.restaurant_id
+    ? await loadRestaurantChainIdByIdWithClient(supabase, emp.restaurant_id)
+    : null;
 
   const fullName = formatProjectedPersonFullName({
     first_name: p.first_name,
@@ -158,21 +186,17 @@ export async function loadPersonProfileByIdWithClient(
   });
 
   return {
-    // Campos compat que el resto del código espera
-    id: p.person_id,
-    employee_code: 0,              // sin equivalente en v6
-    full_name: fullName || '(sin nombre)',
-    role: p.system_role,
-    is_active: !p.is_archived,
-    is_archived: p.is_archived,
-    must_change_password: p.onboarding_status === 'pending_activation',
+    access_status: accessStatus,
     avatar_path: p.avatar_url ?? null,
+    chain_id: chainId,
+    employee_code: 0,
+    full_name: fullName || '(sin nombre)',
+    id: p.person_id,
+    is_archived: p.is_archived,
     restaurant_id: emp?.restaurant_id ?? null,
+    role: systemRole,
+    system_role: systemRole,
     zone_id: zone?.scope_id ?? null,
-
-    // Campos v6
-    system_role: p.system_role,
-    onboarding_status: p.onboarding_status,
   };
 }
 
@@ -181,19 +205,14 @@ export async function loadPersonProfileById(personId: string): Promise<PersonPro
   return loadPersonProfileByIdWithClient(supabase, personId);
 }
 
-// ─────────────────────────────────────────────────────────────
-// loadPersonAccessState
-// Usada en login para verificar si el usuario puede acceder
-// ─────────────────────────────────────────────────────────────
-
 export async function loadPersonAccessState(
   personId: string,
-): Promise<{ is_active: boolean; is_archived: boolean } | null> {
+): Promise<{ access_status: AccessStatus } | null> {
   const admin = createSupabaseAdminClient();
 
   const { data, error } = await admin
     .from('persons')
-    .select('is_archived, onboarding_status')
+    .select('is_archived, access_status')
     .eq('person_id', personId)
     .maybeSingle();
 
@@ -203,20 +222,11 @@ export async function loadPersonAccessState(
 
   if (!data) return null;
 
-  const p = data as Pick<PersonRow, 'is_archived' | 'onboarding_status'>;
-  const isArchived = p.is_archived;
-  const isSuspended = p.onboarding_status === 'suspended';
-  const isActive = !isArchived && !isSuspended;
-
+  const p = data as Pick<PersonRow, 'access_status' | 'is_archived'>;
   return {
-    is_active: isActive,
-    is_archived: isArchived,
+    access_status: parseAccessStatus(p.access_status, p.is_archived),
   };
 }
-
-// ─────────────────────────────────────────────────────────────
-// loadProjectedPersonDisplayName
-// ─────────────────────────────────────────────────────────────
 
 export async function loadProjectedPersonDisplayName(
   personId: string,
@@ -239,19 +249,11 @@ export async function loadProjectedPersonDisplayName(
   return name || null;
 }
 
-// ─────────────────────────────────────────────────────────────
-// createPerson
-// Flujo v6: auth.user + persons en una sola operación atómica
-// Si persons falla → elimina el auth.user para no dejar huérfanos
-// ─────────────────────────────────────────────────────────────
-
-export async function createPerson(input: CreatePersonInput): Promise<string> {
+export async function createPersonRecord(input: CreatePersonRecordInput): Promise<string> {
   const admin = createSupabaseAdminClient();
-
-  // 1. Crear auth.user sin password → Supabase enviará email de activación
   const { data, error } = await admin.auth.admin.createUser({
     email: input.email,
-    email_confirm: input.emailConfirm ?? false, // false = envía email de activación
+    email_confirm: input.emailConfirm ?? false,
   });
 
   if (error || !data.user) {
@@ -261,7 +263,6 @@ export async function createPerson(input: CreatePersonInput): Promise<string> {
   const personId = data.user.id;
   const { firstName, lastName } = splitFullName(input.fullName);
 
-  // 2. Crear person en v6 con onboarding_status = pending_activation
   const { error: personError } = await admin.from('persons').insert({
     person_id: personId,
     chain_id: input.chainId,
@@ -271,13 +272,12 @@ export async function createPerson(input: CreatePersonInput): Promise<string> {
     phone: input.phone,
     identity_document: input.identityDocument,
     system_role: input.systemRole ?? 'employee',
-    onboarding_status: 'pending_activation',
+    access_status: 'pending_activation',
     is_archived: false,
     agora_employee_id: input.agoraEmployeeId ?? null,
   });
 
   if (personError) {
-    // Rollback: eliminar el auth.user para no dejar huérfano
     await admin.auth.admin.deleteUser(personId, false);
     throw new Error(`Failed to create person: ${personError.message}`);
   }
@@ -285,12 +285,8 @@ export async function createPerson(input: CreatePersonInput): Promise<string> {
   return personId;
 }
 
-// ─────────────────────────────────────────────────────────────
-// updatePersonIdentity
-// ─────────────────────────────────────────────────────────────
-
-export async function updatePersonIdentity(
-  input: UpdatePersonIdentityInput,
+export async function updatePersonIdentityRecord(
+  input: UpdatePersonIdentityRecordInput,
 ): Promise<void> {
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -304,12 +300,8 @@ export async function updatePersonIdentity(
   }
   if (input.phone !== undefined) patch.phone = input.phone;
   if (input.identityDocument !== undefined) patch.identity_document = input.identityDocument;
-  if (input.mustChangePassword !== undefined) {
-    // En v6: must_change_password se mapea a onboarding_status
-    patch.onboarding_status = input.mustChangePassword ? 'pending_activation' : 'active';
-  }
 
-  if (Object.keys(patch).length <= 1) return; // solo updated_at, nada que hacer
+  if (Object.keys(patch).length <= 1) return;
 
   const admin = createSupabaseAdminClient();
   const { error } = await admin
@@ -321,10 +313,6 @@ export async function updatePersonIdentity(
     throw new Error(`Failed to update person identity: ${error.message}`);
   }
 }
-
-// ─────────────────────────────────────────────────────────────
-// updatePersonCredentials
-// ─────────────────────────────────────────────────────────────
 
 export async function updatePersonCredentials(
   input: UpdatePersonCredentialsInput,
@@ -342,7 +330,6 @@ export async function updatePersonCredentials(
     throw new Error(`Failed to update person credentials: ${error.message}`);
   }
 
-  // Sincronizar email en persons si cambió
   if (input.email) {
     const { error: personError } = await admin
       .from('persons')
@@ -355,11 +342,7 @@ export async function updatePersonCredentials(
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// archivePerson
-// ─────────────────────────────────────────────────────────────
-
-export async function archivePerson(input: ArchivePersonInput): Promise<void> {
+export async function archivePersonRecord(input: ArchivePersonRecordInput): Promise<void> {
   const admin = createSupabaseAdminClient();
   const soft = input.soft ?? true;
   const timestamp = new Date().toISOString();
@@ -373,7 +356,7 @@ export async function archivePerson(input: ArchivePersonInput): Promise<void> {
     .from('persons')
     .update({
       is_archived: true,
-      onboarding_status: 'suspended',
+      access_status: 'archived',
       deleted_at: timestamp,
       updated_at: timestamp,
     })
@@ -382,13 +365,4 @@ export async function archivePerson(input: ArchivePersonInput): Promise<void> {
   if (personError) {
     throw new Error(`Failed to archive person: ${personError.message}`);
   }
-}
-
-// ─────────────────────────────────────────────────────────────
-// mapSystemRoleToProfileRole
-// Compatibilidad con código que usa el campo role del PersonProfile
-// ─────────────────────────────────────────────────────────────
-
-export function mapSystemRoleToProfileRole(systemRole: SystemRole): PersonProfile['role'] {
-  return systemRole;
 }

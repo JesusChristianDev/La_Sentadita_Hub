@@ -12,7 +12,7 @@ export type DocumentType =
 export type DocumentOwnerType =
   | 'person'
   | 'employment_relationship'
-  | 'procedure'
+  | 'request'
   | 'restaurant'
   | 'delivery_note';
 

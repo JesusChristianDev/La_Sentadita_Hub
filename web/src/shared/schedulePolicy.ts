@@ -33,10 +33,13 @@ function normalizeActor(actor: ScheduleActor): ActorLike {
     return actor as ActorLike;
   }
 
+  const systemRole = 'system_role' in actor ? actor.system_role : actor.role;
+
   return {
     id: actor.id,
     restaurant_id: actor.restaurant_id ?? null,
-    role: 'system_role' in actor ? actor.system_role : actor.role,
+    role: systemRole,
+    system_role: systemRole,
     zone_id: actor.zone_id ?? null,
   };
 }
@@ -65,9 +68,8 @@ export function hasRestaurantWideScheduleAccess(actor: ScheduleActor): boolean {
   const requestContext = getScheduleRequestContext(actor);
   return (
     requestContext.systemRole === 'admin' ||
-    requestContext.systemRole === 'office' ||
-    requestContext.systemRole === 'manager' ||
-    requestContext.systemRole === 'sub_manager'
+    requestContext.systemRole === 'owner' ||
+    requestContext.systemRole === 'manager'
   );
 }
 

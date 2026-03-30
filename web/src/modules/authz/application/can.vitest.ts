@@ -1,20 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
 import { assertCan, can } from '@/modules/authz';
-import type { PersonProfile } from '@/modules/people';
+import type { Profile } from '@/modules/people';
 
 import { buildRequestContextFromProfile } from './requestContext';
 
-function buildProfile(overrides: Partial<PersonProfile> = {}): PersonProfile {
+function buildProfile(overrides: Partial<Profile> = {}): Profile {
+  const role = (overrides.system_role ?? overrides.role ?? 'employee') as Profile['role'];
+
   return {
+    access_status: 'active',
     avatar_path: null,
     employee_code: 1001,
     full_name: 'Test User',
     id: overrides.id ?? 'user-1',
-    is_active: true,
-    must_change_password: false,
     restaurant_id: 'restaurant-1',
-    role: 'employee',
+    role,
+    system_role: role,
     zone_id: null,
     ...overrides,
   };
@@ -25,6 +27,7 @@ describe('authz can', () => {
     const ctx = buildRequestContextFromProfile(
       buildProfile({
         role: 'area_lead',
+        system_role: 'area_lead',
         zone_id: 'zone-1',
       }),
     );
@@ -47,18 +50,20 @@ describe('authz can', () => {
     const admin = buildRequestContextFromProfile(
       buildProfile({
         role: 'admin',
+        system_role: 'admin',
       }),
     );
     const manager = buildRequestContextFromProfile(
       buildProfile({
         role: 'manager',
+        system_role: 'manager',
       }),
     );
 
     expect(can(admin, 'restaurant_context.select')).toBe(true);
     expect(can(manager, 'restaurant_context.select')).toBe(false);
     expect(admin.activeScopes).toEqual([
-      { scopeId: null, scopeType: 'platform' },
+      { scopeId: null, scopeType: 'organization' },
       { scopeId: 'restaurant-1', scopeType: 'restaurant' },
     ]);
   });
@@ -68,6 +73,7 @@ describe('authz can', () => {
       buildProfile({
         id: 'lead-1',
         role: 'area_lead',
+        system_role: 'area_lead',
         zone_id: 'zone-1',
       }),
     );
@@ -87,11 +93,68 @@ describe('authz can', () => {
     ).toBe(false);
   });
 
+  it('blocks office from schedules and lets canonical manager roles publish', () => {
+    const office = buildRequestContextFromProfile(
+      buildProfile({
+        id: 'office-1',
+        role: 'office',
+        system_role: 'office',
+        restaurant_id: null,
+      }),
+    );
+    const manager = buildRequestContextFromProfile(
+      buildProfile({
+        id: 'manager-1',
+        role: 'manager',
+        system_role: 'manager',
+      }),
+    );
+    const admin = buildRequestContextFromProfile(
+      buildProfile({
+        id: 'admin-1',
+        role: 'admin',
+        system_role: 'admin',
+        restaurant_id: null,
+      }),
+    );
+    const owner = buildRequestContextFromProfile(
+      buildProfile({
+        id: 'owner-1',
+        role: 'owner',
+        system_role: 'owner',
+        restaurant_id: null,
+      }),
+    );
+
+    expect(can(office, 'schedule.view')).toBe(false);
+    expect(can(office, 'schedule.edit_draft')).toBe(false);
+    expect(can(office, 'schedule.publish')).toBe(false);
+    expect(can(manager, 'schedule.publish')).toBe(true);
+    expect(can(admin, 'schedule.publish')).toBe(true);
+    expect(can(owner, 'schedule.publish')).toBe(true);
+  });
+
+  it('treats owner as organization-scoped management', () => {
+    const ctx = buildRequestContextFromProfile(
+      buildProfile({
+        id: 'owner-1',
+        role: 'owner',
+        system_role: 'owner',
+        restaurant_id: null,
+      }),
+    );
+
+    expect(ctx.scopeType).toBe('organization');
+    expect(can(ctx, 'restaurant_context.select')).toBe(true);
+    expect(can(ctx, 'schedule.publish')).toBe(true);
+  });
+
   it('keeps employees management restricted to global and restaurant roles', () => {
     const areaLead = buildRequestContextFromProfile(
       buildProfile({
         id: 'lead-1',
         role: 'area_lead',
+        system_role: 'area_lead',
         zone_id: 'zone-1',
       }),
     );
@@ -99,6 +162,7 @@ describe('authz can', () => {
       buildProfile({
         id: 'manager-1',
         role: 'manager',
+        system_role: 'manager',
       }),
     );
 
@@ -123,6 +187,7 @@ describe('authz can', () => {
       buildProfile({
         id: 'employee-1',
         role: 'employee',
+        system_role: 'employee',
       }),
     );
 

@@ -45,7 +45,7 @@ async function listRestaurantManagers(restaurantId: string): Promise<string[]> {
     .from('persons')
     .select('person_id')
     .in('person_id', personIds)
-    .in('system_role', ['manager', 'sub_manager']);
+    .eq('system_role', 'manager');
 
   if (peopleError) {
     throw new Error(`Failed to load restaurant managers: ${peopleError.message}`);
@@ -92,14 +92,15 @@ export async function listVisibleIncidents(
 
   const incidents = (data ?? []) as IncidentRecord[];
 
-  if (ctx.requestContext.systemRole === 'admin' || ctx.requestContext.systemRole === 'office') {
+  if (
+    ctx.requestContext.systemRole === 'admin' ||
+    ctx.requestContext.systemRole === 'owner' ||
+    ctx.requestContext.systemRole === 'office'
+  ) {
     return incidents;
   }
 
-  if (
-    ctx.requestContext.systemRole === 'manager' ||
-    ctx.requestContext.systemRole === 'sub_manager'
-  ) {
+  if (ctx.requestContext.systemRole === 'manager') {
     return incidents;
   }
 

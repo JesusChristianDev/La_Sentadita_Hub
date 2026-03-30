@@ -75,13 +75,27 @@ test('validateScopedEmployeeManagement blocks restaurant hopping and role change
   assert.equal(
     validateScopedEmployeeManagement({
       actorRestaurantId: 'restaurant-1',
-      actorRole: 'sub_manager',
+      actorRole: 'manager',
       requestedRestaurantId: 'restaurant-1',
       requestedRole: 'manager',
       targetRole: 'area_lead',
     }),
     'invalid_role',
   );
+});
+
+test('validateCreateEmployeeInput rejects non canonical roles', () => {
+  const result = validateCreateEmployeeInput({
+    email: 'paula@example.com',
+    fullName: 'Paula',
+    phone: '123456789',
+    identityDocument: '12345678A',
+    restaurantId: 'restaurant-1',
+    roleRaw: 'unsupported_role',
+    zoneId: '',
+  }, 'chain-1');
+
+  assert.deepEqual(result, { ok: false, errorCode: 'invalid_role' });
 });
 
 test('mapEmployeeMutationErrorCode recognizes slot conflicts and v6 unique indices', () => {

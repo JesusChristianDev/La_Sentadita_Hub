@@ -1,31 +1,35 @@
 import { redirect } from 'next/navigation';
 
-import { type ActorLike, can, deriveSystemRole, type SystemRole, toRequestContext } from '@/modules/authz';
+import {
+  type ActorLike,
+  can,
+  deriveSystemRole,
+  type SystemRole,
+  toRequestContext,
+} from '@/modules/authz';
 import type { EditableEmploymentSystemRole } from '@/modules/employment';
 import {
   getEmploymentRoleSlotConflictCode,
-  hasActiveAreaLead as hasActiveAreaLeadInEmployment,
+  hasActiveAreaLead as hasAreaLeadProjection,
 } from '@/shared/db/employment';
 import { loadPersonProfileById } from '@/shared/db/persons';
 import { employeesPathWithError } from '@/shared/feedbackMessages';
 
-type EmployeeRoleSlotConflictCode = 'manager_exists' | 'sub_manager_exists';
+type EmployeeRoleSlotConflictCode = 'manager_exists';
 
 function mapSystemRoleToEditableEmployeeRole(
   systemRole: SystemRole,
 ): EditableEmploymentSystemRole | null {
-  if (systemRole === 'area_lead' || systemRole === 'employee') {
-    return systemRole;
-  }
-
-  if (systemRole === 'manager' || systemRole === 'sub_manager') {
+  if (
+    systemRole === 'area_lead' ||
+    systemRole === 'employee' ||
+    systemRole === 'manager'
+  ) {
     return systemRole;
   }
 
   return null;
 }
-
-// --------------- Role checks ---------------
 
 export function canCreate(actor: ActorLike): boolean {
   return can(actor, 'employees.create');
@@ -34,10 +38,6 @@ export function canCreate(actor: ActorLike): boolean {
 export function canManageUsers(actor: ActorLike): boolean {
   return can(actor, 'employees.manage');
 }
-
-// --------------- Parsing helpers ---------------
-
-// --------------- Authorization guards ---------------
 
 export async function loadTarget(
   userId: string,
@@ -69,8 +69,8 @@ export async function assertCanManageTarget(
 
   if (
     target.systemRole === 'admin' ||
-    target.systemRole === 'office' ||
-    target.systemRole === 'chain_owner'
+    target.systemRole === 'owner' ||
+    target.systemRole === 'office'
   ) {
     redirect(employeesPathWithError('global_user'));
   }
@@ -91,11 +91,9 @@ export async function assertCanManageTarget(
   redirect(employeesPathWithError('restaurant_mismatch'));
 }
 
-// --------------- Slot validation ---------------
-
 export async function getRoleSlotConflictCode(
   restaurantId: string,
-  role: 'manager' | 'sub_manager',
+  role: 'manager',
   excludingUserId?: string,
 ): Promise<EmployeeRoleSlotConflictCode | null> {
   return getEmploymentRoleSlotConflictCode(
@@ -106,5 +104,5 @@ export async function getRoleSlotConflictCode(
 }
 
 export async function hasActiveAreaLead(userId: string): Promise<boolean> {
-  return hasActiveAreaLeadInEmployment(userId);
+  return hasAreaLeadProjection(userId);
 }

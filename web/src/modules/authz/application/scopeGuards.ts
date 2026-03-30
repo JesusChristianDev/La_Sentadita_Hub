@@ -2,7 +2,7 @@ import type { RequestContext } from './requestContext';
 
 function hasActiveScope(
   ctx: RequestContext,
-  scopeType: 'platform' | 'restaurant' | 'zone' | 'self',
+  scopeType: 'organization' | 'company' | 'restaurant' | 'zone' | 'self',
   scopeId: string | null,
 ): boolean {
   return ctx.activeScopes.some(
@@ -11,11 +11,11 @@ function hasActiveScope(
 }
 
 export function isGlobalSystemRole(ctx: RequestContext): boolean {
-  return ctx.systemRole === 'admin' || ctx.systemRole === 'office';
+  return ctx.systemRole === 'admin' || ctx.systemRole === 'owner' || ctx.systemRole === 'office';
 }
 
 export function isRestaurantManagementRole(ctx: RequestContext): boolean {
-  return ctx.systemRole === 'manager' || ctx.systemRole === 'sub_manager';
+  return ctx.systemRole === 'manager';
 }
 
 export function isManagementSystemRole(ctx: RequestContext): boolean {

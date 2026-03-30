@@ -21,10 +21,9 @@ const EMPLOYEE_ERROR_MESSAGES = {
     'No hay restaurante activo. Ve a /app y selecciona un restaurante.',
   restaurant_mismatch: 'No tienes permisos para gestionar usuarios de otro restaurante.',
   restaurant_invalid: 'El restaurante no existe o esta inactivo.',
-  global_user: 'Ese usuario es global (admin/office) y no se gestiona desde Equipo.',
-  manager_protected: 'Solo admin u office pueden editar un gerente.',
+  global_user: 'Ese usuario es global (admin/owner/office) y no se gestiona desde Equipo.',
+  manager_protected: 'Solo admin, owner u office pueden editar un gerente.',
   manager_exists: 'Ya existe un manager activo en este restaurante.',
-  sub_manager_exists: 'Ya existe un sub manager activo en este restaurante.',
   area_lead_requires_zone:
     'Encargado de zona requiere una zona activa asignada al empleado.',
   area_lead_zone_full:

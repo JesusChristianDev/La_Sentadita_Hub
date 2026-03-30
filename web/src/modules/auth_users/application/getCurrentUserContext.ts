@@ -4,15 +4,19 @@ import {
   buildRequestContextFromProfile,
   type RequestContext,
 } from '@/modules/authz';
-import type { PersonProfile } from '@/modules/people';
-import { loadPersonProfileByIdWithClient } from '@/shared/db/persons';
+import type { Profile } from '@/modules/people';
+import {
+  isPersonAccessAllowed,
+  loadPersonProfileByIdWithClient,
+  loadRestaurantChainIdByIdWithClient,
+} from '@/shared/db/persons';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 import { getEffectiveRestaurantId } from './getEffectiveRestaurantId';
 
 export type CurrentSession = {
-  person: PersonProfile;
-  profile: PersonProfile;
+  person: Profile;
+  profile: Profile;
   requestContext: RequestContext;
   userId: string;
 };
@@ -20,7 +24,7 @@ export type CurrentSession = {
 export type UserContext = CurrentSession;
 
 function buildCurrentSession(params: {
-  person: PersonProfile;
+  person: Profile;
   requestContext: RequestContext;
   userId: string;
 }): CurrentSession {
@@ -40,15 +44,22 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
 
   const person = await loadPersonProfileByIdWithClient(supabase, data.user.id);
 
-  if (person.is_archived || person.is_active === false) {
+  if (!isPersonAccessAllowed(person.access_status)) {
     redirect('/api/auth/signout?next=/login?e=disabled');
   }
 
   const effectiveRestaurantId = await getEffectiveRestaurantId(person);
+  const enrichedPerson =
+    !person.chain_id && effectiveRestaurantId
+      ? {
+          ...person,
+          chain_id: await loadRestaurantChainIdByIdWithClient(supabase, effectiveRestaurantId),
+        }
+      : person;
 
   return buildCurrentSession({
-    person,
-    requestContext: buildRequestContextFromProfile(person, effectiveRestaurantId),
+    person: enrichedPerson,
+    requestContext: buildRequestContextFromProfile(enrichedPerson, effectiveRestaurantId),
     userId: data.user.id,
   });
 }

@@ -1,8 +1,11 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-This repository has two main areas:
-- `docs/`: product and process specs (`00_INTENCION.md`, `01_MODULOS.md`, rules and critical flows).
+This repository has five relevant documentation/code areas:
+- `canon/`: official project canon. New active business or process documentation must live here.
+- `archive/`: historical plans and frozen reference packages. Do not treat them as active documentation.
+- `docs/legacy/`: historical documentation kept for reference only. Do not treat it as source of truth unless the user explicitly asks for it.
+- `docs/backups/` and `docs/lighthouse/`: artifacts, reports, and backups.
 - `web/`: Next.js 16 + TypeScript application.
 
 Inside `web/src/`:
@@ -14,13 +17,16 @@ Use the `@/*` alias for imports from `web/src/*`.
 
 ## Build, Test, and Development Commands
 Run commands from `web/`:
-- `npm install`: install dependencies.
-- `npm run dev`: start local dev server at `http://localhost:3000`.
-- `npm run build`: production build validation.
-- `npm run start`: run built app.
-- `npm run lint`: run ESLint checks.
-- `npm run lint:fix`: auto-fix lint issues where possible.
-- `npm run format`: format codebase with Prettier.
+- `pnpm install`: install dependencies.
+- `pnpm run dev`: start local dev server at `http://localhost:3000`.
+- `pnpm run build`: production build validation.
+- `pnpm run start`: run built app.
+- `pnpm run lint`: run ESLint checks.
+- `pnpm run lint:fix`: auto-fix lint issues where possible.
+- `pnpm run format`: format codebase with Prettier.
+- `pnpm run test:unit`: legacy unit suite compiled with `node --test`.
+- `pnpm run test:vitest`: Vitest suite.
+- `pnpm run test:e2e`: Playwright end-to-end suite.
 
 ## Coding Style & Naming Conventions
 - Indentation: 2 spaces, UTF-8, LF endings (see `.editorconfig`).
@@ -30,11 +36,11 @@ Run commands from `web/`:
 - Linting: `eslint-config-next` + `simple-import-sort` + `unused-imports`; keep imports sorted and remove unused symbols.
 
 ## Testing Guidelines
-No test runner is configured yet. Minimum quality gate is:
-- `npm run lint`
-- `npm run build`
+The current minimum quality gate is:
+- `pnpm run lint`
+- `pnpm run build`
 
-When adding tests, prefer colocated `*.test.ts` or `*.test.tsx` files near the module they cover, and prioritize application/domain logic in `web/src/modules/`.
+When adding tests, prefer colocated `*.test.ts` or `*.test.tsx` files near the module they cover, prioritize application/domain logic in `web/src/modules/`, and use the existing unit/Vitest/Playwright setup when relevant.
 
 ## Commit & Pull Request Guidelines
 Current history uses short, task-focused messages (for example: `B00: skeleton modular + prettier/eslint + line-endings`). Follow this style:
@@ -45,4 +51,4 @@ For PRs include:
 - Clear description of what changed and why.
 - Linked issue/ticket when available.
 - UI screenshots for page changes (`web/src/app/**`).
-- Verification notes with executed commands (for example `npm run lint`, `npm run build`).
+- Verification notes with executed commands (for example `pnpm run lint`, `pnpm run build`).

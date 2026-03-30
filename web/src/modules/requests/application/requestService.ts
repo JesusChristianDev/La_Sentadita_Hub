@@ -4,6 +4,7 @@ import { AUDIT_ACTIONS, writeAuditLog } from '@/modules/audit';
 import { getCurrentUserContext } from '@/modules/auth_users';
 import {
   assertRestaurantManagement,
+  coerceSystemRole,
   deriveResponsibilityLevel,
 } from '@/modules/authz';
 import type { SystemRole } from '@/modules/authz/domain/systemRoles';
@@ -11,12 +12,12 @@ import { notifyPeople, notifyPerson } from '@/modules/notifications';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 import type {
-  CreateProcedureInput,
+  CreateRequestInput,
   CreateShiftSwapRequestInput,
-  ProcedureRecord,
-  ReviewProcedureInput,
+  RequestRecord,
+  ReviewRequestInput,
   ShiftSwapRequestRecord,
-} from '../domain/procedureTypes';
+} from '../domain/requestTypes';
 
 type EmploymentSnapshot = {
   active_principal: boolean;
@@ -77,7 +78,7 @@ async function loadEmploymentSnapshot(employmentId: string): Promise<EmploymentS
 
   return {
     ...(data as Omit<EmploymentSnapshot, 'system_role'>),
-    system_role: person.system_role as EmploymentSnapshot['system_role'],
+    system_role: coerceSystemRole(person.system_role as string),
   };
 }
 
@@ -126,7 +127,7 @@ async function listRestaurantManagers(restaurantId: string): Promise<string[]> {
     .from('persons')
     .select('person_id, system_role')
     .in('person_id', personIds)
-    .in('system_role', ['manager', 'sub_manager']);
+    .eq('system_role', 'manager');
 
   if (peopleError) {
     throw new Error(`Failed to load restaurant managers: ${peopleError.message}`);
@@ -135,41 +136,41 @@ async function listRestaurantManagers(restaurantId: string): Promise<string[]> {
   return (people ?? []).map((row) => row.person_id as string);
 }
 
-export async function listMyProcedures(): Promise<ProcedureRecord[]> {
+export async function listMyRequests(): Promise<RequestRecord[]> {
   const ctx = await getRequiredCurrentUserContext();
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
-    .from('procedures')
+    .from('requests')
     .select(
-      'procedure_id, employment_id, procedure_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
+      'request_id, employment_id, request_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
     )
     .eq('requested_by', ctx.userId)
     .order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to list procedures: ${error.message}`);
+    throw new Error(`Failed to list requests: ${error.message}`);
   }
 
-  return (data ?? []) as ProcedureRecord[];
+  return (data ?? []) as RequestRecord[];
 }
 
-export async function listRestaurantProcedures(
+export async function listRestaurantRequests(
   restaurantId: string,
-): Promise<ProcedureRecord[]> {
+): Promise<RequestRecord[]> {
   const ctx = await getRequiredCurrentUserContext();
   assertRestaurantManagement(ctx.requestContext, restaurantId);
 
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
-    .from('procedures')
+    .from('requests')
     .select(
-      'procedure_id, employment_id, procedure_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at, employment_relationships!inner(restaurant_id)',
+      'request_id, employment_id, request_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at, employment_relationships!inner(restaurant_id)',
     )
     .eq('employment_relationships.restaurant_id', restaurantId)
     .order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to list restaurant procedures: ${error.message}`);
+    throw new Error(`Failed to list restaurant requests: ${error.message}`);
   }
 
   return (data ?? []).map((row) => ({
@@ -177,17 +178,17 @@ export async function listRestaurantProcedures(
     effective_end_date: row.effective_end_date as string | null,
     effective_start_date: row.effective_start_date as string | null,
     employment_id: row.employment_id as string,
-    procedure_id: row.procedure_id as string,
-    procedure_type: row.procedure_type as ProcedureRecord['procedure_type'],
+    request_id: row.request_id as string,
+    request_type: row.request_type as RequestRecord['request_type'],
     requested_by: row.requested_by as string,
     resolution_note: row.resolution_note as string | null,
     reviewed_by: row.reviewed_by as string | null,
-    status: row.status as ProcedureRecord['status'],
+    status: row.status as RequestRecord['status'],
     updated_at: row.updated_at as string,
   }));
 }
 
-export async function createProcedure(input: CreateProcedureInput): Promise<ProcedureRecord> {
+export async function createRequest(input: CreateRequestInput): Promise<RequestRecord> {
   const ctx = await getRequiredCurrentUserContext();
   const employment = await loadEmploymentSnapshot(input.employmentId);
 
@@ -200,26 +201,26 @@ export async function createProcedure(input: CreateProcedureInput): Promise<Proc
     effective_end_date: input.effectiveEndDate ?? null,
     effective_start_date: input.effectiveStartDate ?? null,
     employment_id: input.employmentId,
-    procedure_type: input.procedureType,
+    request_type: input.requestType,
     requested_by: ctx.userId,
     status: 'requested',
   };
   const { data, error } = await admin
-    .from('procedures')
+    .from('requests')
     .insert(payload)
     .select(
-      'procedure_id, employment_id, procedure_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
+      'request_id, employment_id, request_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
     )
     .single();
 
   if (error) {
-    throw new Error(`Failed to create procedure: ${error.message}`);
+    throw new Error(`Failed to create request: ${error.message}`);
   }
 
   await writeAuditLog({
-    action: AUDIT_ACTIONS.procedureCreated,
-    entityId: data.procedure_id,
-    entityType: 'procedure',
+    action: AUDIT_ACTIONS.requestCreated,
+    entityId: data.request_id,
+    entityType: 'request',
     newValue: payload,
     scopeId: employment.restaurant_id,
     scopeType: 'restaurant',
@@ -230,43 +231,43 @@ export async function createProcedure(input: CreateProcedureInput): Promise<Proc
   if (managers.length > 0) {
     await notifyPeople(
       managers.map((recipientPersonId) => ({
-        body: 'Hay un tramite pendiente de revision en tu restaurante.',
-        entityId: data.procedure_id as string,
-        entityType: 'procedure',
-        notificationType: 'procedure_created',
+        body: 'Hay una solicitud pendiente de revision en tu restaurante.',
+        entityId: data.request_id as string,
+        entityType: 'request',
+        notificationType: 'request_created',
         recipientPersonId,
         scopeId: employment.restaurant_id,
         scopeType: 'restaurant',
         sendPush: true,
-        title: 'Nuevo tramite',
+        title: 'Nueva solicitud',
         traceId: ctx.requestContext.traceId,
       })),
     );
   }
 
-  return data as ProcedureRecord;
+  return data as RequestRecord;
 }
 
-export async function reviewProcedure(input: ReviewProcedureInput): Promise<ProcedureRecord> {
+export async function reviewRequest(input: ReviewRequestInput): Promise<RequestRecord> {
   const ctx = await getRequiredCurrentUserContext();
   const admin = createSupabaseAdminClient();
   const { data: current, error: currentError } = await admin
-    .from('procedures')
+    .from('requests')
     .select(
-      'procedure_id, employment_id, procedure_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
+      'request_id, employment_id, request_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
     )
-    .eq('procedure_id', input.procedureId)
+    .eq('request_id', input.requestId)
     .single();
 
   if (currentError) {
-    throw new Error(`Failed to load procedure: ${currentError.message}`);
+    throw new Error(`Failed to load request: ${currentError.message}`);
   }
 
   const employment = await loadEmploymentSnapshot(current.employment_id as string);
   assertRestaurantManagement(ctx.requestContext, employment.restaurant_id);
 
   if (current.requested_by === ctx.userId) {
-    throw new Error('PROCEDURE_SELF_APPROVAL_FORBIDDEN: No puedes autoaprobar tu propio tramite.');
+    throw new Error('REQUEST_SELF_APPROVAL_FORBIDDEN: No puedes autorizar tu propia solicitud.');
   }
 
   const patch = {
@@ -275,22 +276,22 @@ export async function reviewProcedure(input: ReviewProcedureInput): Promise<Proc
     status: input.status,
   };
   const { data, error } = await admin
-    .from('procedures')
+    .from('requests')
     .update(patch)
-    .eq('procedure_id', input.procedureId)
+    .eq('request_id', input.requestId)
     .select(
-      'procedure_id, employment_id, procedure_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
+      'request_id, employment_id, request_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
     )
     .single();
 
   if (error) {
-    throw new Error(`Failed to review procedure: ${error.message}`);
+    throw new Error(`Failed to review request: ${error.message}`);
   }
 
   await writeAuditLog({
-    action: AUDIT_ACTIONS.procedureStatusChanged,
-    entityId: input.procedureId,
-    entityType: 'procedure',
+    action: AUDIT_ACTIONS.requestStatusChanged,
+    entityId: input.requestId,
+    entityType: 'request',
     newValue: patch,
     previousValue: {
       resolution_note: current.resolution_note,
@@ -304,30 +305,30 @@ export async function reviewProcedure(input: ReviewProcedureInput): Promise<Proc
 
   const notificationType =
     input.status === 'approved'
-      ? 'procedure_approved'
+      ? 'request_approved'
       : input.status === 'rejected'
-        ? 'procedure_rejected'
-        : 'procedure_in_review';
+        ? 'request_rejected'
+        : 'request_in_review';
 
   await notifyPerson({
     body:
       input.status === 'approved'
-        ? 'Tu tramite ha sido aprobado.'
+        ? 'Tu solicitud ha sido aprobada.'
         : input.status === 'rejected'
-          ? 'Tu tramite ha sido rechazado.'
-          : 'Tu tramite ha cambiado de estado.',
-    entityId: input.procedureId,
-    entityType: 'procedure',
+          ? 'Tu solicitud ha sido rechazada.'
+          : 'Tu solicitud ha cambiado de estado.',
+    entityId: input.requestId,
+    entityType: 'request',
     notificationType,
     recipientPersonId: current.requested_by as string,
     scopeId: employment.restaurant_id,
     scopeType: 'restaurant',
     sendPush: input.status === 'approved' || input.status === 'rejected',
-    title: 'Actualizacion de tramite',
+    title: 'Actualizacion de solicitud',
     traceId: ctx.requestContext.traceId,
   });
 
-  return data as ProcedureRecord;
+  return data as RequestRecord;
 }
 
 export async function listMyShiftSwapRequests(): Promise<ShiftSwapRequestRecord[]> {

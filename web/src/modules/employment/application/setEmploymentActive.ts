@@ -1,10 +1,10 @@
-import { setEmploymentActive } from '@/shared/db/employment';
+import { setEmploymentActiveProjection } from '@/shared/db/employment';
 
 export async function setEmploymentActive(
   personId: string,
   isActive: boolean,
 ): Promise<void> {
-  await setEmploymentActive(personId, isActive);
+  await setEmploymentActiveProjection(personId, isActive);
 }
 
 export const setEmployeeActive = setEmploymentActive;

@@ -1,8 +1,14 @@
-import type { AppRole, PersonProfile } from '@/modules/people';
+import type { AppRole, Profile } from '@/modules/people';
 
-import type { ResponsibilityLevel } from '../domain/responsibilityLevel';
-import { deriveResponsibilityLevel } from '../domain/responsibilityLevel';
-import type { ScopeType, SystemRole } from '../domain/systemRoles';
+import {
+  deriveResponsibilityLevel,
+  type ResponsibilityLevel,
+} from '../domain/responsibilityLevel';
+import {
+  coerceSystemRole,
+  type ScopeType,
+  type SystemRole,
+} from '../domain/systemRoles';
 
 export type ActiveScope = {
   scopeId: string | null;
@@ -11,12 +17,11 @@ export type ActiveScope = {
 
 export type RequestContext = {
   activeScopes: ActiveScope[];
-  chainId: string | null;          // v6 — cadena a la que pertenece el actor
+  chainId: string | null;
   effectiveRestaurantId: string | null;
-  appRole: AppRole;
   now: Date;
   personId: string;
-  profile: PersonProfile;
+  profile: Profile;
   responsibilityLevel: ResponsibilityLevel;
   restaurantId: string | null;
   scopeType: ScopeType;
@@ -27,7 +32,7 @@ export type RequestContext = {
 };
 
 export type UserContextLike = {
-  profile: PersonProfile;
+  profile: Profile;
   userId: string;
 };
 
@@ -35,34 +40,36 @@ export type ActorLike =
   | AppRole
   | UserContextLike
   | RequestContext
-  | Pick<PersonProfile, 'id' | 'restaurant_id' | 'role' | 'zone_id'>;
+  | Pick<Profile, 'id' | 'restaurant_id' | 'role' | 'system_role' | 'zone_id'>;
 
-export function deriveSystemRole(profile: PersonProfile): SystemRole {
-  return profile.system_role ?? (profile.role as SystemRole);
+export function deriveSystemRole(profile: Profile): SystemRole {
+  return coerceSystemRole(profile.system_role);
 }
 
-export function deriveScopeType(profile: PersonProfile, systemRole: SystemRole): ScopeType {
-  if (systemRole === 'admin' || systemRole === 'office') return 'platform';
-  if (systemRole === 'manager' || systemRole === 'sub_manager') return 'restaurant';
+export function deriveScopeType(profile: Profile, systemRole: SystemRole): ScopeType {
+  if (systemRole === 'admin' || systemRole === 'owner' || systemRole === 'office') {
+    return 'organization';
+  }
+  if (systemRole === 'manager') return 'restaurant';
   if (systemRole === 'area_lead') return 'zone';
   return 'self';
 }
 
 export function deriveActiveScopes(
-  profile: PersonProfile,
+  profile: Profile,
   systemRole: SystemRole,
   effectiveRestaurantId: string | null,
 ): ActiveScope[] {
-  if (systemRole === 'admin' || systemRole === 'office') {
+  if (systemRole === 'admin' || systemRole === 'owner' || systemRole === 'office') {
     return [
-      { scopeId: null, scopeType: 'platform' },
+      { scopeId: null, scopeType: 'organization' },
       ...(effectiveRestaurantId
         ? [{ scopeId: effectiveRestaurantId, scopeType: 'restaurant' as const }]
         : []),
     ];
   }
 
-  if (systemRole === 'manager' || systemRole === 'sub_manager') {
+  if (systemRole === 'manager') {
     return [
       {
         scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null,
@@ -85,7 +92,7 @@ export function deriveActiveScopes(
 }
 
 export function buildRequestContextFromProfile(
-  profile: PersonProfile,
+  profile: Profile,
   effectiveRestaurantId: string | null = profile.restaurant_id ?? null,
 ): RequestContext {
   const systemRole = deriveSystemRole(profile);
@@ -93,9 +100,8 @@ export function buildRequestContextFromProfile(
 
   return {
     activeScopes: deriveActiveScopes(profile, systemRole, effectiveRestaurantId),
-    chainId: profile.chain_id ?? null,   // v6
+    chainId: profile.chain_id ?? null,
     effectiveRestaurantId,
-    appRole: profile.role,
     now: new Date(),
     personId: profile.id,
     profile,
@@ -109,7 +115,6 @@ export function buildRequestContextFromProfile(
   };
 }
 
-// Bug fix: faltaba el cierre ) en el original
 export function buildRequestContextFromUserContext(
   userContext: UserContextLike,
   effectiveRestaurantId: string | null = userContext.profile.restaurant_id ?? null,
@@ -125,7 +130,6 @@ export function isRequestContext(value: unknown): value is RequestContext {
     value &&
       typeof value === 'object' &&
       'systemRole' in value &&
-      'appRole' in value &&
       'profile' in value &&
       'userId' in value,
   );

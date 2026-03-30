@@ -11,8 +11,13 @@ export {
   validatePasswordChangeInput,
 } from './application/selfProfileMutationRules';
 export { updatePersonIdentity } from './application/updatePersonIdentity';
-export type { AccessStatus, CanonicalPerson } from './domain/personCanonical';
-export type { AppRole, PersonProfile } from './domain/personProfile';
+export type { CanonicalPerson } from './domain/personCanonical';
+export type {
+  AccessStatus,
+  AppRole,
+  PersonProfile,
+  PersonProfile as Profile,
+} from './domain/personProfile';
 export type {
   ArchivePersonInput,
   CreatePersonInput,

@@ -1,9 +1,9 @@
-import { createPerson } from '@/shared/db/persons';
+import { createPersonRecord } from '@/shared/db/persons';
 
 import type { CreatePersonInput } from '../domain/personTypes';
 
 export async function createPerson(input: CreatePersonInput): Promise<string> {
-  return createPerson({
+  return createPersonRecord({
     email: input.email,
     emailConfirm: input.emailConfirm,
     fullName: input.fullName,

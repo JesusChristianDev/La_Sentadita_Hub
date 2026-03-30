@@ -13,7 +13,6 @@ export type EmployeeMutationErrorCode =
   | 'restaurant_mismatch'
   | 'restaurant_invalid'
   | 'manager_exists'
-  | 'sub_manager_exists'
   | 'area_lead_requires_zone'
   | 'area_lead_zone_full'
   | 'duplicate_identity'       // DNI/NIE ya existe en la cadena
@@ -67,12 +66,7 @@ type ValidationResult<T> =
 export function parseEditableEmployeeRole(
   value: string,
 ): EditableEmploymentSystemRole | null {
-  if (
-    value === 'employee' ||
-    value === 'area_lead' ||
-    value === 'manager' ||
-    value === 'sub_manager'
-  ) {
+  if (value === 'employee' || value === 'area_lead' || value === 'manager') {
     return value;
   }
   return null;
@@ -179,14 +173,14 @@ export function validateScopedEmployeeManagement(params: {
   targetRole: EditableEmploymentSystemRole;
 }): EmployeeMutationErrorCode | null {
   if (
-    (params.actorRole === 'manager' || params.actorRole === 'sub_manager') &&
+    params.actorRole === 'manager' &&
     params.requestedRestaurantId !== params.actorRestaurantId
   ) {
     return 'restaurant_mismatch';
   }
 
   if (
-    (params.actorRole === 'manager' || params.actorRole === 'sub_manager') &&
+    params.actorRole === 'manager' &&
     params.requestedRole !== params.targetRole
   ) {
     return 'invalid_role';
@@ -197,7 +191,7 @@ export function validateScopedEmployeeManagement(params: {
 
 export function mapEmployeeMutationErrorCode(
   error: unknown,
-): 'area_lead_zone_full' | 'manager_exists' | 'sub_manager_exists' | null {
+): 'area_lead_zone_full' | 'duplicate_employee_code' | 'duplicate_identity' | 'manager_exists' | null {
   const message = error instanceof Error ? error.message : String(error);
 
   // Bug fix: faltaba el cierre ) en el if original
@@ -208,11 +202,12 @@ export function mapEmployeeMutationErrorCode(
     return 'manager_exists';
   }
 
-  if (
-    message === 'sub_manager_exists' ||
-    message.includes('ux_profiles_one_sub_manager_per_restaurant')
-  ) {
-    return 'sub_manager_exists';
+  if (message.includes('idx_persons_chain_identity_document_unique')) {
+    return 'duplicate_identity';
+  }
+
+  if (message.includes('idx_persons_agora_employee_id')) {
+    return 'duplicate_employee_code';
   }
 
   if (message === 'area_lead_zone_full') {

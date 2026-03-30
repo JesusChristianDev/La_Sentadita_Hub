@@ -2,7 +2,10 @@
 
 import { redirect } from 'next/navigation';
 
-import { loadPersonAccessState } from '@/shared/db/persons';
+import {
+  isPersonAccessAllowed,
+  loadPersonAccessState,
+} from '@/shared/db/persons';
 import { serverEnv } from '@/shared/env.server';
 import { loginPathWithError } from '@/shared/feedbackMessages';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
@@ -56,7 +59,7 @@ async function isDisabledByEmail(email: string): Promise<boolean> {
 
   const person = await loadPersonAccessState(authUserId);
   if (!person) return false;
-  return person.is_archived || person.is_active === false;
+  return !isPersonAccessAllowed(person.access_status);
 }
 
 export async function login(formData: FormData) {
@@ -90,7 +93,7 @@ export async function login(formData: FormData) {
     redirect(loginPathWithError('bad'));
   }
 
-  if (person.is_archived || person.is_active === false) {
+  if (!isPersonAccessAllowed(person.access_status)) {
     await supabase.auth.signOut();
     redirect(loginPathWithError('disabled'));
   }

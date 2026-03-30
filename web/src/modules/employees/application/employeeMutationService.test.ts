@@ -20,11 +20,13 @@ test('createEmployeeFromDraft validates effective restaurant and role slots befo
   });
 
   const result = await service.createEmployeeFromDraft({
+    chainId: 'chain-1',
     effectiveRestaurantId: 'restaurant-1',
     input: {
       email: 'paula@example.com',
       fullName: 'Paula',
-      password: '12345678',
+      phone: '123456789',
+      identityDocument: '12345678A',
       restaurantId: 'restaurant-1',
       roleRaw: 'manager',
       zoneId: 'zone-1',
@@ -44,11 +46,13 @@ test('createEmployeeFromDraft rejects when restaurant context is missing or mism
   });
 
   const missing = await service.createEmployeeFromDraft({
+    chainId: 'chain-1',
     effectiveRestaurantId: null,
     input: {
       email: 'paula@example.com',
       fullName: 'Paula',
-      password: '12345678',
+      phone: '123456789',
+      identityDocument: '12345678A',
       restaurantId: 'restaurant-1',
       roleRaw: 'employee',
       zoneId: 'zone-1',
@@ -56,11 +60,13 @@ test('createEmployeeFromDraft rejects when restaurant context is missing or mism
   });
 
   const mismatch = await service.createEmployeeFromDraft({
+    chainId: 'chain-1',
     effectiveRestaurantId: 'restaurant-2',
     input: {
       email: 'paula@example.com',
       fullName: 'Paula',
-      password: '12345678',
+      phone: '123456789',
+      identityDocument: '12345678A',
       restaurantId: 'restaurant-1',
       roleRaw: 'employee',
       zoneId: 'zone-1',

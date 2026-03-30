@@ -146,7 +146,6 @@ export function ScheduleEditorFiltersPanel({
               <option value="employee">{roleLabel('employee')}</option>
               <option value="area_lead">{roleLabel('area_lead')}</option>
               <option value="manager">{roleLabel('manager')}</option>
-              <option value="sub_manager">{roleLabel('sub_manager')}</option>
             </Select>
           </label>
           <label className="field">

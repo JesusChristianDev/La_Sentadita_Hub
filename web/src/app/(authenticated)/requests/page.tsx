@@ -2,22 +2,21 @@ import { redirect } from 'next/navigation';
 
 import { getCurrentUserContext } from '@/modules/auth_users';
 import { can } from '@/modules/authz';
-import { listMyProcedures, listRestaurantProcedures } from '@/modules/requests/application/procedureService';
-import type { ProcedureRecord } from '@/modules/requests/domain/procedureTypes';
-import { ProceduresPageClient } from '@/modules/requests/ui/ProceduresPageClient';
+import { listMyRequests, listRestaurantRequests } from '@/modules/requests/application/requestService';
+import type { RequestRecord } from '@/modules/requests/domain/requestTypes';
+import { RequestsPageClient } from '@/modules/requests/ui/RequestsPageClient';
 import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 export const metadata = {
-  title: 'Mis Trámites | La Sentadita Hub',
+  title: 'Mis Solicitudes | La Sentadita Hub',
 };
 
-export default async function ProceduresPage() {
+export default async function RequestsPage() {
   const ctx = await getCurrentUserContext();
   if (!ctx) {
     redirect('/login');
   }
 
-  // Determine current active employment
   const supabase = await createSupabaseServerClient();
   const { data: myEmployments } = await supabase
     .from('employment_relationships')
@@ -28,35 +27,32 @@ export default async function ProceduresPage() {
 
   const currentEmploymentId = myEmployments?.employment_id || '';
   const currentRestaurantId = myEmployments?.restaurant_id || '';
+  const initialRequests = await listMyRequests();
+  const canManageTeam = can(ctx.requestContext, 'requests.manage');
 
-  // Get procedures for the user
-  const initialProcedures = await listMyProcedures();
-
-  const canManageTeam = can(ctx.requestContext, 'procedures.manage');
-
-  let teamProcedures: ProcedureRecord[] = [];
+  let teamRequests: RequestRecord[] = [];
   try {
     if (canManageTeam && currentRestaurantId) {
-      teamProcedures = await listRestaurantProcedures(currentRestaurantId);
+      teamRequests = await listRestaurantRequests(currentRestaurantId);
     }
-  } catch (err) {
-    console.error('[ProceduresPage] Error validando tramites de equipo:', err);
+  } catch (error) {
+    console.error('[RequestsPage] Error validando solicitudes de equipo:', error);
   }
 
   return (
     <main className="app-shell stack rise-in">
       <section className="page-intro">
         <div>
-          <h1 className="page-title">Trámites</h1>
-          <p className="subtitle">Gestión de solicitudes, vacaciones y licencias.</p>
+          <h1 className="page-title">Solicitudes</h1>
+          <p className="subtitle">Gestion de solicitudes laborales y operativas.</p>
         </div>
       </section>
 
-      <section className="panel flex-1 flex flex-col min-h-0">
+      <section className="panel flex min-h-0 flex-1 flex-col">
         <div className="flex-1 overflow-auto rounded-lg border border-border/50 bg-background/50">
-          <ProceduresPageClient
-            initialProcedures={initialProcedures}
-            teamProcedures={teamProcedures}
+          <RequestsPageClient
+            initialRequests={initialRequests}
+            teamRequests={teamRequests}
             canManageTeam={canManageTeam}
             currentEmploymentId={currentEmploymentId}
           />

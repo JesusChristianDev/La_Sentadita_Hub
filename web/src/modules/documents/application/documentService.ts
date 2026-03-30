@@ -73,15 +73,15 @@ async function resolveDocumentOwnerMetadata(
     };
   }
 
-  if (ownerType === 'procedure') {
+  if (ownerType === 'request') {
     const { data, error } = await admin
-      .from('procedures')
+      .from('requests')
       .select('employment_id')
-      .eq('procedure_id', ownerId)
+      .eq('request_id', ownerId)
       .single();
 
     if (error) {
-      throw new Error(`Failed to resolve procedure document owner: ${error.message}`);
+      throw new Error(`Failed to resolve request document owner: ${error.message}`);
     }
 
     return resolveDocumentOwnerMetadata('employment_relationship', data.employment_id as string);
@@ -194,7 +194,6 @@ export async function listAccessibleDocuments(): Promise<DocumentRecord[]> {
       if (
         metadata.restaurantId &&
         (ctx.requestContext.systemRole === 'manager' ||
-          ctx.requestContext.systemRole === 'sub_manager' ||
           ctx.requestContext.systemRole === 'office') &&
         ctx.requestContext.effectiveRestaurantId === metadata.restaurantId
       ) {

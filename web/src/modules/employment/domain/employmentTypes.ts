@@ -1,14 +1,14 @@
 import type { SystemRole } from '@/modules/authz';
 import type { AppRole } from '@/modules/people';
 
-export type EditableEmployeeRole = Extract<AppRole, 'employee' | 'manager' | 'sub_manager' | 'area_lead'>;
+export type EditableEmployeeRole = Extract<AppRole, 'employee' | 'manager' | 'area_lead'>;
 export type EditableEmploymentSystemRole = Extract<
   SystemRole,
-  'employee' | 'area_lead' | 'manager' | 'sub_manager'
+  'employee' | 'area_lead' | 'manager'
 >;
 export type EmploymentSystemRole = Extract<
   SystemRole,
-  'employee' | 'manager' | 'sub_manager' | 'area_lead'
+  'employee' | 'manager' | 'area_lead'
 >;
 export type EmploymentStatusFilter = 'active' | 'inactive' | 'all';
 

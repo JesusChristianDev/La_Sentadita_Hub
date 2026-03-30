@@ -24,7 +24,7 @@ Aplicacion web de operacion interna para La Sentadita Hub, construida con Next.j
 
 ## Requisitos
 
-- Node.js 24 LTS (objetivo de `v8`)
+- Node.js 24 LTS
 - pnpm 10
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -72,4 +72,7 @@ Si usas `nvm`, ejecuta `nvm use` dentro de `web/`.
 - El repositorio se versiona desde la raiz `C:\la-sentadita-hub`.
 - La app que se despliega en Vercel es esta carpeta: `web/`.
 - El gestor de paquetes objetivo desde esta migracion es `pnpm`.
-- La guia operativa esta en `../docs/19_GIT_Y_VERCEL_SETUP.md`.
+- La guia operativa oficial esta en `../canon/02_GIT_Y_VERCEL_SETUP.md`.
+- El canon de negocio oficial esta en `../canon/01_CANON_NEGOCIO_LA_SENTADITA.md`.
+- Los paquetes y planes `v8` quedaron archivados en `../archive/` y no son documentacion activa.
+- `../docs/legacy/` queda solo como archivo historico y no debe usarse como fuente de verdad.

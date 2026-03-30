@@ -18,9 +18,9 @@ export function NewEmployeeDrawer({
   createEmployeeAction,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<
-    'employee' | 'area_lead' | 'sub_manager' | 'manager'
-  >('employee');
+  const [selectedRole, setSelectedRole] = useState<'employee' | 'area_lead' | 'manager'>(
+    'employee',
+  );
 
   const closeDrawer = () => {
     setOpen(false);
@@ -68,8 +68,8 @@ export function NewEmployeeDrawer({
               <div>
                 <h2 className="panel-title">Nuevo empleado</h2>
                 <p className="mt-2 text-sm muted">
-                  Se enviará un email de activación al empleado para que establezca
-                  su contraseña.
+                  Se enviara un email de activacion al empleado para que establezca
+                  su contrasena.
                 </p>
               </div>
               <Button onClick={closeDrawer} variant="secondary">
@@ -80,7 +80,6 @@ export function NewEmployeeDrawer({
             <form action={createEmployeeAction} className="employee-drawer-form">
               <input type="hidden" name="restaurantId" value={restaurantId} />
 
-              {/* Datos personales */}
               <label className="field">
                 <span>Nombre completo</span>
                 <input name="fullName" className="input" required />
@@ -92,7 +91,7 @@ export function NewEmployeeDrawer({
               </label>
 
               <label className="field">
-                <span>Teléfono</span>
+                <span>Telefono</span>
                 <input name="phone" type="tel" className="input" required />
               </label>
 
@@ -101,7 +100,6 @@ export function NewEmployeeDrawer({
                 <input name="identityDocument" className="input" required />
               </label>
 
-              {/* Rol */}
               <label className="field">
                 <span>Rol</span>
                 <Select
@@ -109,24 +107,16 @@ export function NewEmployeeDrawer({
                   value={selectedRole}
                   onChange={(event) => {
                     setSelectedRole(
-                      event.target.value as
-                        | 'employee'
-                        | 'area_lead'
-                        | 'sub_manager'
-                        | 'manager',
+                      event.target.value as 'employee' | 'area_lead' | 'manager',
                     );
                   }}
                 >
                   <option value="employee">Empleado</option>
                   <option value="area_lead">Encargado de zona</option>
-                  <option value="sub_manager">Subgerente</option>
-                  {canAssignManager ? (
-                    <option value="manager">Gerente</option>
-                  ) : null}
+                  {canAssignManager ? <option value="manager">Gerente</option> : null}
                 </Select>
               </label>
 
-              {/* Zona — solo para employee y area_lead */}
               {selectedRole === 'employee' || selectedRole === 'area_lead' ? (
                 <>
                   <hr className="my-2 border-muted/20" />
@@ -141,19 +131,19 @@ export function NewEmployeeDrawer({
                       ))}
                     </Select>
                     <p className="text-2xs muted mt-1">
-                      Categorías sugeridas: Cocina, Sala, Barra.
+                      Categorias sugeridas: Cocina, Sala, Barra.
                     </p>
                   </label>
                   <p className="text-xs muted mb-4">
                     {selectedRole === 'area_lead'
                       ? 'Encargado de zona requiere una zona predeterminada asignada.'
-                      : 'Empleado sin zona quedará como no asignado en horarios.'}
+                      : 'Empleado sin zona quedara como no asignado en horarios.'}
                   </p>
                 </>
               ) : (
                 <p className="text-sm muted my-4">
-                  Los roles de gestión (Gerente/Subgerente) no requieren asignación
-                  de zona ni pueden ser encargados de zona en los horarios operativos.
+                  Los roles de gestion no requieren asignacion de zona ni pueden
+                  ser encargados de zona en los horarios operativos.
                 </p>
               )}
 

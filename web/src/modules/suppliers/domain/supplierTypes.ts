@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export type SupplierScopeType = 'chain' | 'restaurant';
+export type SupplierScopeType = 'organization' | 'restaurant';
 export type SupplierScope = SupplierScopeType;
 
 export type DeliveryNoteStatus =
@@ -117,7 +117,7 @@ export type CreateDeliveryNoteInput = {
 
 export type Supplier = SupplierRecord;
 
-export const supplierScopeSchema = z.enum(['chain', 'restaurant']);
+export const supplierScopeSchema = z.enum(['organization', 'restaurant']);
 
 export const supplierSchema = z.object({
   contact_email: z.string().nullable(),

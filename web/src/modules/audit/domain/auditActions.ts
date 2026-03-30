@@ -25,11 +25,11 @@ export const AUDIT_ACTIONS = {
   taskReassigned: 'task_reassigned',
   taskCancelled: 'task_cancelled',
   taskGeneratedFromSchedule: 'task_generated_from_schedule',
-  procedureCreated: 'procedure_created',
-  procedureStatusChanged: 'procedure_status_changed',
-  procedureDerived: 'procedure_derived',
-  procedureAppliedToSchedule: 'procedure_applied_to_schedule',
-  procedureDatesUpdated: 'procedure_dates_updated',
+  requestCreated: 'request_created',
+  requestStatusChanged: 'request_status_changed',
+  requestDerived: 'request_derived',
+  requestAppliedToSchedule: 'request_applied_to_schedule',
+  requestDatesUpdated: 'request_dates_updated',
   shiftSwapRequested: 'shift_swap_requested',
   shiftSwapPeerAccepted: 'shift_swap_peer_accepted',
   shiftSwapPeerRejected: 'shift_swap_peer_rejected',
@@ -59,7 +59,7 @@ export const AUDIT_ACTIONS = {
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
 
-export type AuditScopeType = 'platform' | 'chain' | 'company' | 'restaurant' | 'zone';
+export type AuditScopeType = 'organization' | 'company' | 'restaurant' | 'zone';
 
 export type AuditJsonValue =
   | string

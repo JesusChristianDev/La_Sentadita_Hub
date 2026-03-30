@@ -18,7 +18,6 @@ function requireRoleCredentials(role: Exclude<E2EAuthRole, 'default'>): void {
     employee: 'E2E_EMPLOYEE_EMAIL/E2E_EMPLOYEE_PASSWORD',
     manager: 'E2E_MANAGER_EMAIL/E2E_MANAGER_PASSWORD',
     office: 'E2E_OFFICE_EMAIL/E2E_OFFICE_PASSWORD',
-    sub_manager: 'E2E_SUB_MANAGER_EMAIL/E2E_SUB_MANAGER_PASSWORD',
   };
 
   test.skip(
@@ -48,3 +47,5 @@ test.describe('/horarios route behavior', () => {
     await expectManagerSchedulesShell(page);
   });
 });
+
+

@@ -38,4 +38,4 @@ export {
 export type { ResponsibilityLevel } from './domain/responsibilityLevel';
 export { deriveResponsibilityLevel } from './domain/responsibilityLevel';
 export type { ScopeType, SystemRole } from './domain/systemRoles';
-export { isSystemRole,SYSTEM_ROLES } from './domain/systemRoles';
+export { coerceSystemRole, isSystemRole, SYSTEM_ROLES } from './domain/systemRoles';

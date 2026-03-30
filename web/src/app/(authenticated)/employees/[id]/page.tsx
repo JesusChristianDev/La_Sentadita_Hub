@@ -59,14 +59,13 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
   const editableRole =
     targetSystemRole === 'employee' ||
     targetSystemRole === 'area_lead' ||
-    targetSystemRole === 'manager' ||
-    targetSystemRole === 'sub_manager'
+    targetSystemRole === 'manager'
       ? targetSystemRole
       : 'employee';
   const isGlobalProfile =
     targetSystemRole === 'admin' ||
-    targetSystemRole === 'office' ||
-    targetSystemRole === 'chain_owner';
+    targetSystemRole === 'owner' ||
+    targetSystemRole === 'office';
 
   if (isGlobalProfile) {
     return (
@@ -177,7 +176,6 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
               <Select defaultValue={editableRole} name="role">
                 <option value="employee">Empleado</option>
                 <option value="area_lead">Encargado de zona</option>
-                <option value="sub_manager">Subgerente</option>
                 <option value="manager">Gerente</option>
               </Select>
             </label>
@@ -261,13 +259,13 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
         <p className="mt-2 text-sm muted">
           Estado:{' '}
           <span className="font-semibold">
-            {profile.is_active ? 'activo' : 'desactivado'}
+            {profile.access_status}
           </span>
         </p>
 
         <EmployeeDangerZoneActions
           deactivateAction={deactivateAction}
-          isActive={profile.is_active}
+          isActive={profile.access_status === 'active'}
           reactivateAction={reactivateAction}
           softDeleteAction={softDeleteAction}
         />

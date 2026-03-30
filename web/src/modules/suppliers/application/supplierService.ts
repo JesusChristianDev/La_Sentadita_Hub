@@ -83,22 +83,22 @@ function assertCanManageSupplierScope(
   effectiveRestaurantId: string | null,
   systemRole: SystemRole,
 ): void {
-  if (scopeType === 'chain') {
-    if (systemRole === 'admin' || systemRole === 'office') {
+  if (scopeType === 'organization') {
+    if (systemRole === 'admin' || systemRole === 'owner' || systemRole === 'office') {
       return;
     }
 
-    throw new Error('FORBIDDEN: Solo oficina o admin pueden gestionar proveedores de cadena.');
+    throw new Error('FORBIDDEN: Solo office, owner o admin pueden gestionar proveedores globales.');
   }
 
   if (
-    (systemRole === 'manager' || systemRole === 'sub_manager') &&
+    systemRole === 'manager' &&
     effectiveRestaurantId === scopeId
   ) {
     return;
   }
 
-  if (systemRole === 'admin' || systemRole === 'office') {
+  if (systemRole === 'admin' || systemRole === 'owner' || systemRole === 'office') {
     return;
   }
 
@@ -106,7 +106,7 @@ function assertCanManageSupplierScope(
 }
 
 export async function listSuppliers(
-  params?: { restaurantId?: string; scopeType?: 'chain' | 'restaurant' },
+  params?: { restaurantId?: string; scopeType?: 'organization' | 'restaurant' },
 ): Promise<SupplierRecord[]> {
   const ctx = await getRequiredCurrentUserContext();
   const admin = createSupabaseAdminClient();
@@ -123,7 +123,7 @@ export async function listSuppliers(
 
   if (params?.restaurantId) {
     assertRestaurantAccess(ctx.requestContext, params.restaurantId);
-    query = query.or(`scope_id.eq.${params.restaurantId},scope_type.eq.chain`);
+    query = query.or(`scope_id.eq.${params.restaurantId},scope_type.eq.organization`);
   }
 
   const { data, error } = await query;
@@ -170,7 +170,7 @@ export async function createSupplier(input: CreateSupplierInput): Promise<Suppli
     entityType: 'supplier',
     newValue: payload,
     scopeId: input.scopeType === 'restaurant' ? input.scopeId : null,
-    scopeType: input.scopeType === 'restaurant' ? 'restaurant' : 'chain',
+    scopeType: input.scopeType === 'restaurant' ? 'restaurant' : 'organization',
     traceId: ctx.requestContext.traceId,
   });
 
@@ -183,7 +183,7 @@ export async function listProducts(supplierId: string): Promise<ProductRecord[]>
   if (supplier.scope_type === 'restaurant') {
     assertRestaurantAccess(ctx.requestContext, supplier.scope_id);
   } else if (!isGlobalSystemRole(ctx.requestContext)) {
-    throw new Error('FORBIDDEN: Solo office o admin pueden ver productos de cadena.');
+    throw new Error('FORBIDDEN: Solo office, owner o admin pueden ver productos globales.');
   }
 
   const admin = createSupabaseAdminClient();
@@ -237,7 +237,7 @@ export async function createProduct(input: CreateProductInput): Promise<ProductR
     entityType: 'product',
     newValue: payload,
     scopeId: supplier.scope_type === 'restaurant' ? supplier.scope_id : null,
-    scopeType: supplier.scope_type === 'restaurant' ? 'restaurant' : 'chain',
+    scopeType: supplier.scope_type === 'restaurant' ? 'restaurant' : 'organization',
     traceId: ctx.requestContext.traceId,
   });
 

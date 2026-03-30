@@ -19,10 +19,10 @@ export default async function AppPage() {
   const effectiveRestaurantId = ctx.requestContext.effectiveRestaurantId;
   const canViewEmployees = can(ctx.requestContext, 'employees.view');
   const canViewSchedules = can(ctx.requestContext, 'schedule.view');
-  
+
   // TODO: Map exactly against ACL dictionary once definitions are locked
   const canViewTasks = true;
-  const canViewProcedures = true;
+  const canViewRequests = true;
 
   const effectiveRestaurantName = effectiveRestaurantId
     ? (restaurantsById.get(effectiveRestaurantId) ?? 'Sucursal asignada')
@@ -74,9 +74,9 @@ export default async function AppPage() {
             </Link>
           ) : null}
 
-          {canViewProcedures ? (
-            <Link href="/procedures" className="quick-card">
-              <h3>Trámites</h3>
+          {canViewRequests ? (
+            <Link href="/requests" className="quick-card">
+              <h3>Solicitudes</h3>
               <p>Solicitudes internas y aprobaciones.</p>
               <span className="tag">Disponible</span>
             </Link>

@@ -1,23 +1,23 @@
 import { z } from 'zod';
 
-export const ProcedureTypeSchema = z.enum([
+export const RequestTypeSchema = z.enum([
   'vacation',
   'sick_leave',
   'justified_absence',
   'absence',
 ]);
 
-export const CreateProcedureSchema = z.object({
+export const CreateRequestSchema = z.object({
   employmentId: z.string().min(1, 'El contrato/empleo es requerido'),
-  procedureType: ProcedureTypeSchema,
+  requestType: RequestTypeSchema,
   effectiveStartDate: z.string().optional().nullable(),
   effectiveEndDate: z.string().optional().nullable(),
 });
 
-export type CreateProcedureSchemaType = z.infer<typeof CreateProcedureSchema>;
+export type CreateRequestSchemaType = z.infer<typeof CreateRequestSchema>;
 
-export const ReviewProcedureSchema = z.object({
-  procedureId: z.string().min(1, 'El ID del trámite es requerido'),
+export const ReviewRequestSchema = z.object({
+  requestId: z.string().min(1, 'El ID de la solicitud es requerido'),
   resolutionNote: z.string().optional().nullable(),
   status: z.enum([
     'approved',
@@ -28,8 +28,8 @@ export const ReviewProcedureSchema = z.object({
     'validated',
     'closed',
     'in_review',
-    'resolved'
+    'resolved',
   ]),
 });
 
-export type ReviewProcedureSchemaType = z.infer<typeof ReviewProcedureSchema>;
+export type ReviewRequestSchemaType = z.infer<typeof ReviewRequestSchema>;

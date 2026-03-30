@@ -26,10 +26,9 @@ function getInitials(value?: string | null): string {
 function roleBadge(role?: AppRole | null): string {
   if (!role) return 'US';
   if (role === 'admin') return 'AD';
+  if (role === 'owner') return 'PR';
   if (role === 'office') return 'OF';
-  if (role === 'chain_owner') return 'CH';
   if (role === 'manager') return 'GE';
-  if (role === 'sub_manager') return 'SG';
   if (role === 'area_lead') return 'AL';
   return 'EM';
 }

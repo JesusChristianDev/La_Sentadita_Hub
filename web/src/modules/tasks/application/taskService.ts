@@ -48,7 +48,7 @@ async function listRestaurantManagers(restaurantId: string): Promise<string[]> {
     .from('persons')
     .select('person_id')
     .in('person_id', personIds)
-    .in('system_role', ['manager', 'sub_manager']);
+    .eq('system_role', 'manager');
 
   if (peopleError) {
     throw new Error(`Failed to load restaurant managers: ${peopleError.message}`);

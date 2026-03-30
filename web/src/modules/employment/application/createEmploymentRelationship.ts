@@ -1,5 +1,5 @@
 import { archivePerson, createPerson } from '@/modules/people';
-import { updateEmployment } from '@/shared/db/employment';
+import { updateEmploymentProjection } from '@/shared/db/employment';
 
 import type { CreateEmployeeValidatedInput } from './employeeMutationRules';
 import { mapEmployeeMutationErrorCode } from './employeeMutationRules';
@@ -19,7 +19,7 @@ export async function createEmploymentRelationship(
       systemRole: input.role,
     });
 
-    await updateEmployment({
+    await updateEmploymentProjection({
       personId,
       restaurantId: input.restaurantId,
       role: input.role,

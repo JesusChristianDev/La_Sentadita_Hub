@@ -81,7 +81,7 @@ type EmployeeScopeRow = {
 };
 
 function isSingleRestaurantActor(ctx: UserContext): boolean {
-  return ctx.requestContext.scopeType !== 'platform';
+  return ctx.requestContext.scopeType !== 'organization';
 }
 
 async function writeScheduleAuditLog(params: {

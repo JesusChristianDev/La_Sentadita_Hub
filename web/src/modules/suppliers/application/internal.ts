@@ -19,7 +19,7 @@ type RestaurantRow = {
   restaurant_id: string;
 };
 
-type ChainRow = {
+type OrganizationScopeRow = {
   chain_id: string;
 };
 
@@ -29,7 +29,7 @@ export type ModuleContext = {
 };
 
 export type RestaurantScope = {
-  chainId: string;
+  organizationId: string;
   restaurantId: string;
 };
 
@@ -84,7 +84,7 @@ async function getRestaurantScopeById(
   }
 
   return {
-    chainId: data.chain_id,
+    organizationId: data.chain_id,
     restaurantId: data.restaurant_id,
   };
 }
@@ -115,20 +115,20 @@ export async function assertSupplierScopeExists(
   scopeType: SupplierScope,
   scopeId: string,
 ): Promise<void> {
-  if (scopeType === 'chain') {
+  if (scopeType === 'organization') {
     const { data, error } = await admin
       .from('chains')
       .select('chain_id')
       .eq('chain_id', scopeId)
       .limit(1)
-      .maybeSingle<ChainRow>();
+      .maybeSingle<OrganizationScopeRow>();
 
     if (error) {
-      throwSupabaseError('Failed to validate chain scope', error);
+      throwSupabaseError('Failed to validate organization scope', error);
     }
 
     if (!data?.chain_id) {
-      throw new Error('CHAIN_NOT_FOUND');
+      throw new Error('ORGANIZATION_SCOPE_NOT_FOUND');
     }
 
     return;
@@ -188,7 +188,7 @@ export function assertSupplierVisibleForRestaurant(
     throw new Error('SUPPLIER_OUT_OF_SCOPE');
   }
 
-  if (supplier.scope_id === restaurantScope.chainId) return;
+  if (supplier.scope_id === restaurantScope.organizationId) return;
   throw new Error('SUPPLIER_OUT_OF_SCOPE');
 }
 
@@ -224,45 +224,45 @@ export async function listVisibleSuppliersForRestaurant(
     .eq('scope_id', restaurantScope.restaurantId)
     .order('name', { ascending: true });
 
-  let chainQuery = admin
+  let organizationQuery = admin
     .from('suppliers')
     .select('*')
-    .eq('scope_type', 'chain')
-    .eq('scope_id', restaurantScope.chainId)
+    .eq('scope_type', 'organization')
+    .eq('scope_id', restaurantScope.organizationId)
     .order('name', { ascending: true });
 
   if (!input.includeArchived) {
     restaurantQuery = restaurantQuery.eq('is_archived', false);
-    chainQuery = chainQuery.eq('is_archived', false);
+    organizationQuery = organizationQuery.eq('is_archived', false);
   }
 
   if (!input.includeInactive) {
     restaurantQuery = restaurantQuery.eq('is_active', true);
-    chainQuery = chainQuery.eq('is_active', true);
+    organizationQuery = organizationQuery.eq('is_active', true);
   }
 
   if (input.search) {
     restaurantQuery = restaurantQuery.ilike('name', `%${input.search}%`);
-    chainQuery = chainQuery.ilike('name', `%${input.search}%`);
+    organizationQuery = organizationQuery.ilike('name', `%${input.search}%`);
   }
 
-  const [restaurantResult, chainResult] = await Promise.all([
+  const [restaurantResult, organizationResult] = await Promise.all([
     restaurantQuery,
-    chainQuery,
+    organizationQuery,
   ]);
 
   if (restaurantResult.error) {
     throwSupabaseError('Failed to list restaurant suppliers', restaurantResult.error);
   }
 
-  if (chainResult.error) {
-    throwSupabaseError('Failed to list chain suppliers', chainResult.error);
+  if (organizationResult.error) {
+    throwSupabaseError('Failed to list organization suppliers', organizationResult.error);
   }
 
   const deduped = new Map<string, Supplier>();
   for (const supplier of [
     ...parseRows(supplierSchema, restaurantResult.data ?? [], 'supplier'),
-    ...parseRows(supplierSchema, chainResult.data ?? [], 'supplier'),
+    ...parseRows(supplierSchema, organizationResult.data ?? [], 'supplier'),
   ]) {
     deduped.set(supplier.supplier_id, supplier);
   }

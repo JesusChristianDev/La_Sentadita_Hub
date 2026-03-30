@@ -13,7 +13,7 @@ export type TaskCancelReason =
 
 export type TaskReassignmentReason =
   | 'employment_change'
-  | 'procedure_conflict'
+  | 'request_conflict'
   | 'shift_swap'
   | 'manual_reassignment_required';
 

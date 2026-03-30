@@ -25,9 +25,9 @@ type EmployeeMutationServiceDeps = {
   getRestaurantStatus: (id: string) => Promise<RestaurantStatus | null>;
   getRoleSlotConflictCode: (
     restaurantId: string,
-    role: Extract<EditableEmploymentSystemRole, 'manager' | 'sub_manager'>,
+    role: Extract<EditableEmploymentSystemRole, 'manager'>,
     excludingUserId?: string,
-  ) => Promise<'manager_exists' | 'sub_manager_exists' | null>;
+  ) => Promise<'manager_exists' | null>;
   updateEmployee: (input: UpdateEmployeeValidatedInput & { userId: string }) => Promise<void>;
 };
 
@@ -55,10 +55,10 @@ export function createEmploymentMutationService(deps: EmployeeMutationServiceDep
       return { ok: false, errorCode: 'restaurant_invalid' };
     }
 
-    if (validated.value.role === 'manager' || validated.value.role === 'sub_manager') {
+    if (validated.value.role === 'manager') {
       const conflict = await deps.getRoleSlotConflictCode(
         validated.value.restaurantId,
-        validated.value.role,
+        'manager',
       );
       if (conflict) {
         return { ok: false, errorCode: conflict };
@@ -108,10 +108,10 @@ export function createEmploymentMutationService(deps: EmployeeMutationServiceDep
       return { ok: false, errorCode: 'restaurant_invalid' };
     }
 
-    if (validated.value.role === 'manager' || validated.value.role === 'sub_manager') {
+    if (validated.value.role === 'manager') {
       const conflict = await deps.getRoleSlotConflictCode(
         validated.value.restaurantId,
-        validated.value.role,
+        'manager',
         params.userId,
       );
       if (conflict) {

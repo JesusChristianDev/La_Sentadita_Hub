@@ -1469,12 +1469,12 @@ summary:focus-visible {
   padding: 2px 4px;
 }
 
-.user-avatar[data-role='admin'] {
+.user-avatar[data-role='admin'],
+.user-avatar[data-role='owner'] {
   box-shadow: inset 0 0 0 1px rgb(212 179 122 / 35%);
 }
 
-.user-avatar[data-role='manager'],
-.user-avatar[data-role='sub_manager'] {
+.user-avatar[data-role='manager'] {
   box-shadow: inset 0 0 0 1px rgb(98 127 170 / 35%);
 }
 

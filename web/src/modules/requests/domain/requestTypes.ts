@@ -1,10 +1,10 @@
-export type ProcedureType =
+export type RequestType =
   | 'vacation'
   | 'sick_leave'
   | 'justified_absence'
   | 'absence';
 
-export type ProcedureStatus =
+export type RequestStatus =
   | 'requested'
   | 'approved'
   | 'rejected'
@@ -24,17 +24,17 @@ export type ShiftSwapStatus =
   | 'rejected_manager'
   | 'expired';
 
-export type ProcedureRecord = {
+export type RequestRecord = {
   created_at: string;
   effective_end_date: string | null;
   effective_start_date: string | null;
   employment_id: string;
-  procedure_id: string;
-  procedure_type: ProcedureType;
+  request_id: string;
+  request_type: RequestType;
   requested_by: string;
   resolution_note: string | null;
   reviewed_by: string | null;
-  status: ProcedureStatus;
+  status: RequestStatus;
   updated_at: string;
 };
 
@@ -52,17 +52,17 @@ export type ShiftSwapRequestRecord = {
   target_schedule_entry_id: string;
 };
 
-export type CreateProcedureInput = {
+export type CreateRequestInput = {
   effectiveEndDate?: string | null;
   effectiveStartDate?: string | null;
   employmentId: string;
-  procedureType: ProcedureType;
+  requestType: RequestType;
 };
 
-export type ReviewProcedureInput = {
-  procedureId: string;
+export type ReviewRequestInput = {
+  requestId: string;
   resolutionNote?: string | null;
-  status: Exclude<ProcedureStatus, 'requested'>;
+  status: Exclude<RequestStatus, 'requested'>;
 };
 
 export type CreateShiftSwapRequestInput = {

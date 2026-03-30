@@ -1,6 +1,6 @@
 import {
   updatePersonCredentials,
-  updatePersonIdentity,
+  updatePersonIdentityRecord,
 } from '@/shared/db/persons';
 
 import type { UpdatePersonIdentityInput } from '../domain/personTypes';
@@ -8,10 +8,9 @@ import type { UpdatePersonIdentityInput } from '../domain/personTypes';
 export async function updatePersonIdentity(
   input: UpdatePersonIdentityInput,
 ): Promise<void> {
-  await updatePersonIdentity({
+  await updatePersonIdentityRecord({
     avatarPath: input.avatarPath,
     fullName: input.fullName,
-    mustChangePassword: input.mustChangePassword,
     personId: input.personId,
   });
 

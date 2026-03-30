@@ -104,8 +104,8 @@ begin
   end if;
 end $$;
 
-create table if not exists public.zones (
-  zone_id uuid primary key default gen_random_uuid(),
+create table if not exists public.restaurant_zones (
+  id uuid primary key default gen_random_uuid(),
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
   name text not null,
   operational_area text,
@@ -116,34 +116,44 @@ create table if not exists public.zones (
   updated_at timestamptz not null default now()
 );
 
-insert into public.zones (
-  zone_id,
-  restaurant_id,
-  name,
-  operational_area,
-  is_active,
-  is_archived,
-  created_at,
-  updated_at
-)
-select
-  rz.id,
-  rz.restaurant_id,
-  rz.name,
-  lower(replace(rz.name, ' ', '_')),
-  coalesce(rz.is_active, true),
-  not coalesce(rz.is_active, true),
-  coalesce(rz.created_at, now()),
-  now()
-from public.restaurant_zones rz
-on conflict (zone_id) do update
-set
-  restaurant_id = excluded.restaurant_id,
-  name = excluded.name,
-  operational_area = excluded.operational_area,
-  is_active = excluded.is_active,
-  is_archived = excluded.is_archived,
-  updated_at = now();
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.tables
+    where table_schema = 'public'
+      and table_name = 'zones'
+  ) then
+    insert into public.restaurant_zones (
+      id,
+      restaurant_id,
+      name,
+      operational_area,
+      is_active,
+      is_archived,
+      created_at,
+      updated_at
+    )
+    select
+      z.zone_id,
+      z.restaurant_id,
+      z.name,
+      z.operational_area,
+      coalesce(z.is_active, true),
+      coalesce(z.is_archived, false),
+      coalesce(z.created_at, now()),
+      coalesce(z.updated_at, now())
+    from public.zones z
+    on conflict (id) do update
+    set
+      restaurant_id = excluded.restaurant_id,
+      name = excluded.name,
+      operational_area = excluded.operational_area,
+      is_active = excluded.is_active,
+      is_archived = excluded.is_archived,
+      updated_at = now();
+  end if;
+end $$;
 
 create table if not exists public.task_templates (
   task_template_id uuid primary key default gen_random_uuid(),
@@ -241,7 +251,7 @@ create index if not exists idx_shift_swap_requests_target_status
 create table if not exists public.incidents (
   incident_id uuid primary key default gen_random_uuid(),
   restaurant_id uuid not null references public.restaurants(id) on delete cascade,
-  zone_id uuid references public.zones(zone_id) on delete set null,
+  zone_id uuid references public.restaurant_zones(id) on delete set null,
   category public.incident_category_enum not null,
   sensitivity public.incident_sensitivity_enum not null default 'normal',
   title text not null,
@@ -532,7 +542,7 @@ declare
   t text;
 begin
   foreach t in array array[
-    'zones',
+    'restaurant_zones',
     'task_templates',
     'task_instances',
     'procedures',
