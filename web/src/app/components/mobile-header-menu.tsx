@@ -28,10 +28,17 @@ type RestaurantOption = {
 
 type Props = {
   canSeeEmployees: boolean;
+  canSeeDocuments?: boolean;
+  canSeeIncidents?: boolean;
+  canSeeNotifications?: boolean;
+  canSeeRequests?: boolean;
+  canSeeProcurement?: boolean;
   canSeeSchedules: boolean;
+  canSeeTasks?: boolean;
   canPickRestaurant?: boolean;
   restaurants?: RestaurantOption[];
   effectiveRestaurantId?: string | null;
+  activeScopeLabel?: string;
   setActiveRestaurantAction?: (formData: FormData) => void;
   currentUserName?: string | null;
   currentUserRole?: AppRole | null;
@@ -40,10 +47,17 @@ type Props = {
 
 export function MobileHeaderMenu({
   canSeeEmployees,
+  canSeeDocuments = false,
+  canSeeIncidents = false,
+  canSeeNotifications = false,
+  canSeeRequests = false,
+  canSeeProcurement = false,
   canSeeSchedules,
+  canSeeTasks = false,
   canPickRestaurant = false,
   restaurants = [],
   effectiveRestaurantId = null,
+  activeScopeLabel = 'Vista global',
   setActiveRestaurantAction,
   currentUserName = null,
   currentUserRole = null,
@@ -57,13 +71,14 @@ export function MobileHeaderMenu({
   const drawerId = 'mobile-menu-drawer';
   const items = buildAppNavigationItems({
     canSeeEmployees,
+    canSeeDocuments,
+    canSeeIncidents,
+    canSeeNotifications,
+    canSeeRequests,
+    canSeeProcurement,
     canSeeSchedules,
+    canSeeTasks,
   });
-  const closeAfterSubmit = () => {
-    window.setTimeout(() => {
-      setOpen(false);
-    }, 0);
-  };
 
   useEffect(() => {
     if (!open) return;
@@ -258,7 +273,6 @@ export function MobileHeaderMenu({
                     <form
                       action={setActiveRestaurantAction}
                       className="mt-6 grid gap-3 rounded-[1.75rem] border border-border/70 bg-surface/70 p-4"
-                      onSubmit={closeAfterSubmit}
                     >
                       <div className="flex items-center gap-3">
                         <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent/14 text-accent-strong">
@@ -295,22 +309,24 @@ export function MobileHeaderMenu({
                     </form>
                   ) : null}
 
+                  <div className="mt-4 rounded-[1.6rem] border border-white/8 bg-white/[0.04] px-4 py-3">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted">
+                      Contexto activo
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-foreground">
+                      {activeScopeLabel}
+                    </p>
+                  </div>
+
                   <div className="mt-auto pt-6">
-                    <form
-                      action="/api/auth/signout"
-                      method="post"
-                      onSubmit={closeAfterSubmit}
+                    <Link
+                      href="/api/auth/signout?next=/login"
+                      className="button danger flex w-full items-center justify-center gap-2 rounded-[1.4rem]"
+                      onClick={() => setOpen(false)}
                     >
-                      <input type="hidden" name="next" value="/login" />
-                      <Button
-                        className="w-full rounded-[1.4rem]"
-                        type="submit"
-                        variant="danger"
-                      >
                         <LogOut className="h-4 w-4" />
                         Cerrar sesion
-                      </Button>
-                    </form>
+                    </Link>
                   </div>
                 </div>
               </aside>

@@ -2,12 +2,8 @@ import '../../../modules/schedule/ui/schedule.css';
 
 import { redirect } from 'next/navigation';
 
-import { getCurrentUserContext } from '@/modules/auth_users';
-import { can } from '@/modules/authz';
-import {
-  loadEmployeeScheduleWeekAction,
-  loadScheduleHomeAction,
-} from '@/modules/schedule/application/serverActions';
+import { buildFrontendSessionView, getCurrentUserContext } from '@/modules/auth_users';
+import { buildSchedulePageViewModel } from '@/modules/schedule/application/buildSchedulePageViewModel';
 import ScheduleEditor from '@/modules/schedule/ui/ScheduleEditor';
 import { RestaurantContextEmptyState } from '@/shared/ui';
 
@@ -18,12 +14,14 @@ export default async function SchedulePage() {
     redirect('/login');
   }
 
-  if (!can(ctx.requestContext, 'schedule.view')) {
+  const frontendSession = buildFrontendSessionView(ctx);
+  const viewModel = await buildSchedulePageViewModel(ctx);
+
+  if (viewModel.mode === 'forbidden') {
     redirect('/app');
   }
 
-  const restaurantId = ctx.requestContext.effectiveRestaurantId;
-  if (!restaurantId) {
+  if (viewModel.mode === 'context_required' || !viewModel.initialHome) {
     return (
       <main
         id="main-content"
@@ -40,26 +38,18 @@ export default async function SchedulePage() {
         </section>
 
         <RestaurantContextEmptyState
-          canPickRestaurant={can(ctx.requestContext, 'restaurant_context.select')}
+          canPickRestaurant={frontendSession.capabilities.context.canSelectRestaurant}
           moduleLabel="Horarios"
         />
       </main>
     );
   }
 
-  const initialHome = await loadScheduleHomeAction(restaurantId);
-  const initialEmployeeWeek = initialHome.permissions.is_employee_view
-    ? await loadEmployeeScheduleWeekAction(
-        initialHome.current_week.week_start,
-        restaurantId,
-      )
-    : null;
-
   return (
     <ScheduleEditor
       actorName={ctx.person.full_name || 'Empleado'}
-      initialEmployeeWeek={initialEmployeeWeek}
-      initialHome={initialHome}
+      initialEmployeeWeek={viewModel.initialEmployeeWeek}
+      initialHome={viewModel.initialHome}
     />
   );
 }

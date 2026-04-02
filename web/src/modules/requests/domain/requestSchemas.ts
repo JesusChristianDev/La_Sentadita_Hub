@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+const nullableDateString = z.preprocess(
+  (value) => {
+    if (value === '' || value === undefined) return null;
+    return value;
+  },
+  z.string().date().nullable(),
+);
+
 export const RequestTypeSchema = z.enum([
   'vacation',
   'sick_leave',
@@ -10,8 +18,8 @@ export const RequestTypeSchema = z.enum([
 export const CreateRequestSchema = z.object({
   employmentId: z.string().min(1, 'El contrato/empleo es requerido'),
   requestType: RequestTypeSchema,
-  effectiveStartDate: z.string().optional().nullable(),
-  effectiveEndDate: z.string().optional().nullable(),
+  effectiveStartDate: nullableDateString.optional().nullable(),
+  effectiveEndDate: nullableDateString.optional().nullable(),
 });
 
 export type CreateRequestSchemaType = z.infer<typeof CreateRequestSchema>;
@@ -24,11 +32,7 @@ export const ReviewRequestSchema = z.object({
     'rejected',
     'cancelled',
     'expired',
-    'reported',
-    'validated',
-    'closed',
     'in_review',
-    'resolved',
   ]),
 });
 

@@ -1,11 +1,10 @@
 'use server';
 
-import { cookies, headers } from 'next/headers';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { getCurrentUserContext } from '@/modules/auth_users';
+import { getCurrentUserContext, persistActiveScope } from '@/modules/auth_users';
 import { can } from '@/modules/authz';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 async function getReturnPath(): Promise<string> {
   const h = await headers();
@@ -33,22 +32,15 @@ export async function setActiveRestaurant(formData: FormData) {
 
   if (!can(ctx.requestContext, 'restaurant_context.select')) redirect(returnPath);
 
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('restaurants')
-    .select('id, is_active')
-    .eq('id', restaurantId)
-    .single();
+  const allowedRestaurant = ctx.backendSession.visibleRestaurants.find(
+    (restaurant) => restaurant.id === restaurantId && restaurant.isActive,
+  );
+  if (!allowedRestaurant) redirect(returnPath);
 
-  if (error || !data || !data.is_active) redirect(returnPath);
-
-  const store = await cookies();
-  store.set('active_restaurant_id', restaurantId, {
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-  });
+  await persistActiveScope(
+    { scopeId: restaurantId, scopeType: 'restaurant' },
+    restaurantId,
+  );
 
   redirect(returnPath);
 }

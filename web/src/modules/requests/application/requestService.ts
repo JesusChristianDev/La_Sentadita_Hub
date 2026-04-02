@@ -20,15 +20,15 @@ import type {
 } from '../domain/requestTypes';
 
 type EmploymentSnapshot = {
-  active_principal: boolean;
+  company_id: string;
   employment_id: string;
-  end_date: string | null;
   is_archived: boolean;
   job_title: string | null;
   person_id: string;
-  restaurant_id: string;
-  start_date: string | null;
+  restaurant_id: string | null;
   system_role: SystemRole;
+  valid_from: string;
+  valid_to: string | null;
 };
 
 type ScheduleEntrySnapshot = {
@@ -38,10 +38,35 @@ type ScheduleEntrySnapshot = {
   restaurant_id: string;
 };
 
+type RestaurantAssignmentSnapshot = {
+  employment_id: string;
+  restaurant_id: string;
+  valid_from: string;
+  valid_to: string | null;
+};
+
+type RequestSnapshot = RequestRecord;
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getRequestAnchorDate(request: Pick<RequestRecord, 'created_at' | 'effective_start_date'>): string {
+  return request.effective_start_date ?? request.created_at.slice(0, 10);
+}
+
+function isDateWithinRange(
+  date: string,
+  validFrom: string,
+  validTo: string | null,
+): boolean {
+  return validFrom <= date && (validTo === null || validTo >= date);
+}
+
 function isEmploymentActiveOnDate(employment: EmploymentSnapshot, date: string): boolean {
   if (employment.is_archived) return false;
-  if (employment.start_date && employment.start_date > date) return false;
-  if (employment.end_date && employment.end_date < date) return false;
+  if (employment.valid_from > date) return false;
+  if (employment.valid_to && employment.valid_to < date) return false;
   return true;
 }
 
@@ -54,11 +79,14 @@ async function getRequiredCurrentUserContext() {
   return ctx;
 }
 
-async function loadEmploymentSnapshot(employmentId: string): Promise<EmploymentSnapshot> {
+async function loadEmploymentSnapshot(
+  employmentId: string,
+  anchorDate = todayIsoDate(),
+): Promise<EmploymentSnapshot> {
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
     .from('employment_relationships')
-    .select('employment_id, person_id, restaurant_id, job_title, start_date, end_date, active_principal, is_archived')
+    .select('employment_id, person_id, company_id, job_title, valid_from, valid_to, is_archived')
     .eq('employment_id', employmentId)
     .single();
 
@@ -76,8 +104,23 @@ async function loadEmploymentSnapshot(employmentId: string): Promise<EmploymentS
     throw new Error(`Failed to load employment system role: ${personError.message}`);
   }
 
+  const { data: restaurantAssignment, error: assignmentError } = await admin
+    .from('employment_restaurant_assignments')
+    .select('employment_id, restaurant_id, valid_from, valid_to')
+    .eq('employment_id', employmentId)
+    .lte('valid_from', anchorDate)
+    .or(`valid_to.is.null,valid_to.gte.${anchorDate}`)
+    .order('valid_from', { ascending: false })
+    .maybeSingle();
+
+  if (assignmentError && assignmentError.code !== 'PGRST116') {
+    throw new Error(`Failed to load employment restaurant assignment: ${assignmentError.message}`);
+  }
+
   return {
-    ...(data as Omit<EmploymentSnapshot, 'system_role'>),
+    ...(data as Omit<EmploymentSnapshot, 'restaurant_id' | 'system_role'>),
+    restaurant_id:
+      ((restaurantAssignment ?? null) as RestaurantAssignmentSnapshot | null)?.restaurant_id ?? null,
     system_role: coerceSystemRole(person.system_role as string),
   };
 }
@@ -86,7 +129,7 @@ async function loadScheduleEntrySnapshot(entryId: string): Promise<ScheduleEntry
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
     .from('schedule_entries')
-    .select('id, date, employment_id, schedules!inner(restaurant_id)')
+    .select('id, entry_date, employment_id, schedules!inner(restaurant_id)')
     .eq('id', entryId)
     .single();
 
@@ -100,7 +143,7 @@ async function loadScheduleEntrySnapshot(entryId: string): Promise<ScheduleEntry
   }
 
   return {
-    date: data.date as string,
+    date: data.entry_date as string,
     employment_id: data.employment_id as string,
     id: data.id as string,
     restaurant_id: schedule.restaurant_id as string,
@@ -114,7 +157,8 @@ async function listRestaurantManagers(restaurantId: string): Promise<string[]> {
     .select('person_id')
     .eq('scope_type', 'restaurant')
     .eq('scope_id', restaurantId)
-    .eq('active', true);
+    .lte('valid_from', todayIsoDate())
+    .or(`valid_to.is.null,valid_to.gte.${todayIsoDate()}`);
 
   if (assignmentError) {
     throw new Error(`Failed to load restaurant scope assignments: ${assignmentError.message}`);
@@ -134,6 +178,35 @@ async function listRestaurantManagers(restaurantId: string): Promise<string[]> {
   }
 
   return (people ?? []).map((row) => row.person_id as string);
+}
+
+async function listRestaurantAssignmentsForEmployments(
+  employmentIds: string[],
+  restaurantId: string,
+): Promise<Map<string, RestaurantAssignmentSnapshot[]>> {
+  if (employmentIds.length === 0) return new Map();
+
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from('employment_restaurant_assignments')
+    .select('employment_id, restaurant_id, valid_from, valid_to')
+    .in('employment_id', employmentIds)
+    .eq('restaurant_id', restaurantId);
+
+  if (error) {
+    throw new Error(`Failed to load restaurant assignments: ${error.message}`);
+  }
+
+  const assignments = (data ?? []) as RestaurantAssignmentSnapshot[];
+  const assignmentsByEmploymentId = new Map<string, RestaurantAssignmentSnapshot[]>();
+
+  for (const assignment of assignments) {
+    const current = assignmentsByEmploymentId.get(assignment.employment_id) ?? [];
+    current.push(assignment);
+    assignmentsByEmploymentId.set(assignment.employment_id, current);
+  }
+
+  return assignmentsByEmploymentId;
 }
 
 export async function listMyRequests(): Promise<RequestRecord[]> {
@@ -164,33 +237,38 @@ export async function listRestaurantRequests(
   const { data, error } = await admin
     .from('requests')
     .select(
-      'request_id, employment_id, request_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at, employment_relationships!inner(restaurant_id)',
+      'request_id, employment_id, request_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
     )
-    .eq('employment_relationships.restaurant_id', restaurantId)
     .order('created_at', { ascending: false });
 
   if (error) {
     throw new Error(`Failed to list restaurant requests: ${error.message}`);
   }
 
-  return (data ?? []).map((row) => ({
-    created_at: row.created_at as string,
-    effective_end_date: row.effective_end_date as string | null,
-    effective_start_date: row.effective_start_date as string | null,
-    employment_id: row.employment_id as string,
-    request_id: row.request_id as string,
-    request_type: row.request_type as RequestRecord['request_type'],
-    requested_by: row.requested_by as string,
-    resolution_note: row.resolution_note as string | null,
-    reviewed_by: row.reviewed_by as string | null,
-    status: row.status as RequestRecord['status'],
-    updated_at: row.updated_at as string,
-  }));
+  const requests = (data ?? []) as RequestSnapshot[];
+  const assignmentsByEmploymentId = await listRestaurantAssignmentsForEmployments(
+    [...new Set(requests.map((request) => request.employment_id))],
+    restaurantId,
+  );
+
+  return requests.filter((request) => {
+    const anchorDate = getRequestAnchorDate(request);
+    const assignments = assignmentsByEmploymentId.get(request.employment_id) ?? [];
+
+    return assignments.some((assignment) =>
+      isDateWithinRange(anchorDate, assignment.valid_from, assignment.valid_to),
+    );
+  });
 }
 
 export async function createRequest(input: CreateRequestInput): Promise<RequestRecord> {
   const ctx = await getRequiredCurrentUserContext();
-  const employment = await loadEmploymentSnapshot(input.employmentId);
+  const anchorDate = input.effectiveStartDate ?? todayIsoDate();
+  const employment = await loadEmploymentSnapshot(input.employmentId, anchorDate);
+
+  if (!employment.restaurant_id) {
+    throw new Error('REQUEST_EMPLOYMENT_RESTAURANT_NOT_FOUND: El empleo no tiene restaurante operativo para esa fecha.');
+  }
 
   if (ctx.userId !== employment.person_id) {
     assertRestaurantManagement(ctx.requestContext, employment.restaurant_id);
@@ -203,7 +281,7 @@ export async function createRequest(input: CreateRequestInput): Promise<RequestR
     employment_id: input.employmentId,
     request_type: input.requestType,
     requested_by: ctx.userId,
-    status: 'requested',
+    status: 'pending',
   };
   const { data, error } = await admin
     .from('requests')
@@ -263,7 +341,14 @@ export async function reviewRequest(input: ReviewRequestInput): Promise<RequestR
     throw new Error(`Failed to load request: ${currentError.message}`);
   }
 
-  const employment = await loadEmploymentSnapshot(current.employment_id as string);
+  const anchorDate =
+    (current.effective_start_date as string | null) ??
+    (current.created_at as string).slice(0, 10);
+  const employment = await loadEmploymentSnapshot(current.employment_id as string, anchorDate);
+
+  if (!employment.restaurant_id) {
+    throw new Error('REQUEST_EMPLOYMENT_RESTAURANT_NOT_FOUND: La solicitud ya no tiene un restaurante operativo resoluble.');
+  }
   assertRestaurantManagement(ctx.requestContext, employment.restaurant_id);
 
   if (current.requested_by === ctx.userId) {
@@ -364,8 +449,14 @@ export async function createShiftSwapRequest(
     throw new Error('SHIFT_SWAP_RESTAURANT_MISMATCH: El intercambio debe ser en el mismo restaurante.');
   }
 
-  const requesterEmployment = await loadEmploymentSnapshot(requesterEntry.employment_id);
-  const targetEmployment = await loadEmploymentSnapshot(targetEntry.employment_id);
+  const requesterEmployment = await loadEmploymentSnapshot(
+    requesterEntry.employment_id,
+    requesterEntry.date,
+  );
+  const targetEmployment = await loadEmploymentSnapshot(
+    targetEntry.employment_id,
+    targetEntry.date,
+  );
 
   if (requesterEmployment.person_id !== ctx.userId) {
     throw new Error('SHIFT_SWAP_FORBIDDEN: Solo puedes solicitar intercambio sobre tu propio turno.');

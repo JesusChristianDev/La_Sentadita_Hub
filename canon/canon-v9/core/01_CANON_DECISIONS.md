@@ -52,12 +52,24 @@ El núcleo duro que debe existir antes de cualquier módulo operativo es:
 - Agrupar `Company` bajo una misma marca
 - Actuar como scope en `RoleScopeAssignment` para `owner` con autoridad sobre toda la cadena
 - No tiene operaciones propias — no tiene empleados directos, schedules ni tareas
+- Una misma `Organization` puede mezclar `Company` dentro de `Chain` y `Company` sin `Chain`
+
+### D-010B — [dominio] — Restaurant hereda Chain desde Company
+`Restaurant` no almacena `chain_id` propio. Si una `Company` pertenece a una `Chain`, sus `Restaurant` pertenecen a esa misma `Chain` por derivación.
+La relación `Restaurant → Chain` no se persiste como FK separada para evitar redundancia e incoherencias.
+
+### D-010C — [dominio] — Restaurant puede cambiar de Company sin perder identidad
+`Restaurant` puede cambiar de `Company` manteniendo su misma identidad (`restaurant_id`).
+Es una operación estructural excepcional y de alto impacto, pero válida canónicamente.
+No forma parte del alcance operativo inicial del sistema; su ejecución práctica queda diferida como aportación futura.
+Cuando ocurre, el bloque operativo del restaurante permanece unido al mismo `Restaurant`: `Zone`, `Schedule`, historial, documentos y demás entidades operativas no se recrean.
+La `Chain` efectiva del restaurante se recalcula por derivación desde la nueva `Company`.
 
 ### D-011 — [dominio] — ShiftTemplate como entidad propia
 `ShiftTemplate` es una entidad propia dentro del módulo `schedule` con ciclo de vida independiente (crear, editar, archivar, aplicar). "Copiar semana anterior" es una operación del `scheduleDraftService`, no una entidad.
 
-### D-012 — [dominio] — TaskTemplate como OPEN QUESTION
-`TaskTemplate` no entra en esta fase. Ver `10_OPEN_QUESTIONS.md`.
+### D-012 — [dominio] — TaskTemplate como decisión inicial superada
+La exclusión inicial de `TaskTemplate` quedó superada en la sesión del 1 de abril de 2026 por `D-043A`, que lo incorpora al lanzamiento como entidad propia del módulo `tasks`. Se conserva esta referencia solo por trazabilidad histórica interna del canon.
 
 ---
 
@@ -82,18 +94,25 @@ La administración de plataforma usa `platform_admin` o `super_admin`. Son roles
 - `employee` — rol base de ejecución operativa
 
 ### D-024 — [acceso] — Scopes canónicos
-La jerarquía de scopes en `RoleScopeAssignment` es: `Organization`, `Company`, `Restaurant`, `Zone`
-`Chain` puede actuar como scope para `owner` cuando su autoridad abarca toda la cadena.
+La jerarquía de scopes en `RoleScopeAssignment` es: `Organization`, `Chain`, `Company`, `Restaurant`, `Zone`.
+El acceso es jerárquico: un scope concede acceso a todo su subárbol estructural.
+- `Organization` incluye `Chain`, `Company`, `Restaurant` y `Zone`
+- `Chain` incluye sus `Company`, `Restaurant` y `Zone`
+- `Company` incluye sus `Restaurant` y `Zone`
+- `Restaurant` incluye sus `Zone`
+- `Zone` solo incluye su propia zona
 `self` es una condición de acceso, no un scope canónico.
 
 ### D-025 — [acceso] — Scope obligatorio por rol
-- `admin`, `owner`, `office` requieren al menos un scope activo para ser canónicamente válidos
-- `manager` requiere al menos un scope `Restaurant` activo (D-033)
-- `area_lead` requiere al menos un scope `Zone` activo (D-032)
-- `employee` deriva su contexto del `EmploymentRelationship` activo, sin `RoleScopeAssignment` obligatorio
+- `admin` requiere al menos 1 scope `Organization` vigente. No usa scopes más bajos como fuente primaria de autoridad; el acceso a `Chain`, `Company`, `Restaurant` y `Zone` se deriva jerárquicamente desde `Organization`
+- `owner` requiere al menos 1 scope vigente `Organization`, `Chain` o `Company`. No usa scope directo `Restaurant`; accede al restaurante por derivación vía `active_scope`
+- `office` requiere al menos 1 scope vigente `Organization`, `Chain`, `Company` o `Restaurant`
+- `manager` requiere al menos 1 scope `Restaurant` vigente
+- `area_lead` requiere exactamente 1 scope `Zone` vigente
+- `employee` no usa `RoleScopeAssignment`; deriva su acceso de su asignación operativa activa al restaurante
 
 ### D-026 — [acceso] — area_lead sin Zone no es válido
-`area_lead` sin scope `Zone` activo no es canónicamente válido. Si un restaurante no tiene zonas definidas, no puede tener `area_lead`.
+`area_lead` sin scope `Zone` activo no es canónicamente válido. Tampoco lo es con más de una `Zone` activa simultáneamente. Si un restaurante no tiene zonas definidas, no puede tener `area_lead`.
 
 ### D-027 — [acceso] — access_status como lifecycle completo
 `access_status` vive en `Person`. El catálogo canónico es:
@@ -117,7 +136,7 @@ La jerarquía de scopes en `RoleScopeAssignment` es: `Organization`, `Company`, 
 Toda transición queda registrada en `AuditLog`.
 
 ### D-029 — [acceso] — sub_manager y chain_owner anulados
-`sub_manager` → absorbido en `manager` con `authority_tier` contextual (`primary`/`delegated`).
+`sub_manager` → absorbido en `manager` con `authority_tier` contextual (`primary`/`secondary`).
 `chain_owner` → reemplazado por `owner` con scope `Chain`.
 
 ---
@@ -130,12 +149,45 @@ Toda transición queda registrada en `AuditLog`.
 ### D-031 — [empleo] — Cardinalidad de EmploymentRelationship
 Una `Person` puede tener exactamente 0 o 1 `EmploymentRelationship` activo. Nunca más de uno simultáneo.
 
-### D-032 — [empleo] — EmploymentRelationship vincula Company y Restaurant
-`EmploymentRelationship` referencia explícitamente `Company` y `Restaurant`. Ambas son obligatorias. Existe invariante de coherencia: `EmploymentRelationship.company_id` debe coincidir con `Restaurant.company_id`.
+### D-032 — [empleo] — EmploymentRelationship se ancla a Company
+`EmploymentRelationship` referencia explícitamente `Company`. `company_id` es obligatorio. `Organization` y `Chain` no son niveles de contratación y `Restaurant` no vive en esta entidad.
+La `Company` contractual del empleo no limita por sí misma la autoridad de `admin`, `owner` u `office` cuando sus `RoleScopeAssignment` activos les conceden alcance superior sobre `Organization`, `Chain` o múltiples `Company`.
 
 ### D-033 — [empleo] — Qué vive en EmploymentRelationship
-**Sí:** contexto laboral, vínculo contractual, vigencia, condiciones de trabajo, modalidad/jornada, `job_title`, anclaje a `Company` y `Restaurant`.
-**No:** `system_role`, scopes, permisos, autoridad del sistema, reglas de acceso.
+**Sí:** contexto laboral, vínculo contractual, vigencia, condiciones de trabajo, modalidad/jornada, `job_title`, anclaje a `Company`.
+**No:** `system_role`, scopes, permisos, autoridad del sistema, `restaurant_id`, `zone_id`, reglas de acceso.
+La vigencia canónica de negocio se modela con `valid_from` y `valid_to`, ambos con semántica inclusiva (`[]`).
+Para integridad, solapamientos y consultas temporales en PostgreSQL, se deriva adicionalmente un `valid_during daterange` técnico en forma `[)` a partir de esas fechas.
+Ejemplo: fin visible `2026-04-14` → `valid_from = 2026-04-01`, `valid_to = 2026-04-14` y `valid_during = [2026-04-01, 2026-04-15)`.
+
+### D-034 — [empleo] — EmploymentRestaurantAssignment como destino operativo
+`EmploymentRestaurantAssignment` modela el destino operativo histórico de un empleo dentro de un `Restaurant`. Aplica a `employee`, `manager` y `area_lead`, permite programación futura y guarda su vigencia de negocio en `valid_from` + `valid_to` inclusivos. `valid_during` se deriva como rango técnico. No sustituye a `RoleScopeAssignment`.
+Todo `Restaurant` operativo asignado debe pertenecer a la misma `Company` del `EmploymentRelationship`.
+`manager` puede tener varios `Restaurant` simultáneos solo si todos pertenecen a esa misma `Company`.
+Si una persona pasa a operar bajo otra `Company`, el vínculo correcto es terminar el `EmploymentRelationship` vigente y crear uno nuevo en la nueva `Company`.
+Un cambio futuro de `Restaurant` dentro de la misma `Company` puede programarse anticipadamente en `EmploymentRestaurantAssignment`.
+Un cambio futuro hacia otra `Company` no se modela como asignación operativa futura: se modela como fin programado del empleo vigente y alta programada de un nuevo `EmploymentRelationship`.
+En `manager`, la asignación futura de restaurante no equivale por sí sola al alcance de autoridad: la operación vive en `EmploymentRestaurantAssignment` y la autoridad vive en `RoleScopeAssignment`.
+
+### D-035 — [empleo] — EmploymentZoneAssignment para area_lead
+`EmploymentZoneAssignment` modela la zona operativa histórica de un `area_lead`. `area_lead` puede tener una única `Zone` activa simultáneamente y esa zona debe pertenecer al `Restaurant` activo de su asignación operativa.
+`area_lead` también queda restringido a un único `Restaurant` operativo activo simultáneamente, sin excepciones.
+Su vigencia sigue el mismo patrón: `valid_from` + `valid_to` inclusivos y `valid_during` derivado.
+
+### D-036 — [acceso] — active_scope vive en sesión
+`active_scope` es contexto de sesión, no autoridad persistida en `public`. Permite navegar y operar en `Organization`, `Chain`, `Company` o `Restaurant` según el alcance ya concedido. Nunca concede permisos por sí mismo.
+
+### D-037 — [acceso] — Vista global por defecto para roles de alcance amplio
+`admin`, `owner` y `office` entran por defecto en vista global agregada. Solo cuando seleccionan un `active_scope` concreto la sesión se enfoca a una parte del árbol.
+
+### D-038 — [acceso] — No redundancia en RoleScopeAssignment
+No se almacenan scopes redundantes para una misma `Person` y `system_role` cuando el scope inferior ya queda cubierto por un scope superior del mismo subárbol (`Organization` > `Chain` > `Company` > `Restaurant` > `Zone`).
+Sí se permiten combinaciones de scopes no redundantes cuando cubren subárboles distintos, por ejemplo una `Chain` y una `Company` que queda fuera de esa `Chain`.
+`RoleScopeAssignment` admite vigencia temporal programable para soportar cambios futuros de autoridad.
+La vigencia activa de un scope se deriva de `valid_during`, calculado desde `valid_from` + `valid_to` inclusivos; no se persiste en un booleano `active`.
+
+### D-039 — [acceso] — Manager y area_lead separan autoridad de operación
+`manager` y `area_lead` combinan `RoleScopeAssignment` para autoridad con asignaciones operativas históricas para trabajo diario. `authority_tier` solo existe para `manager`.
 
 ---
 
@@ -156,6 +208,12 @@ Una `Person` puede tener exactamente 0 o 1 `EmploymentRelationship` activo. Nunc
 ### D-043 — [módulos] — Tipos de Request
 `vacation`, `sick_leave`, `justified_absence`, `absence`
 
+### D-043A — [módulos] — TaskTemplate entra en lanzamiento
+`TaskTemplate` forma parte del módulo `tasks` desde la fase inicial. Es la plantilla reutilizable de tarea operativa por restaurante y puede generar `TaskInstance` recurrentes o servir de base a creación manual.
+
+### D-043B — [módulos] — TaskInstance admite varios tipos de responsable
+Una `TaskInstance` puede asignarse a una persona concreta, a un rol operativo o a una zona concreta. El invariante es “al menos un responsable operativo”, no “siempre una persona concreta”.
+
 ### D-044 — [módulos] — ShiftSwap flujo de doble validación
 1. Empleado A propone swap a Empleado B
 2. Empleado B acepta o rechaza
@@ -165,7 +223,7 @@ Una `Person` puede tener exactamente 0 o 1 `EmploymentRelationship` activo. Nunc
 Condiciones de compatibilidad: mismo restaurante, ambos activos en esa fecha, mismo `job_title`, mismo `responsibility_level`.
 
 ### D-045 — [módulos] — Incident: creación y enrutamiento
-Cualquier persona con empleo activo en el restaurante puede crear un incidente. El sistema enruta automáticamente por categoría:
+Cualquier persona con acceso operativo al restaurante en ese momento puede crear un incidente. El sistema enruta automáticamente por categoría:
 - `manager` recibe: `operational`, `hygiene`, `customer`, `stock`
 - `office` recibe: `maintenance`, `security`, `technology`, `personnel`, `stock`
 - `stock` notifica a ambos (dimensión operativa + administrativa)
@@ -174,7 +232,7 @@ Estados del workflow: `reported` → `in_review` → `resolved` → `closed`
 Sensibilidad: `normal` / `restricted` (restricted no visible para `area_lead`)
 
 ### D-046 — [módulos] — DeliveryNote flujo
-1. Cualquier empleado con empleo activo sube el albarán físico
+1. Cualquier persona con acceso operativo al restaurante puede subir el albarán físico
 2. OCR extrae datos (propone, no decide)
 3. Empleado revisa y confirma datos extraídos
 4. `office` valida y cierra el albarán como confirmado

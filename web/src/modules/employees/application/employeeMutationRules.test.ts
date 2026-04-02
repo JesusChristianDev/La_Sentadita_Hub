@@ -30,7 +30,7 @@ test('validateCreateEmployeeInput rejects invalid area lead assignments and miss
       restaurantId: 'restaurant-1',
       roleRaw: 'employee',
       zoneId: 'zone-1',
-    }, 'chain-1'),
+    }),
     { ok: false, errorCode: 'invalid_email' },
   );
 
@@ -43,7 +43,7 @@ test('validateCreateEmployeeInput rejects invalid area lead assignments and miss
       restaurantId: 'restaurant-1',
       roleRaw: 'area_lead',
       zoneId: '',
-    }, 'chain-1'),
+    }),
     { ok: false, errorCode: 'area_lead_requires_zone' },
   );
 });
@@ -93,7 +93,7 @@ test('validateCreateEmployeeInput rejects non canonical roles', () => {
     restaurantId: 'restaurant-1',
     roleRaw: 'unsupported_role',
     zoneId: '',
-  }, 'chain-1');
+  });
 
   assert.deepEqual(result, { ok: false, errorCode: 'invalid_role' });
 });

@@ -21,21 +21,27 @@ Contrato explícito que toda operación de escritura debe construir antes de eje
 export type RequestContext = {
   personId: string          // UUID del actor
   systemRole: SystemRole    // rol canónico del actor
-  activeScopeId: string     // UUID del scope activo (restaurant, company, zone...)
-  activeScopeType: ScopeType // tipo del scope activo
+  activeScopeId: string | null     // UUID del scope activo si la sesión está enfocada
+  activeScopeType: ScopeType | null // tipo del scope activo si la sesión está enfocada
   traceId: string           // UUID v4 para trazabilidad end-to-end
 }
 
-export function buildRequestContext(jwt: JWTPayload): RequestContext {
+export function buildRequestContext(
+  session: AuthenticatedSession,
+  actor: ActorIdentity
+): RequestContext {
   return {
-    personId: jwt.sub,
-    systemRole: jwt.system_role as SystemRole,
-    activeScopeId: jwt.active_scope_id,
-    activeScopeType: jwt.active_scope_type as ScopeType,
+    personId: actor.personId,
+    systemRole: actor.systemRole,
+    activeScopeId: session.activeScopeId ?? null,
+    activeScopeType: session.activeScopeType ?? null,
     traceId: crypto.randomUUID(),
   }
 }
 ```
+
+- `active_scope` vive en la sesión autenticada, no en una tabla de dominio del schema `public`
+- `active_scope` solo enfoca la operación; la autoridad sigue viniendo de `RoleScopeAssignment` o de la asignación operativa vigente si el actor es `employee`
 
 ---
 

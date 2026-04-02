@@ -11,8 +11,8 @@ import type { EditableEmploymentSystemRole } from '@/modules/employment';
 import {
   getEmploymentRoleSlotConflictCode,
   hasActiveAreaLead as hasAreaLeadProjection,
+  loadEmployeeProfileProjectionById,
 } from '@/shared/db/employment';
-import { loadPersonProfileById } from '@/shared/db/persons';
 import { employeesPathWithError } from '@/shared/feedbackMessages';
 
 type EmployeeRoleSlotConflictCode = 'manager_exists';
@@ -46,7 +46,7 @@ export async function loadTarget(
   restaurant_id: string | null;
   systemRole: SystemRole;
 }> {
-  const profile = await loadPersonProfileById(userId);
+  const profile = await loadEmployeeProfileProjectionById(userId);
   const systemRole = deriveSystemRole(profile);
 
   return {

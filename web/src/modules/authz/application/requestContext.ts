@@ -1,4 +1,4 @@
-import type { AppRole, Profile } from '@/modules/people';
+import type { AppRole, PersonProfile } from '@/modules/people';
 
 import {
   deriveResponsibilityLevel,
@@ -21,7 +21,7 @@ export type RequestContext = {
   effectiveRestaurantId: string | null;
   now: Date;
   personId: string;
-  profile: Profile;
+  profile: PersonProfile;
   responsibilityLevel: ResponsibilityLevel;
   restaurantId: string | null;
   scopeType: ScopeType;
@@ -32,7 +32,7 @@ export type RequestContext = {
 };
 
 export type UserContextLike = {
-  profile: Profile;
+  profile: PersonProfile;
   userId: string;
 };
 
@@ -40,13 +40,13 @@ export type ActorLike =
   | AppRole
   | UserContextLike
   | RequestContext
-  | Pick<Profile, 'id' | 'restaurant_id' | 'role' | 'system_role' | 'zone_id'>;
+  | Pick<PersonProfile, 'id' | 'restaurant_id' | 'role' | 'system_role' | 'zone_id'>;
 
-export function deriveSystemRole(profile: Profile): SystemRole {
+export function deriveSystemRole(profile: PersonProfile): SystemRole {
   return coerceSystemRole(profile.system_role);
 }
 
-export function deriveScopeType(profile: Profile, systemRole: SystemRole): ScopeType {
+export function deriveScopeType(profile: PersonProfile, systemRole: SystemRole): ScopeType {
   if (systemRole === 'admin' || systemRole === 'owner' || systemRole === 'office') {
     return 'organization';
   }
@@ -56,7 +56,7 @@ export function deriveScopeType(profile: Profile, systemRole: SystemRole): Scope
 }
 
 export function deriveActiveScopes(
-  profile: Profile,
+  profile: PersonProfile,
   systemRole: SystemRole,
   effectiveRestaurantId: string | null,
 ): ActiveScope[] {
@@ -92,7 +92,7 @@ export function deriveActiveScopes(
 }
 
 export function buildRequestContextFromProfile(
-  profile: Profile,
+  profile: PersonProfile,
   effectiveRestaurantId: string | null = profile.restaurant_id ?? null,
 ): RequestContext {
   const systemRole = deriveSystemRole(profile);

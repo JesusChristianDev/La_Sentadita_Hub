@@ -18,7 +18,15 @@ export type AuthzAction =
   | 'tasks.view'
   | 'tasks.manage'
   | 'requests.view'
-  | 'requests.manage';
+  | 'requests.manage'
+  | 'incidents.view'
+  | 'incidents.manage'
+  | 'documents.view'
+  | 'documents.create'
+  | 'documents.manage'
+  | 'procurement.view'
+  | 'procurement.manage'
+  | 'notifications.view';
 
 export type AuthzResource = {
   restaurantId?: string | null;
@@ -34,8 +42,19 @@ function isGlobalRole(role: RequestContext['systemRole']): boolean {
   return role === 'admin' || role === 'owner' || role === 'office';
 }
 
-function isScheduleGlobalRole(role: RequestContext['systemRole']): boolean {
-  return role === 'admin' || role === 'owner';
+function isScheduleAdminRole(role: RequestContext['systemRole']): boolean {
+  return role === 'admin';
+}
+
+function canViewSchedule(role: RequestContext['systemRole']): boolean {
+  return (
+    role === 'admin' ||
+    role === 'owner' ||
+    role === 'office' ||
+    role === 'manager' ||
+    role === 'area_lead' ||
+    role === 'employee'
+  );
 }
 
 function isRestaurantWideRole(role: RequestContext['systemRole']): boolean {
@@ -103,30 +122,53 @@ export function can(
     }
 
     case 'schedule.view':
-      return (
-        isScheduleGlobalRole(ctx.systemRole) ||
-        ctx.systemRole === 'manager' ||
-        isAreaLead(ctx.systemRole) ||
-        ctx.systemRole === 'employee'
-      );
+      return canViewSchedule(ctx.systemRole);
 
     case 'tasks.view':
+    case 'incidents.view':
+    case 'documents.view':
+    case 'documents.create':
+    case 'procurement.view':
+    case 'notifications.view':
     case 'requests.view':
       return true;
 
     case 'tasks.manage':
     case 'requests.manage':
-    case 'schedule.edit_draft':
       return (
         isGlobalRole(ctx.systemRole) ||
         ctx.systemRole === 'manager' ||
         isAreaLead(ctx.systemRole)
       );
 
+    case 'incidents.manage':
+      return isGlobalRole(ctx.systemRole) || ctx.systemRole === 'manager';
+
+    case 'documents.manage':
+      return (
+        isGlobalRole(ctx.systemRole) ||
+        ctx.systemRole === 'manager'
+      );
+
+    case 'procurement.manage':
+      return isScheduleAdminRole(ctx.systemRole) || ctx.systemRole === 'office';
+
+    case 'schedule.edit_draft':
+      return (
+        isScheduleAdminRole(ctx.systemRole) ||
+        ctx.systemRole === 'manager' ||
+        isAreaLead(ctx.systemRole)
+      );
+
     case 'schedule.manage_templates':
+      return (
+        isScheduleAdminRole(ctx.systemRole) ||
+        ctx.systemRole === 'office' ||
+        ctx.systemRole === 'manager'
+      );
     case 'schedule.publish':
     case 'schedule.review':
-      return isScheduleGlobalRole(ctx.systemRole) || ctx.systemRole === 'manager';
+      return isScheduleAdminRole(ctx.systemRole) || ctx.systemRole === 'manager';
 
     case 'schedule.edit_employee':
       if (isRestaurantWideRole(ctx.systemRole)) return true;
@@ -147,12 +189,22 @@ export function getAllowedScopeForAction(action: AuthzAction): ScopeType[] {
       return ['organization', 'restaurant'];
     case 'schedule.view':
     case 'tasks.view':
+    case 'incidents.view':
+    case 'documents.view':
+    case 'documents.create':
+    case 'procurement.view':
+    case 'notifications.view':
     case 'requests.view':
       return ['organization', 'restaurant', 'zone', 'self'];
     case 'schedule.edit_draft':
     case 'tasks.manage':
+    case 'incidents.manage':
     case 'requests.manage':
       return ['organization', 'restaurant', 'zone'];
+    case 'documents.manage':
+      return ['organization', 'restaurant'];
+    case 'procurement.manage':
+      return ['organization', 'restaurant'];
     case 'schedule.manage_templates':
     case 'schedule.publish':
     case 'schedule.review':

@@ -16,6 +16,17 @@ import type {
   IncidentStatus,
 } from '../domain/incidentTypes';
 
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isCurrentTemporalRow(
+  row: { valid_from: string; valid_to: string | null },
+  today = todayIsoDate(),
+): boolean {
+  return row.valid_from <= today && (row.valid_to === null || row.valid_to >= today);
+}
+
 async function getRequiredCurrentUserContext() {
   const ctx = await getCurrentUserContext();
   if (!ctx) {
@@ -27,25 +38,37 @@ async function getRequiredCurrentUserContext() {
 
 async function listRestaurantManagers(restaurantId: string): Promise<string[]> {
   const admin = createSupabaseAdminClient();
+  const today = todayIsoDate();
   const { data: assignments, error: assignmentError } = await admin
     .from('role_scope_assignments')
-    .select('person_id')
+    .select('person_id, valid_from, valid_to')
     .eq('scope_type', 'restaurant')
-    .eq('scope_id', restaurantId)
-    .eq('active', true);
+    .eq('scope_id', restaurantId);
 
   if (assignmentError) {
     throw new Error(`Failed to load restaurant scope assignments: ${assignmentError.message}`);
   }
 
-  const personIds = [...new Set((assignments ?? []).map((row) => row.person_id as string))];
+  const personIds = [
+    ...new Set(
+      (assignments ?? [])
+        .filter((row) =>
+          isCurrentTemporalRow(
+            row as { valid_from: string; valid_to: string | null },
+            today,
+          ),
+        )
+        .map((row) => row.person_id as string),
+    ),
+  ];
   if (personIds.length === 0) return [];
 
   const { data: people, error: peopleError } = await admin
     .from('persons')
     .select('person_id')
     .in('person_id', personIds)
-    .eq('system_role', 'manager');
+    .eq('system_role', 'manager')
+    .eq('is_archived', false);
 
   if (peopleError) {
     throw new Error(`Failed to load restaurant managers: ${peopleError.message}`);

@@ -9,7 +9,6 @@ export async function createPerson(input: CreatePersonInput): Promise<string> {
     fullName: input.fullName,
     phone: input.phone,
     identityDocument: input.identityDocument,
-    chainId: input.chainId,
     systemRole: input.systemRole,
     agoraEmployeeId: input.agoraEmployeeId,
   });

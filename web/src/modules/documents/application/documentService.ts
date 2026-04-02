@@ -4,6 +4,7 @@ import { AUDIT_ACTIONS, writeAuditLog } from '@/modules/audit';
 import { getCurrentUserContext } from '@/modules/auth_users';
 import { assertRestaurantManagement, isGlobalSystemRole } from '@/modules/authz';
 import { notifyPerson } from '@/modules/notifications';
+import { loadPersonProfileById } from '@/shared/db/persons';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 import type {
@@ -27,20 +28,56 @@ async function getRequiredCurrentUserContext() {
 }
 
 async function resolvePersonRestaurantId(personId: string): Promise<string | null> {
+  const profile = await loadPersonProfileById(personId);
+  return profile.restaurant_id ?? null;
+}
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isCurrentTemporalRow(
+  row: { valid_from: string; valid_to: string | null },
+  today = todayIsoDate(),
+): boolean {
+  return row.valid_from <= today && (row.valid_to === null || row.valid_to >= today);
+}
+
+function sortTemporalDesc<T extends { created_at?: string | null; valid_from: string }>(
+  rows: T[],
+): T[] {
+  return [...rows].sort(
+    (left, right) =>
+      right.valid_from.localeCompare(left.valid_from) ||
+      (right.created_at ?? '').localeCompare(left.created_at ?? ''),
+  );
+}
+
+async function resolveEmploymentRestaurantId(employmentId: string): Promise<string | null> {
   const admin = createSupabaseAdminClient();
+  const today = todayIsoDate();
   const { data, error } = await admin
-    .from('employment_relationships')
-    .select('restaurant_id')
-    .eq('person_id', personId)
-    .eq('active_principal', true)
-    .eq('is_archived', false)
-    .maybeSingle();
+    .from('employment_restaurant_assignments')
+    .select('restaurant_id, valid_from, valid_to, created_at')
+    .eq('employment_id', employmentId)
+    .order('valid_from', { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to resolve person restaurant: ${error.message}`);
+    throw new Error(`Failed to resolve employment restaurant: ${error.message}`);
   }
 
-  return (data?.restaurant_id as string | null) ?? null;
+  const rows = (data ?? []) as Array<{
+    created_at: string;
+    restaurant_id: string;
+    valid_from: string;
+    valid_to: string | null;
+  }>;
+  const current =
+    rows.find((row) => isCurrentTemporalRow(row, today)) ??
+    sortTemporalDesc(rows)[0] ??
+    null;
+
+  return current?.restaurant_id ?? null;
 }
 
 async function resolveDocumentOwnerMetadata(
@@ -59,7 +96,7 @@ async function resolveDocumentOwnerMetadata(
   if (ownerType === 'employment_relationship') {
     const { data, error } = await admin
       .from('employment_relationships')
-      .select('person_id, restaurant_id')
+      .select('person_id')
       .eq('employment_id', ownerId)
       .single();
 
@@ -69,7 +106,7 @@ async function resolveDocumentOwnerMetadata(
 
     return {
       ownerPersonId: data.person_id as string,
-      restaurantId: data.restaurant_id as string,
+      restaurantId: await resolveEmploymentRestaurantId(ownerId),
     };
   }
 

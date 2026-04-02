@@ -10,19 +10,37 @@ import {
 
 type Props = {
   canSeeEmployees: boolean;
+  canSeeDocuments?: boolean;
+  canSeeIncidents?: boolean;
+  canSeeNotifications?: boolean;
+  canSeeRequests?: boolean;
+  canSeeProcurement?: boolean;
   canSeeSchedules: boolean;
+  canSeeTasks?: boolean;
   className?: string;
 };
 
 export function ScreenNav({
   canSeeEmployees,
+  canSeeDocuments = false,
+  canSeeIncidents = false,
+  canSeeNotifications = false,
+  canSeeRequests = false,
+  canSeeProcurement = false,
   canSeeSchedules,
+  canSeeTasks = false,
   className = 'hidden min-w-0 flex-1 items-center justify-center lg:flex',
 }: Props) {
   const pathname = usePathname();
   const items = buildAppNavigationItems({
     canSeeEmployees,
+    canSeeDocuments,
+    canSeeIncidents,
+    canSeeNotifications,
+    canSeeRequests,
+    canSeeProcurement,
     canSeeSchedules,
+    canSeeTasks,
   });
 
   const getLinkClasses = (href: string) => {

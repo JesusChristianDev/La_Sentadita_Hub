@@ -9,18 +9,8 @@ Una `OPEN QUESTION` no se implementa ni se asume. Se bloquea la fase correspondi
 
 ---
 
-## OQ-001 — [F6] — TaskTemplate
-**Pregunta:** ¿`TaskTemplate` es necesario en esta fase o se pospone?
-
-**Contexto:** `ShiftTemplate` existe para turnos. El equivalente para tareas sería `TaskTemplate` — una plantilla de tarea recurrente que el manager puede aplicar. La tabla existe en la DB pero sin datos y sin decisión canónica.
-
-**Opciones:**
-- A — Sí, entra en Fase 6 como entidad propia similar a `ShiftTemplate`
-- B — No en esta fase. Las tareas se crean manualmente
-
-**Criterio de desbloqueo:** confirmar si el negocio necesita tareas recurrentes predefinidas desde el lanzamiento.
-
-**Fase que bloquea:** F6 (Tasks) solo si se elige A.
+## OQ-001 — [cerrada] — TaskTemplate
+**Cerrada en sesión del 1 de abril de 2026.** `TaskTemplate` entra en fase de lanzamiento como entidad propia dentro del módulo `tasks`, alineada con la tabla ya existente y con el flujo operativo actual. Ver [02_DOMAIN_MODEL.md](C:/la-sentadita-hub/canon/canon-v9/core/02_DOMAIN_MODEL.md) y [03_ACL_MATRIX.md](C:/la-sentadita-hub/canon/canon-v9/core/03_ACL_MATRIX.md).
 
 ---
 
@@ -67,6 +57,22 @@ Una `OPEN QUESTION` no se implementa ni se asume. Se bloquea la fase correspondi
 
 ## OQ-007 — [cerrada] — authority_tier en role_scope_assignments
 **Cerrada en sesión de marzo 2026.** Ver D-131.
+
+---
+
+## OQ-008 — [cerrada] — Compatibilidad Company del empleo vs Restaurant operativo
+**Cerrada en sesión de marzo 2026.** Todo `EmploymentRestaurantAssignment` debe permanecer dentro de la misma `Company` del `EmploymentRelationship`. Un cambio de `Company` requiere terminar el empleo vigente y crear otro nuevo. Ver D-034 e I-003.
+
+---
+
+## OQ-009 — [post-lanzamiento] — Transferencia estructural de Restaurant entre Company
+**Pregunta:** ¿Quién puede ejecutar la transferencia excepcional de un `Restaurant` a otra `Company` y cuál es el protocolo operativo exacto?
+
+**Contexto:** canónicamente el `Restaurant` puede cambiar de `Company` sin perder identidad, manteniendo unido su bloque operativo e histórico. Pero se considera una operación estructural de alto impacto, fuera del alcance inicial.
+
+**Criterio de desbloqueo:** definir autorización, validaciones previas, auditoría reforzada y side effects sobre empleo, scopes y datos operativos antes de implementar el caso de uso.
+
+**Fase que bloquea:** no bloquea el alcance actual. Solo bloquea la futura implementación del caso de uso de transferencia estructural.
 
 ---
 

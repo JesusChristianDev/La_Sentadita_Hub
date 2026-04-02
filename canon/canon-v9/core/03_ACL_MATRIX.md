@@ -6,11 +6,12 @@
 ## Fórmula de acceso
 
 ```
-access = system_role + scope_activo + condición_de_acceso + module_action_rule
+access = system_role + authority_scope_assignments + active_scope + condición_de_acceso + module_action_rule
 ```
 
 - **system_role** → qué tipo de actor es la persona
-- **scope_activo** → sobre qué parte del tenant puede actuar
+- **authority_scope_assignments** → alcance real concedido por `RoleScopeAssignment`
+- **active_scope** → contexto de sesión seleccionado dentro del alcance ya concedido
 - **condición de acceso** → `self` (acceso sobre sí mismo) no es scope, es condición
 - **module_action_rule** → qué puede hacer en cada módulo
 
@@ -20,12 +21,12 @@ access = system_role + scope_activo + condición_de_acceso + module_action_rule
 
 | Rol | Scope requerido | Descripción |
 |---|---|---|
-| `admin` | Organization (mínimo) | Tenant admin. Máxima autoridad dentro del tenant |
-| `owner` | Company / Chain / Organization | Autoridad de negocio y control final |
-| `office` | Company / Organization | Gestión administrativa y operativa transversal |
-| `manager` | Restaurant (obligatorio) | Liderazgo operativo de un restaurante |
-| `area_lead` | Zone (obligatorio) | Liderazgo de sección física en restaurante |
-| `employee` | Derivado de EmploymentRelationship | Rol base de ejecución |
+| `admin` | Organization (mínimo) | Tenant admin. Máxima autoridad dentro del tenant. Puede enfocar sesión a `Chain`, `Company` o `Restaurant` |
+| `owner` | Company / Chain / Organization | Autoridad de negocio y control final. No usa scope directo `Restaurant`; puede enfocar sesión a `Restaurant` derivado |
+| `office` | Restaurant / Company / Chain / Organization | Gestión administrativa y operativa transversal con alcance variable según asignación |
+| `manager` | Restaurant (1..N) | Liderazgo operativo de uno o varios restaurantes. `authority_tier` por restaurante |
+| `area_lead` | Zone (exactamente 1 activa) | Liderazgo de sección física en restaurante. Restaurante operativo derivado |
+| `employee` | Derivado de `EmploymentRestaurantAssignment` activo | Rol base de ejecución sin `RoleScopeAssignment` |
 
 ---
 
@@ -52,6 +53,9 @@ access = system_role + scope_activo + condición_de_acceso + module_action_rule
 | Ver vínculo laboral | ✅ | ✅ scope | ✅ scope | Solo su restaurante | ❌ | Solo el propio |
 | Editar vínculo laboral | ✅ | ❌ | ✅ scope | ❌ | ❌ | ❌ |
 | Terminar vínculo laboral | ✅ | ❌ | ✅ scope | ❌ | ❌ | ❌ |
+| Asignar restaurante operativo | ✅ | ❌ | ✅ scope | ❌ | ❌ | ❌ |
+| Programar cambio de restaurante | ✅ | ❌ | ✅ scope | ❌ | ❌ | ❌ |
+| Asignar zona operativa (`area_lead`) | ✅ | ❌ | ✅ scope | ❌ | ❌ | ❌ |
 
 ---
 
@@ -113,6 +117,20 @@ access = system_role + scope_activo + condición_de_acceso + module_action_rule
 
 ---
 
+## Tasks
+
+| Acción | `admin` | `owner` | `office` | `manager` | `area_lead` | `employee` |
+|---|---|---|---|---|---|---|
+| Ver tareas del restaurante | ✅ | ✅ scope | ✅ | ✅ su restaurante | Su zona / asignadas | Solo las propias / asignadas |
+| Crear `TaskTemplate` | ✅ | ❌ | ✅ | ✅ su restaurante | ❌ | ❌ |
+| Editar / archivar `TaskTemplate` | ✅ | ❌ | ✅ | ✅ su restaurante | ❌ | ❌ |
+| Crear `TaskInstance` | ✅ | ❌ | ✅ | ✅ su restaurante | ❌ | ❌ |
+| Reasignar / cancelar `TaskInstance` | ✅ | ❌ | ✅ | ✅ su restaurante | ❌ | ❌ |
+| Completar `TaskInstance` | ✅ | ❌ | ✅ | ✅ su restaurante | Las asignadas a su zona / rol / persona | Las asignadas a su rol / persona |
+| Confirmar `TaskInstance` | ✅ | ❌ | ✅ | ✅ su restaurante | ❌ | ❌ |
+
+---
+
 ## Incidents
 
 | Acción | `admin` | `owner` | `office` | `manager` | `area_lead` | `employee` |
@@ -159,7 +177,10 @@ access = system_role + scope_activo + condición_de_acceso + module_action_rule
 
 ## Notas de implementación
 
-1. **scope** en las celdas significa que el acceso está limitado al scope activo del actor en `RoleScopeAssignment`
-2. **su restaurante** significa que el `manager` solo accede a datos del restaurante donde tiene scope activo
-3. Toda acción privilegiada queda registrada en `AuditLog`
-4. La lógica de acceso vive en el backend — el frontend puede mostrar/ocultar UI pero nunca decide permisos
+1. **scope** en las celdas significa que el acceso está limitado por los `RoleScopeAssignment` vigentes del actor y, si existe, por el `active_scope` de sesión
+2. **active_scope** nunca concede autoridad nueva; solo enfoca la operación dentro del árbol ya autorizado
+3. El acceso por scope es jerárquico y siempre incluye los descendientes estructurales del subárbol autorizado
+4. **su restaurante** significa que el acceso operativo del actor está acotado al restaurante activo de sesión o a su asignación operativa vigente
+5. `employee` no usa `RoleScopeAssignment`; su acceso sale de `EmploymentRestaurantAssignment`
+6. Toda acción privilegiada queda registrada en `AuditLog`
+7. La lógica de acceso vive en el backend — el frontend puede mostrar/ocultar UI pero nunca decide permisos

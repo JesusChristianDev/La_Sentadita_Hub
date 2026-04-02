@@ -17,10 +17,10 @@ export type AccessStatus =
 export type CanonicalPerson = {
   access_status: AccessStatus;
   avatar_url: string | null;
-  chain_id: string | null;
   email: string | null;
   first_name: string;
   identity_document: string | null;
+  is_archived: boolean;
   last_name: string;
   person_id: string;
   phone: string | null;

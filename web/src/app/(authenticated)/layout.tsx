@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 
-import { getCurrentUserContext } from '@/modules/auth_users';
-import { can } from '@/modules/authz';
-import { listRestaurants } from '@/modules/restaurants';
+import {
+  buildAuthenticatedShellViewModel,
+  buildFrontendSessionView,
+  getCurrentUserContext,
+} from '@/modules/auth_users';
 import { getIsMobileDevice } from '@/shared/deviceDetection';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
@@ -16,11 +18,10 @@ export default async function AuthenticatedLayout({
 }) {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
-  const initialIsMobileHint = await getIsMobileDevice();
 
-  const showSelector = can(ctx.requestContext, 'restaurant_context.select');
-  const restaurants = showSelector ? await listRestaurants() : [];
-  const effectiveRestaurantId = ctx.requestContext.effectiveRestaurantId;
+  const initialIsMobileHint = await getIsMobileDevice();
+  const frontendSession = buildFrontendSessionView(ctx);
+  const shellView = buildAuthenticatedShellViewModel(frontendSession);
 
   const admin = createSupabaseAdminClient();
   let currentUserAvatarUrl: string | null = null;
@@ -33,11 +34,18 @@ export default async function AuthenticatedLayout({
 
   return (
     <ResponsiveAppFrame
-      canSeeEmployees={can(ctx.requestContext, 'employees.view')}
-      canSeeSchedules={can(ctx.requestContext, 'schedule.view')}
-      canPickRestaurant={showSelector}
-      restaurants={restaurants}
-      effectiveRestaurantId={effectiveRestaurantId}
+      activeScopeLabel={shellView.activeScopeLabel}
+      canSeeDocuments={shellView.navigation.documents}
+      canSeeEmployees={shellView.navigation.employees}
+      canSeeIncidents={shellView.navigation.incidents}
+      canSeeNotifications={shellView.navigation.notifications}
+      canSeeProcurement={shellView.navigation.procurement}
+      canSeeRequests={shellView.navigation.requests}
+      canSeeSchedules={shellView.navigation.schedules}
+      canSeeTasks={shellView.navigation.tasks}
+      canPickRestaurant={shellView.contextSelector.canSelectRestaurant}
+      restaurants={shellView.contextSelector.restaurants}
+      effectiveRestaurantId={shellView.contextSelector.effectiveRestaurantId}
       initialIsMobileHint={initialIsMobileHint}
       setActiveRestaurantAction={setActiveRestaurant}
       currentUserName={ctx.person.full_name}

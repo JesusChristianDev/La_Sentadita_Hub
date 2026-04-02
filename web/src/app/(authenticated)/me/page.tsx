@@ -8,16 +8,14 @@ import {
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
-import { getCurrentUserContext } from '@/modules/auth_users';
+import { buildMePageViewModel, getCurrentUserContext } from '@/modules/auth_users';
 import {
   getProfileErrorMessage,
   getProfileSuccessMessage,
   type ProfileErrorCode,
   type ProfileSuccessCode,
 } from '@/shared/feedbackMessages';
-import { roleLabel } from '@/shared/roleLabel';
 import { createSupabaseAdminClient } from '@/shared/supabase/admin';
-import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 import { UserAvatar } from '../../components/user-avatar';
 import { changeAvatarAction, changeEmailAction, changePasswordAction } from './actions';
@@ -68,10 +66,6 @@ export default async function MePage({ searchParams }: Props) {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
 
-  const supabase = await createSupabaseServerClient();
-  const { data: authData } = await supabase.auth.getUser();
-  const email = authData.user?.email ?? '';
-
   const admin = createSupabaseAdminClient();
   let avatarUrl: string | null = null;
   if (ctx.person.avatar_path) {
@@ -81,35 +75,8 @@ export default async function MePage({ searchParams }: Props) {
     avatarUrl = data?.signedUrl ?? null;
   }
 
-  let restaurantName: string | null = null;
-  if (ctx.person.restaurant_id) {
-    const { data } = await admin
-      .from('restaurants')
-      .select('name')
-      .eq('id', ctx.person.restaurant_id)
-      .maybeSingle();
-
-    restaurantName = data?.name ?? null;
-  }
-
+  const viewModel = buildMePageViewModel(ctx);
   const msg = getProfileSuccessMessage(sp.ok) ?? getProfileErrorMessage(sp.e);
-  const displayName = ctx.person.full_name?.trim() || 'Cuenta';
-  const displayRole = roleLabel(ctx.requestContext.systemRole);
-  const contextLabel = restaurantName ?? (ctx.person.restaurant_id ? 'Sucursal asignada' : 'Global');
-  const accessStatusLabel =
-    ctx.person.access_status === 'pending_activation'
-      ? 'Pendiente de activacion'
-      : ctx.person.access_status === 'active'
-        ? 'Activo'
-        : ctx.person.access_status === 'suspended'
-          ? 'Suspendido'
-          : ctx.person.access_status === 'blocked'
-            ? 'Bloqueado'
-            : 'Archivado';
-  const securityStatus =
-    ctx.person.access_status === 'pending_activation'
-      ? 'Activacion pendiente'
-      : 'Correcta';
 
   return (
     <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
@@ -128,17 +95,19 @@ export default async function MePage({ searchParams }: Props) {
             </div>
 
             <div className="dashboard-message-copy min-w-0">
-              <h1 className="dashboard-message-title">{displayName}</h1>
-              <p className="dashboard-message-body break-all">{email || '(sin email)'}</p>
+              <h1 className="dashboard-message-title">{viewModel.displayName}</h1>
+              <p className="dashboard-message-body break-all">
+                {viewModel.email || '(sin email)'}
+              </p>
             </div>
           </div>
 
           <div className="w-full max-w-[34rem]">
             <div className="meta-grid">
-              <MetaItem label="Rol" value={displayRole} />
-              <MetaItem label="Contexto" value={contextLabel} />
-              <MetaItem label="Estado" value={accessStatusLabel} />
-              <MetaItem label="Seguridad" value={securityStatus} />
+              <MetaItem label="Rol" value={viewModel.displayRole} />
+              <MetaItem label="Contexto" value={viewModel.contextLabel} />
+              <MetaItem label="Estado" value={viewModel.accessStatusLabel} />
+              <MetaItem label="Seguridad" value={viewModel.securityStatus} />
             </div>
           </div>
         </div>
@@ -208,10 +177,10 @@ export default async function MePage({ searchParams }: Props) {
             subtitle="Datos que describen tu acceso actual dentro del sistema."
           >
             <div className="meta-grid">
-              <MetaItem label="Email actual" value={email || '(sin email)'} />
-              <MetaItem label="Codigo interno" value={String(ctx.person.employee_code)} />
-              <MetaItem label="Sucursal" value={contextLabel} />
-              <MetaItem label="Estado de acceso" value={accessStatusLabel} />
+              <MetaItem label="Email actual" value={viewModel.email || '(sin email)'} />
+              <MetaItem label="Codigo interno" value={viewModel.employeeCode} />
+              <MetaItem label="Contexto" value={viewModel.contextLabel} />
+              <MetaItem label="Estado de acceso" value={viewModel.accessStatusLabel} />
             </div>
           </MePanel>
         </div>
@@ -222,7 +191,7 @@ export default async function MePage({ searchParams }: Props) {
             title="Email de acceso"
             subtitle="Al cambiarlo, puede requerirse confirmacion por correo."
           >
-            <p className="text-sm muted">Actual: {email || '(sin email)'}</p>
+            <p className="text-sm muted">Actual: {viewModel.email || '(sin email)'}</p>
 
             <form action={changeEmailAction} className="mt-4 grid gap-3">
               <label className="field">

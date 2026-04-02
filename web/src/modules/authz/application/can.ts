@@ -1,4 +1,4 @@
-import type { AppRole, Profile } from '@/modules/people';
+import type { AppRole, PersonProfile } from '@/modules/people';
 
 import type { AuthzAction, AuthzResource } from './aclRules';
 import { can as canAgainstContext } from './aclRules';
@@ -11,7 +11,7 @@ import {
 } from './requestContext';
 
 function isProfileLike(actor: ActorLike): actor is Pick<
-  Profile,
+  PersonProfile,
   'id' | 'restaurant_id' | 'role' | 'system_role' | 'zone_id'
 > {
   return typeof actor !== 'string' && !('systemRole' in actor) && 'role' in actor;

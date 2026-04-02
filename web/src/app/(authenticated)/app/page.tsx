@@ -1,32 +1,19 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { getCurrentUserContext } from '@/modules/auth_users';
-import { can } from '@/modules/authz';
-import { DashboardHeroWidget } from '@/modules/dashboard';
-import { listRestaurants } from '@/modules/restaurants';
+import { buildFrontendSessionView, getCurrentUserContext } from '@/modules/auth_users';
+import {
+  buildDashboardPageViewModel,
+  DashboardHeroWidget,
+} from '@/modules/dashboard';
 
 import { ClearInitialFocus } from '../../components/clear-initial-focus';
 
 export default async function AppPage() {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
-
-  const restaurants = await listRestaurants();
-  const restaurantsById = new Map(restaurants.map((restaurant) => [restaurant.id, restaurant.name]));
-
-  const showSelector = can(ctx.requestContext, 'restaurant_context.select');
-  const effectiveRestaurantId = ctx.requestContext.effectiveRestaurantId;
-  const canViewEmployees = can(ctx.requestContext, 'employees.view');
-  const canViewSchedules = can(ctx.requestContext, 'schedule.view');
-
-  // TODO: Map exactly against ACL dictionary once definitions are locked
-  const canViewTasks = true;
-  const canViewRequests = true;
-
-  const effectiveRestaurantName = effectiveRestaurantId
-    ? (restaurantsById.get(effectiveRestaurantId) ?? 'Sucursal asignada')
-    : 'Sin asignar';
+  const frontendSession = buildFrontendSessionView(ctx);
+  const viewModel = buildDashboardPageViewModel(frontendSession);
 
   return (
     <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
@@ -40,47 +27,23 @@ export default async function AppPage() {
       </section>
 
       <DashboardHeroWidget
-        canPickRestaurant={showSelector}
-        effectiveRestaurantName={effectiveRestaurantName}
-        hasEffectiveRestaurant={Boolean(effectiveRestaurantId)}
-        userName={ctx.person.full_name || 'Sin nombre'}
+        canPickRestaurant={viewModel.hero.canPickRestaurant}
+        effectiveRestaurantName={viewModel.hero.effectiveRestaurantName}
+        hasEffectiveRestaurant={viewModel.hero.hasEffectiveRestaurant}
+        userName={viewModel.hero.userName}
       />
 
       <section className="panel">
         <h2 className="panel-title">Modulos</h2>
         <p className="panel-subtitle">Navega rapidamente hacia cada bloque funcional.</p>
         <div className="quick-grid">
-          {canViewEmployees ? (
-            <Link href="/employees" className="quick-card">
-              <h3>Gestion de empleados</h3>
-              <p>Alta, edicion y estado de usuarios operativos por restaurante.</p>
+          {viewModel.shortcuts.map((shortcut) => (
+            <Link key={shortcut.href} href={shortcut.href} className="quick-card">
+              <h3>{shortcut.label}</h3>
+              <p>{shortcut.description}</p>
               <span className="tag">Disponible</span>
             </Link>
-          ) : null}
-
-          {canViewSchedules ? (
-            <Link href="/horarios" className="quick-card">
-              <h3>Horarios</h3>
-              <p>Consulta o gestiona el horario semanal segun tus permisos.</p>
-              <span className="tag">Disponible</span>
-            </Link>
-          ) : null}
-
-          {canViewTasks ? (
-            <Link href="/tasks" className="quick-card">
-              <h3>Tareas</h3>
-              <p>Operaciones diarias y comprobantes.</p>
-              <span className="tag">Disponible</span>
-            </Link>
-          ) : null}
-
-          {canViewRequests ? (
-            <Link href="/requests" className="quick-card">
-              <h3>Solicitudes</h3>
-              <p>Solicitudes internas y aprobaciones.</p>
-              <span className="tag">Disponible</span>
-            </Link>
-          ) : null}
+          ))}
         </div>
       </section>
     </main>

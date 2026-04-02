@@ -15,12 +15,16 @@ import { type Supplier, supplierSchema, type SupplierScope } from '../domain/sup
 type SupabaseAdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
 type RestaurantRow = {
-  chain_id: string;
-  restaurant_id: string;
+  company_id: string;
+  id: string;
 };
 
 type OrganizationScopeRow = {
-  chain_id: string;
+  organization_id: string;
+};
+
+type CompanyScopeRow = {
+  organization_id: string;
 };
 
 export type ModuleContext = {
@@ -68,24 +72,39 @@ async function getRestaurantScopeById(
   admin: SupabaseAdminClient,
   restaurantId: string,
 ): Promise<RestaurantScope> {
-  const { data, error } = await admin
+  const { data: restaurantData, error: restaurantError } = await admin
     .from('restaurants')
-    .select('restaurant_id, chain_id')
-    .eq('restaurant_id', restaurantId)
+    .select('id, company_id')
+    .eq('id', restaurantId)
     .limit(1)
     .maybeSingle<RestaurantRow>();
 
-  if (error) {
-    throwSupabaseError('Failed to resolve restaurant scope', error);
+  if (restaurantError) {
+    throwSupabaseError('Failed to resolve restaurant scope', restaurantError);
   }
 
-  if (!data?.restaurant_id || !data.chain_id) {
+  if (!restaurantData?.id || !restaurantData.company_id) {
+    throw new Error('RESTAURANT_NOT_FOUND');
+  }
+
+  const { data: companyData, error: companyError } = await admin
+    .from('companies')
+    .select('organization_id')
+    .eq('company_id', restaurantData.company_id)
+    .limit(1)
+    .maybeSingle<CompanyScopeRow>();
+
+  if (companyError) {
+    throwSupabaseError('Failed to resolve company scope', companyError);
+  }
+
+  if (!companyData?.organization_id) {
     throw new Error('RESTAURANT_NOT_FOUND');
   }
 
   return {
-    organizationId: data.chain_id,
-    restaurantId: data.restaurant_id,
+    organizationId: companyData.organization_id,
+    restaurantId: restaurantData.id,
   };
 }
 
@@ -117,9 +136,9 @@ export async function assertSupplierScopeExists(
 ): Promise<void> {
   if (scopeType === 'organization') {
     const { data, error } = await admin
-      .from('chains')
-      .select('chain_id')
-      .eq('chain_id', scopeId)
+      .from('organizations')
+      .select('organization_id')
+      .eq('organization_id', scopeId)
       .limit(1)
       .maybeSingle<OrganizationScopeRow>();
 
@@ -127,7 +146,7 @@ export async function assertSupplierScopeExists(
       throwSupabaseError('Failed to validate organization scope', error);
     }
 
-    if (!data?.chain_id) {
+    if (!data?.organization_id) {
       throw new Error('ORGANIZATION_SCOPE_NOT_FOUND');
     }
 

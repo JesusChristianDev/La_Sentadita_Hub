@@ -9,24 +9,38 @@ import {
 import { CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import type { FrontendPageMode } from '@/modules/auth_users';
+
 import type { TaskInstanceRecord } from '../domain/taskTypes';
 import { TaskCreateDialog } from './TaskCreateDialog';
 
 type TasksPageClientProps = {
   initialTasks: TaskInstanceRecord[];
+  canManage: boolean;
+  mode: Extract<
+    FrontendPageMode,
+    'restaurant_workspace' | 'self_service' | 'zone_workspace'
+  >;
   restaurantId: string;
-  isManagerOrAdmin: boolean;
 };
 
 const columnHelper = createColumnHelper<TaskInstanceRecord>();
 
 export function TasksPageClient({
   initialTasks,
+  canManage,
+  mode,
   restaurantId,
-  isManagerOrAdmin,
 }: TasksPageClientProps) {
   const [tasks] = useState(initialTasks);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const modeDescription =
+    mode === 'zone_workspace'
+      ? 'Vista operativa por zona con capacidad de gestion.'
+      : mode === 'restaurant_workspace'
+        ? 'Vista operativa del restaurante con capacidad de gestion.'
+        : 'Vista personal de tareas asignadas.';
 
   const columns = useMemo(() => [
     columnHelper.accessor('task_status', {
@@ -75,8 +89,11 @@ export function TasksPageClient({
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-white">Lista de Tareas</h2>
-        {isManagerOrAdmin && (
+        <div>
+          <h2 className="text-xl font-semibold text-white">Lista de Tareas</h2>
+          <p className="mt-1 text-sm text-muted">{modeDescription}</p>
+        </div>
+        {canManage && (
           <button 
             className="px-4 py-2 bg-amber-500 text-black font-semibold rounded-full hover:bg-amber-400 transition"
             onClick={() => setIsCreateOpen(true)}

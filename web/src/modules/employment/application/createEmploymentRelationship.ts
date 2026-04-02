@@ -15,7 +15,6 @@ export async function createEmploymentRelationship(
       fullName: input.fullName,
       phone: input.phone,
       identityDocument: input.identityDocument,
-      chainId: input.chainId,
       systemRole: input.role,
     });
 

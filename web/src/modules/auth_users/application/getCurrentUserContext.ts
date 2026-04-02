@@ -4,19 +4,18 @@ import {
   buildRequestContextFromProfile,
   type RequestContext,
 } from '@/modules/authz';
-import type { Profile } from '@/modules/people';
-import {
-  isPersonAccessAllowed,
-  loadPersonProfileByIdWithClient,
-  loadRestaurantChainIdByIdWithClient,
-} from '@/shared/db/persons';
-import { createSupabaseServerClient } from '@/shared/supabase/server';
+import type { PersonProfile } from '@/modules/people';
 
-import { getEffectiveRestaurantId } from './getEffectiveRestaurantId';
+import type { BackendSession } from '../domain/backendSession';
+import {
+  loadBackendSession,
+  projectPersonProfileFromBackendSession,
+} from '../infrastructure/backendSessionRepository';
 
 export type CurrentSession = {
-  person: Profile;
-  profile: Profile;
+  backendSession: BackendSession;
+  person: PersonProfile;
+  profile: PersonProfile;
   requestContext: RequestContext;
   userId: string;
 };
@@ -24,11 +23,13 @@ export type CurrentSession = {
 export type UserContext = CurrentSession;
 
 function buildCurrentSession(params: {
-  person: Profile;
+  backendSession: BackendSession;
+  person: PersonProfile;
   requestContext: RequestContext;
   userId: string;
 }): CurrentSession {
   return {
+    backendSession: params.backendSession,
     person: params.person,
     profile: params.person,
     requestContext: params.requestContext,
@@ -37,29 +38,22 @@ function buildCurrentSession(params: {
 }
 
 export async function getCurrentUserContext(): Promise<UserContext | null> {
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
+  const backendSession = await loadBackendSession();
+  if (!backendSession) return null;
 
-  if (!data.user) return null;
-
-  const person = await loadPersonProfileByIdWithClient(supabase, data.user.id);
-
-  if (!isPersonAccessAllowed(person.access_status)) {
+  if (backendSession.person.accessStatus !== 'active') {
     redirect('/api/auth/signout?next=/login?e=disabled');
   }
 
-  const effectiveRestaurantId = await getEffectiveRestaurantId(person);
-  const enrichedPerson =
-    !person.chain_id && effectiveRestaurantId
-      ? {
-          ...person,
-          chain_id: await loadRestaurantChainIdByIdWithClient(supabase, effectiveRestaurantId),
-        }
-      : person;
+  const person = projectPersonProfileFromBackendSession(backendSession);
 
   return buildCurrentSession({
-    person: enrichedPerson,
-    requestContext: buildRequestContextFromProfile(enrichedPerson, effectiveRestaurantId),
-    userId: data.user.id,
+    backendSession,
+    person,
+    requestContext: buildRequestContextFromProfile(
+      person,
+      backendSession.effectiveRestaurantId,
+    ),
+    userId: backendSession.userId,
   });
 }

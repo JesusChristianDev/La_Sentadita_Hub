@@ -21,6 +21,8 @@ ESTRUCTURA ORGANIZATIVA (núcleo duro)
 IDENTIDAD Y ACCESO (núcleo duro)
 ├── Person (identidad humana persistente)
 ├── EmploymentRelationship (vínculo laboral mutable)
+├── EmploymentRestaurantAssignment (destino operativo a restaurante)
+├── EmploymentZoneAssignment (destino operativo a zona para area_lead)
 └── RoleScopeAssignment (materialización de alcance + authority_tier)
 
 CONFIGURACIÓN OPERATIVA
@@ -70,21 +72,23 @@ AUXILIARES DE DELIVERY
 ### Chain
 - **Naturaleza:** agrupación comercial/marca
 - **Función:** agrupar `Company` bajo una misma marca. Scope para `owner` con autoridad de cadena
-- **Cardinalidad:** un `Restaurant` puede pertenecer a 0 o 1 `Chain`. Una `Company` puede pertenecer a 0 o 1 `Chain`
+- **Cardinalidad:** una `Company` puede pertenecer a 0 o 1 `Chain`. Un `Restaurant` pertenece a la `Chain` de su `Company` por derivación
 - **No tiene:** empleados directos, operaciones propias
 - **FK:** `organization_id` obligatorio
 
 ### Company
 - **Naturaleza:** entidad legal y fiscal
-- **Función:** dimensión legal del vínculo laboral. Todo `Restaurant` pertenece a exactamente 1 `Company`
+- **Función:** dimensión legal del vínculo laboral. Todo `EmploymentRelationship` pertenece a exactamente 1 `Company` y todo `Restaurant` pertenece a exactamente 1 `Company`
 - **Campos clave:** nombre legal, CIF, domicilio fiscal
 - **FK:** `organization_id` obligatorio, `chain_id` nullable
+- **Modelo permitido:** una misma `Organization` puede tener `Company` con `chain_id` y otras sin `chain_id`
 
 ### Restaurant
 - **Naturaleza:** raíz operativa principal
 - **Función:** unidad donde se cruza dimensión legal (Company) y comercial (Chain). Todos los módulos operativos cuelgan de aquí
-- **Cardinalidad:** pertenece a exactamente 1 `Company`, opcionalmente a 1 `Chain`
-- **Campos clave:** `name`, `timezone`, `company_id`, `chain_id?`, `latitude`, `longitude`, `checkin_radius_meters`, `qr_token`
+- **Cardinalidad:** pertenece a exactamente 1 `Company`; su `Chain` se deriva desde `Company.chain_id`
+- **Campos clave:** `name`, `timezone`, `company_id`, `latitude`, `longitude`, `checkin_radius_meters`, `qr_token`
+- **Cambio estructural permitido:** puede moverse a otra `Company` sin cambiar `restaurant_id`; su bloque operativo e histórico permanece unido al restaurante
 
 ### Zone
 - **Naturaleza:** sección física dentro de un `Restaurant` (cocina, sala, barra, terraza, almacén)
@@ -99,17 +103,42 @@ AUXILIARES DE DELIVERY
 - **No tiene:** `company_id`, `restaurant_id`, `zone_id`, `chain_id` como atributos fijos
 
 ### EmploymentRelationship
-- **Naturaleza:** vínculo laboral mutable y contextual
+- **Naturaleza:** vínculo laboral mutable y contractual
 - **Cardinalidad:** 0..1 activo por `Person`
-- **Campos clave:** `person_id`, `company_id`, `restaurant_id`, `job_title`, `contract_type`, `start_date`, `end_date`
-- **Invariante:** `company_id` debe coincidir con `Restaurant.company_id`
-- **No tiene:** `system_role`, scopes, permisos
+- **Campos clave:** `person_id`, `company_id`, `job_title`, `contract_type`, `valid_from`, `valid_to`, `valid_during`
+- **Tipo recomendado:** `valid_from date`, `valid_to date`, `valid_during daterange generated always`
+- **Semántica temporal:** `valid_from` y `valid_to` son inclusivos (`[]`); `valid_during` es una proyección técnica `[)` para constraints y consultas
+- **Invariante:** `company_id` es obligatorio. No modela destino operativo a restaurante
+- **Importante:** para `admin`, `owner` y `office`, la `Company` contractual no limita el alcance de autoridad si existe `RoleScopeAssignment` superior válido
+- **No tiene:** `system_role`, scopes, permisos, `restaurant_id`, `zone_id`
+
+### EmploymentRestaurantAssignment
+- **Naturaleza:** asignación operativa histórica del empleo a un restaurante
+- **Aplica a:** `employee`, `manager`, `area_lead`
+- **Campos clave:** `employment_relationship_id`, `restaurant_id`, `valid_from`, `valid_to`, `valid_during`
+- **Tipo recomendado:** `valid_from date`, `valid_to date`, `valid_during daterange generated always`
+- **Reglas:** admite programación futura; el `Restaurant` debe pertenecer a la misma `Company` del `EmploymentRelationship`; `employee` y `area_lead` no pueden solaparse en dos restaurantes activos; `manager` sí puede tener varios restaurantes simultáneos, pero solo dentro de esa misma `Company`
+- **No equivale a:** autoridad; `manager` y `area_lead` siguen usando `RoleScopeAssignment`
+- **Cambio de Company:** requiere terminar el `EmploymentRelationship` vigente y crear otro nuevo, incluso si el cambio queda programado a futuro
+
+### EmploymentZoneAssignment
+- **Naturaleza:** asignación operativa histórica de `area_lead` a una zona
+- **Aplica a:** solo `area_lead`
+- **Campos clave:** `employment_relationship_id`, `zone_id`, `valid_from`, `valid_to`, `valid_during`
+- **Tipo recomendado:** `valid_from date`, `valid_to date`, `valid_during daterange generated always`
+- **Reglas:** una sola `Zone` activa simultáneamente; un solo `Restaurant` operativo activo simultáneamente; la zona debe pertenecer al mismo `Restaurant` que su asignación operativa activa
 
 ### RoleScopeAssignment
-- **Naturaleza:** materialización de alcance para roles que lo requieren
+- **Naturaleza:** materialización de alcance de autoridad para roles que lo requieren
 - **Aplica a:** `admin`, `owner`, `office`, `manager`, `area_lead`
-- **Campos clave:** `person_id`, `scope_type`, `scope_id`, `active`, `authority_tier`
+- **No aplica a:** `employee`
+- **Campos clave:** `person_id`, `scope_type`, `scope_id`, `valid_from`, `valid_to`, `valid_during`, `authority_tier`
+- **Tipo recomendado:** `valid_from date`, `valid_to date`, `valid_during daterange generated always`
+- **Vigencia:** soporta programación futura de autoridad y cambios de alcance en el tiempo
+- **Estado activo:** se deriva por vigencia (`current_date <@ valid_during`), no por booleano persistido
 - **authority_tier:** solo para `system_role = manager`. `primary` = manager principal, `secondary` = manager delegado (ex sub_manager)
+- **Restricción:** no se almacenan scopes redundantes cubiertos por un scope superior del mismo subárbol; sí se permiten scopes adicionales sobre ramas no cubiertas
+- **No equivale a:** contexto de sesión; `active_scope` vive fuera del modelo persistente de `public`
 
 ### RestaurantHours
 - **Naturaleza:** horario operativo continuo del restaurante por día
@@ -139,9 +168,15 @@ AUXILIARES DE DELIVERY
 - **Campos clave:** `restaurant_id`, `name`, `type`, `start_time`, `end_time`, `split_start_time?`, `split_end_time?`
 - **Operación especial:** "copiar semana anterior" es operación del `scheduleDraftService`, no una entidad
 
+### TaskTemplate
+- **Naturaleza:** plantilla reutilizable de tarea operativa dentro de un restaurante
+- **Uso:** base para generar `TaskInstance` recurrentes o manuales
+- **Campos clave:** `restaurant_id`, `title`, `description`, `recurrence_type`, `due_rule`, `requires_confirmation`, `confirmation_mode`, `confirmation_role?`, `confirmation_employee_id?`
+
 ### TaskInstance
-- **Naturaleza:** tarea concreta asignada a una persona
-- **Invariante I-030:** no puede existir sin `assigned_employee_id`
+- **Naturaleza:** tarea concreta asignada a un responsable operativo
+- **Responsable válido:** `assigned_employee_id` o `assigned_role` o `assigned_zone_id`
+- **Invariante I-030:** no puede existir sin al menos un responsable operativo
 
 ### Request
 - **Naturaleza:** solicitud laboral/administrativa del personal
@@ -218,11 +253,16 @@ Person
   ├── 1 access_status
   ├── 0..1 EmploymentRelationship activo
   │         ├── → Company
-  │         └── → Restaurant
-  │               └── 0..N VacationEntitlement (por año)
+  │         ├── 0..N VacationEntitlement (por año)
+  │         └── 0..N EmploymentRestaurantAssignment → Restaurant
+  │                   └── 0..N EmploymentZoneAssignment → Zone (solo area_lead)
   └── 0..N RoleScopeAssignment
             ├── authority_tier (primary/secondary — solo managers)
             └── → scope (Organization/Chain/Company/Restaurant/Zone)
+
+Sesión autenticada
+  └── active_scope (Organization / Chain / Company / Restaurant)
+        └── contexto de trabajo derivado del alcance ya concedido
 
 Restaurant
   ├── → Company (obligatorio)
@@ -260,8 +300,11 @@ TimeRecord
 | Rol sistémico y permisos | `persons.system_role` |
 | Estado de acceso | `persons.access_status` |
 | Contexto laboral | `EmploymentRelationship` |
+| Destino operativo a restaurante | `EmploymentRestaurantAssignment` |
+| Destino operativo a zona | `EmploymentZoneAssignment` |
 | Alcance de autoridad | `RoleScopeAssignment` |
 | Jerarquía de manager | `RoleScopeAssignment.authority_tier` |
+| Contexto activo de sesión | `active_scope_type + active_scope_id` en la sesión autenticada |
 | Horario operativo del restaurante | `RestaurantHours` |
 | Configuración de scheduling | `ScheduleConfig` |
 | Corte mañana/noche | `ScheduleConfig.shift_boundary_time` |
@@ -284,6 +327,7 @@ TimeRecord
 |---|---|
 | `system_role_enum` | `employee`, `area_lead`, `manager`, `office`, `owner`, `admin` |
 | `scope_type_enum` | `organization`, `chain`, `company`, `restaurant`, `zone` |
+| `authority_tier_enum` | `primary`, `secondary` |
 | `access_status_enum` | `pending_activation`, `active`, `suspended`, `archived`, `blocked` |
 | `request_type_enum` | `vacation`, `sick_leave`, `justified_absence`, `absence` |
 | `request_status_enum` | `pending`, `in_review`, `approved`, `rejected`, `cancelled`, `expired` |

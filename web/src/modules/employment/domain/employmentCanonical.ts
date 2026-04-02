@@ -4,11 +4,13 @@ import type {
 } from '@/modules/authz/domain/canonicalCatalog';
 
 export type CanonicalRoleScopeAssignment = {
-  active: boolean;
-  assigned_at: string | null;
+  authority_tier: 'primary' | 'secondary' | null;
+  created_at: string;
   person_id: string;
-  scope_id: string | null;
+  scope_id: string;
   scope_type: CanonicalScopeType;
+  valid_from: string;
+  valid_to: string | null;
 };
 
 /**
@@ -16,11 +18,13 @@ export type CanonicalRoleScopeAssignment = {
  * Person puede existir sin empleo activo.
  */
 export type CanonicalEmploymentRelationship = {
-  active_principal: boolean;
-  company_id: string | null;
+  company_id: string;
+  contract_type: string | null;
+  employment_id: string;
+  job_title: string | null;
   person_id: string;
-  restaurant_id: string | null;
-  started_at: string | null;
+  requires_schedule: boolean;
   system_role: Extract<CanonicalSystemRole, 'manager' | 'area_lead' | 'employee'>;
-  terminated_at: string | null;
+  valid_from: string;
+  valid_to: string | null;
 };

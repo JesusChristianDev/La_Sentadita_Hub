@@ -27,7 +27,9 @@ canon-v9/
 │   ├── 05_STACK.md                       ← stack completo con versiones
 │   ├── 06_PROJECT_STRUCTURE.md           ← árbol de archivos con reglas
 │   ├── 07_BACKEND_BLUEPRINT.md           ← patrón de caso de uso, RequestContext
-│   └── 08_IMPLEMENTATION_PHASES.md       ← gates, fases, done-when, matriz
+│   ├── 08_IMPLEMENTATION_PHASES.md       ← gates, fases, done-when, matriz
+│   ├── 11_SUPABASE_CONVERGENCE_PLAN.md   ← convergencia desde la base real al canon
+│   └── 12_FRONTEND_BLUEPRINT.md          ← sesión, capacidades, navegación, modos UI
 │
 └── reference/
     ├── 09_NOTIFICATION_CATALOG.md        ← eventos, canales, destinatarios
@@ -43,12 +45,13 @@ canon-v9/
 3. `02_DOMAIN_MODEL.md` — el modelo define la estructura
 4. `03_ACL_MATRIX.md` — la ACL define el acceso
 5. `07_BACKEND_BLUEPRINT.md` — el patrón define la implementación
-6. `06_PROJECT_STRUCTURE.md` — la estructura define dónde va cada cosa
-7. Cualquier artefacto histórico (v8 ZIP, canon v8, docs v1-freeze)
+6. `12_FRONTEND_BLUEPRINT.md` — el frontend traduce capacidades y modos, no permisos
+7. `06_PROJECT_STRUCTURE.md` — la estructura define dónde va cada cosa
+8. Cualquier artefacto histórico (v8 ZIP, canon v8, docs v1-freeze)
 
 ---
 
-## Estado del schema de base de datos (marzo 2026)
+## Estado del schema de base de datos (abril 2026)
 
 **Schema `public` — dominio del tenant:**
 - 37 tablas canónicas, todas con RLS habilitado
@@ -89,7 +92,19 @@ Ver detalle completo en `05_STACK.md`.
 
 ---
 
+## Frontend
+
+El frontend debe implementarse siguiendo `12_FRONTEND_BLUEPRINT.md`.
+
+Ese documento fija:
+- contrato de sesión frontend
+- capacidades efectivas proyectadas desde backend
+- modos de pantalla por módulo
+- regla de “componentes tontos, view models explícitos”
+
+---
+
 ## Estado
 
 **Canon Ejecutable V9 — LISTO PARA IMPLEMENTAR**
-Última actualización: marzo 2026
+Última actualización: abril 2026

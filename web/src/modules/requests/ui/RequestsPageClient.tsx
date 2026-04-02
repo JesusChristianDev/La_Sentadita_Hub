@@ -6,7 +6,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { CalendarRange, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { AlertCircle, CalendarRange, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useState, useTransition } from 'react';
 
 import { reviewRequestAction } from '../application/requestActions';
@@ -14,10 +14,10 @@ import type { RequestRecord } from '../domain/requestTypes';
 import { RequestCreateDialog } from './RequestCreateDialog';
 
 type RequestsPageClientProps = {
-  initialRequests: RequestRecord[];
-  teamRequests?: RequestRecord[];
-  canManageTeam?: boolean;
   currentEmploymentId: string;
+  initialRequests: RequestRecord[];
+  mode: 'context_required' | 'self_service' | 'team_workspace';
+  teamRequests?: RequestRecord[];
 };
 
 const columnHelper = createColumnHelper<RequestRecord>();
@@ -29,7 +29,7 @@ function getStatusIcon(status: string) {
     case 'rejected':
       return <XCircle className="h-4 w-4 text-red-500" />;
     case 'in_review':
-    case 'requested':
+    case 'pending':
       return <Clock className="h-4 w-4 text-amber-500" />;
     default:
       return <div className="h-4 w-4 rounded-full bg-slate-500" />;
@@ -38,10 +38,10 @@ function getStatusIcon(status: string) {
 
 function translateType(type: string) {
   const map: Record<string, string> = {
-    vacation: 'Vacaciones',
-    sick_leave: 'Baja medica',
-    justified_absence: 'Ausencia justificada',
     absence: 'Aviso de ausencia',
+    justified_absence: 'Ausencia justificada',
+    sick_leave: 'Baja medica',
+    vacation: 'Vacaciones',
   };
   return map[type] || type;
 }
@@ -81,14 +81,19 @@ function ReviewButtons({ requestId }: { requestId: string }) {
 }
 
 export function RequestsPageClient({
-  initialRequests,
-  teamRequests = [],
-  canManageTeam = false,
   currentEmploymentId,
+  initialRequests,
+  mode,
+  teamRequests = [],
 }: RequestsPageClientProps) {
   const [requests] = useState(initialRequests);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'my' | 'team'>('my');
+
+  const canManageTeam =
+    mode === 'team_workspace' || mode === 'context_required';
+  const canReviewTeam = mode === 'team_workspace';
+  const isTeamTabDisabled = mode === 'context_required';
 
   const columns = [
     columnHelper.accessor('status', {
@@ -118,9 +123,9 @@ export function RequestsPageClient({
       cell: (info) => {
         const request = info.row.original;
         const needsReview =
-          canManageTeam &&
+          canReviewTeam &&
           activeTab === 'team' &&
-          (request.status === 'requested' || request.status === 'in_review');
+          (request.status === 'pending' || request.status === 'in_review');
 
         return (
           <div className="flex items-center gap-3">
@@ -134,7 +139,9 @@ export function RequestsPageClient({
     }),
   ];
 
-  const displayRequests = activeTab === 'team' ? teamRequests : requests;
+  const displayRequests =
+    activeTab === 'team' && canReviewTeam ? teamRequests : requests;
+
   const table = useReactTable({
     data: displayRequests,
     columns,
@@ -148,7 +155,7 @@ export function RequestsPageClient({
           <h1 className="text-3xl font-bold tracking-tight text-white">Solicitudes</h1>
           <p className="mt-2 text-muted">
             {canManageTeam
-              ? 'Gestiona tus solicitudes y las de tu equipo.'
+              ? 'Gestiona tus solicitudes y coordina las del equipo segun el contexto activo.'
               : 'Gestiona tus solicitudes laborales y operativas.'}
           </p>
         </div>
@@ -158,6 +165,16 @@ export function RequestsPageClient({
           </div>
         </div>
       </div>
+
+      {mode === 'context_required' ? (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            Puedes revisar tus propias solicitudes, pero la bandeja de equipo necesita
+            una sucursal activa para evitar mezclar datos de distintos restaurantes.
+          </p>
+        </div>
+      ) : null}
 
       {canManageTeam ? (
         <div className="border-b border-border/50 pb-px">
@@ -169,7 +186,8 @@ export function RequestsPageClient({
               Mis solicitudes
             </button>
             <button
-              className={`border-b-2 px-1 pb-2 font-medium transition-colors ${activeTab === 'team' ? 'border-amber-500 text-amber-500' : 'border-transparent text-muted-foreground hover:text-white'}`}
+              className={`border-b-2 px-1 pb-2 font-medium transition-colors ${activeTab === 'team' ? 'border-amber-500 text-amber-500' : 'border-transparent text-muted-foreground hover:text-white'} ${isTeamTabDisabled ? 'cursor-not-allowed opacity-60' : ''}`}
+              disabled={isTeamTabDisabled}
               onClick={() => setActiveTab('team')}
             >
               Solicitudes del equipo
@@ -217,7 +235,9 @@ export function RequestsPageClient({
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length} className="py-8 text-center text-muted">
-                    No hay solicitudes registradas.
+                    {activeTab === 'team' && isTeamTabDisabled
+                      ? 'Activa una sucursal para revisar solicitudes del equipo.'
+                      : 'No hay solicitudes registradas.'}
                   </td>
                 </tr>
               ) : (

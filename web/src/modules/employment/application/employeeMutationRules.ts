@@ -44,7 +44,6 @@ export type CreateEmployeeValidatedInput = {
   fullName: string;
   phone: string;
   identityDocument: string;
-  chainId: string;   // inyectado desde el contexto del actor
   restaurantId: string;
   role: EditableEmploymentSystemRole;
   zoneId: string | null;
@@ -89,7 +88,6 @@ export function normalizeEmployeeAssignment(
 
 export function validateCreateEmployeeInput(
   input: CreateEmployeeDraftInput,
-  chainId: string,
 ): ValidationResult<CreateEmployeeValidatedInput> {
   const email = input.email.trim();
   const fullName = input.fullName.trim();
@@ -121,7 +119,6 @@ export function validateCreateEmployeeInput(
       fullName,
       phone,
       identityDocument,
-      chainId,
       restaurantId,
       role: assignment.systemRole,
       zoneId: assignment.zoneId,
@@ -202,11 +199,11 @@ export function mapEmployeeMutationErrorCode(
     return 'manager_exists';
   }
 
-  if (message.includes('idx_persons_chain_identity_document_unique')) {
+  if (message.includes('identity_document')) {
     return 'duplicate_identity';
   }
 
-  if (message.includes('idx_persons_agora_employee_id')) {
+  if (message.includes('agora_employee_id')) {
     return 'duplicate_employee_code';
   }
 

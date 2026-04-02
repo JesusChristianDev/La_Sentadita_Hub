@@ -1,11 +1,8 @@
 import { redirect } from 'next/navigation';
 
 import { getCurrentUserContext } from '@/modules/auth_users';
-import { can } from '@/modules/authz';
-import { listMyRequests, listRestaurantRequests } from '@/modules/requests/application/requestService';
-import type { RequestRecord } from '@/modules/requests/domain/requestTypes';
+import { buildRequestsPageViewModel } from '@/modules/requests/application/buildRequestsPageViewModel';
 import { RequestsPageClient } from '@/modules/requests/ui/RequestsPageClient';
-import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 export const metadata = {
   title: 'Mis Solicitudes | La Sentadita Hub',
@@ -17,26 +14,9 @@ export default async function RequestsPage() {
     redirect('/login');
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { data: myEmployments } = await supabase
-    .from('employment_relationships')
-    .select('employment_id, restaurant_id')
-    .eq('person_id', ctx.userId)
-    .eq('active_principal', true)
-    .single();
-
-  const currentEmploymentId = myEmployments?.employment_id || '';
-  const currentRestaurantId = myEmployments?.restaurant_id || '';
-  const initialRequests = await listMyRequests();
-  const canManageTeam = can(ctx.requestContext, 'requests.manage');
-
-  let teamRequests: RequestRecord[] = [];
-  try {
-    if (canManageTeam && currentRestaurantId) {
-      teamRequests = await listRestaurantRequests(currentRestaurantId);
-    }
-  } catch (error) {
-    console.error('[RequestsPage] Error validando solicitudes de equipo:', error);
+  const viewModel = await buildRequestsPageViewModel(ctx);
+  if (viewModel.mode === 'forbidden') {
+    redirect('/app');
   }
 
   return (
@@ -51,10 +31,10 @@ export default async function RequestsPage() {
       <section className="panel flex min-h-0 flex-1 flex-col">
         <div className="flex-1 overflow-auto rounded-lg border border-border/50 bg-background/50">
           <RequestsPageClient
-            initialRequests={initialRequests}
-            teamRequests={teamRequests}
-            canManageTeam={canManageTeam}
-            currentEmploymentId={currentEmploymentId}
+            currentEmploymentId={viewModel.currentEmploymentId ?? ''}
+            initialRequests={viewModel.myRequests}
+            mode={viewModel.mode}
+            teamRequests={viewModel.teamRequests}
           />
         </div>
       </section>

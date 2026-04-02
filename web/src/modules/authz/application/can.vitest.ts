@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { assertCan, can } from '@/modules/authz';
-import type { Profile } from '@/modules/people';
+import type { PersonProfile } from '@/modules/people';
 
 import { buildRequestContextFromProfile } from './requestContext';
 
-function buildProfile(overrides: Partial<Profile> = {}): Profile {
-  const role = (overrides.system_role ?? overrides.role ?? 'employee') as Profile['role'];
+function buildProfile(overrides: Partial<PersonProfile> = {}): PersonProfile {
+  const role =
+    (overrides.system_role ?? overrides.role ?? 'employee') as PersonProfile['role'];
 
   return {
     access_status: 'active',
@@ -93,7 +94,7 @@ describe('authz can', () => {
     ).toBe(false);
   });
 
-  it('blocks office from schedules and lets canonical manager roles publish', () => {
+  it('keeps office in schedule supervision and publishing limited to admin/manager', () => {
     const office = buildRequestContextFromProfile(
       buildProfile({
         id: 'office-1',
@@ -126,15 +127,16 @@ describe('authz can', () => {
       }),
     );
 
-    expect(can(office, 'schedule.view')).toBe(false);
+    expect(can(office, 'schedule.view')).toBe(true);
     expect(can(office, 'schedule.edit_draft')).toBe(false);
     expect(can(office, 'schedule.publish')).toBe(false);
+    expect(can(office, 'schedule.manage_templates')).toBe(true);
     expect(can(manager, 'schedule.publish')).toBe(true);
     expect(can(admin, 'schedule.publish')).toBe(true);
-    expect(can(owner, 'schedule.publish')).toBe(true);
+    expect(can(owner, 'schedule.publish')).toBe(false);
   });
 
-  it('treats owner as organization-scoped management', () => {
+  it('treats owner as organization-scoped supervision', () => {
     const ctx = buildRequestContextFromProfile(
       buildProfile({
         id: 'owner-1',
@@ -146,7 +148,8 @@ describe('authz can', () => {
 
     expect(ctx.scopeType).toBe('organization');
     expect(can(ctx, 'restaurant_context.select')).toBe(true);
-    expect(can(ctx, 'schedule.publish')).toBe(true);
+    expect(can(ctx, 'schedule.view')).toBe(true);
+    expect(can(ctx, 'schedule.publish')).toBe(false);
   });
 
   it('keeps employees management restricted to global and restaurant roles', () => {
@@ -194,5 +197,27 @@ describe('authz can', () => {
     expect(() => assertCan(employee, 'schedule.edit_draft')).toThrow(
       /FORBIDDEN/i,
     );
+  });
+
+  it('keeps incident lifecycle management limited to global roles and managers', () => {
+    const areaLead = buildRequestContextFromProfile(
+      buildProfile({
+        id: 'lead-1',
+        role: 'area_lead',
+        system_role: 'area_lead',
+        zone_id: 'zone-1',
+      }),
+    );
+    const manager = buildRequestContextFromProfile(
+      buildProfile({
+        id: 'manager-1',
+        role: 'manager',
+        system_role: 'manager',
+      }),
+    );
+
+    expect(can(areaLead, 'incidents.view')).toBe(true);
+    expect(can(areaLead, 'incidents.manage')).toBe(false);
+    expect(can(manager, 'incidents.manage')).toBe(true);
   });
 });

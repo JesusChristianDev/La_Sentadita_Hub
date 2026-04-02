@@ -1,3 +1,4 @@
+export { buildDocumentsPageViewModel } from './application/buildDocumentsPageViewModel';
 export {
   archiveDocument,
   createDocument,

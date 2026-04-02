@@ -1,7 +1,9 @@
+export { buildSuppliersPageViewModel } from './application/buildSuppliersPageViewModel';
 export { confirmDeliveryNote } from './application/confirmDeliveryNote';
 export { createDeliveryNote } from './application/createDeliveryNote';
 export { createProduct } from './application/createProduct';
 export { createSupplier } from './application/createSupplier';
+export { getDeliveryNoteWithLines, listDeliveryNotes } from './application/listDeliveryNotes';
 export { listProducts } from './application/listProducts';
 export { listSuppliers } from './application/listSuppliers';
 export { rejectDeliveryNote } from './application/rejectDeliveryNote';

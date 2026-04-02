@@ -5,16 +5,12 @@ export type RequestType =
   | 'absence';
 
 export type RequestStatus =
-  | 'requested'
+  | 'pending'
+  | 'in_review'
   | 'approved'
   | 'rejected'
   | 'cancelled'
-  | 'expired'
-  | 'reported'
-  | 'validated'
-  | 'closed'
-  | 'in_review'
-  | 'resolved';
+  | 'expired';
 
 export type ShiftSwapStatus =
   | 'pending_peer'
@@ -62,7 +58,7 @@ export type CreateRequestInput = {
 export type ReviewRequestInput = {
   requestId: string;
   resolutionNote?: string | null;
-  status: Exclude<RequestStatus, 'requested'>;
+  status: Exclude<RequestStatus, 'pending'>;
 };
 
 export type CreateShiftSwapRequestInput = {

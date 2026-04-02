@@ -4,27 +4,33 @@ import { useEffect, useState } from 'react';
 
 import { Button, Select } from '@/shared/ui';
 
+type CreateRoleOption = {
+  description: string;
+  label: string;
+  value: 'employee' | 'area_lead' | 'manager';
+};
+
 type Props = {
+  allowedRoles: CreateRoleOption[];
+  createEmployeeAction: (formData: FormData) => void;
   restaurantId: string;
   restaurantZones: { id: string; name: string }[];
-  canAssignManager: boolean;
-  createEmployeeAction: (formData: FormData) => void;
 };
 
 export function NewEmployeeDrawer({
+  allowedRoles,
+  createEmployeeAction,
   restaurantId,
   restaurantZones,
-  canAssignManager,
-  createEmployeeAction,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'employee' | 'area_lead' | 'manager'>(
-    'employee',
-  );
+  const [selectedRole, setSelectedRole] = useState<
+    'employee' | 'area_lead' | 'manager'
+  >(allowedRoles[0]?.value ?? 'employee');
 
   const closeDrawer = () => {
     setOpen(false);
-    setSelectedRole('employee');
+    setSelectedRole(allowedRoles[0]?.value ?? 'employee');
   };
 
   useEffect(() => {
@@ -33,7 +39,7 @@ export function NewEmployeeDrawer({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setOpen(false);
-        setSelectedRole('employee');
+        setSelectedRole(allowedRoles[0]?.value ?? 'employee');
       }
     };
 
@@ -45,7 +51,7 @@ export function NewEmployeeDrawer({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [open]);
+  }, [allowedRoles, open]);
 
   return (
     <>
@@ -111,10 +117,15 @@ export function NewEmployeeDrawer({
                     );
                   }}
                 >
-                  <option value="employee">Empleado</option>
-                  <option value="area_lead">Encargado de zona</option>
-                  {canAssignManager ? <option value="manager">Gerente</option> : null}
+                  {allowedRoles.map((role) => (
+                    <option key={role.value} value={role.value}>
+                      {role.label}
+                    </option>
+                  ))}
                 </Select>
+                <p className="mt-1 text-2xs muted">
+                  {allowedRoles.find((role) => role.value === selectedRole)?.description}
+                </p>
               </label>
 
               {selectedRole === 'employee' || selectedRole === 'area_lead' ? (

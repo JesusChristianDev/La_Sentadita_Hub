@@ -19,7 +19,6 @@ export type CreatePersonInput = {
   fullName: string;
   phone: string;
   identityDocument: string;
-  chainId: string;
   systemRole?: SystemRole;
   agoraEmployeeId?: string;
 };

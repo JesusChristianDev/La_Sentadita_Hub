@@ -20,7 +20,6 @@ test('createEmployeeFromDraft validates effective restaurant and role slots befo
   });
 
   const result = await service.createEmployeeFromDraft({
-    chainId: 'chain-1',
     effectiveRestaurantId: 'restaurant-1',
     input: {
       email: 'paula@example.com',
@@ -46,7 +45,6 @@ test('createEmployeeFromDraft rejects when restaurant context is missing or mism
   });
 
   const missing = await service.createEmployeeFromDraft({
-    chainId: 'chain-1',
     effectiveRestaurantId: null,
     input: {
       email: 'paula@example.com',
@@ -60,7 +58,6 @@ test('createEmployeeFromDraft rejects when restaurant context is missing or mism
   });
 
   const mismatch = await service.createEmployeeFromDraft({
-    chainId: 'chain-1',
     effectiveRestaurantId: 'restaurant-2',
     input: {
       email: 'paula@example.com',

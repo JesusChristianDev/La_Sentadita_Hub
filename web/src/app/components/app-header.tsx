@@ -22,10 +22,17 @@ type RestaurantOption = {
 
 export type AppHeaderProps = {
   canSeeEmployees: boolean;
+  canSeeDocuments?: boolean;
+  canSeeIncidents?: boolean;
+  canSeeNotifications?: boolean;
+  canSeeRequests: boolean;
+  canSeeProcurement?: boolean;
   canSeeSchedules: boolean;
+  canSeeTasks: boolean;
   canPickRestaurant?: boolean;
   restaurants?: RestaurantOption[];
   effectiveRestaurantId?: string | null;
+  activeScopeLabel?: string;
   isMobileDevice?: boolean;
   setActiveRestaurantAction?: (formData: FormData) => void;
   currentUserName?: string | null;
@@ -35,10 +42,17 @@ export type AppHeaderProps = {
 
 export function AppHeader({
   canSeeEmployees,
+  canSeeDocuments = false,
+  canSeeIncidents = false,
+  canSeeNotifications = false,
+  canSeeRequests,
+  canSeeProcurement = false,
   canSeeSchedules,
+  canSeeTasks,
   canPickRestaurant = false,
   restaurants = [],
   effectiveRestaurantId = null,
+  activeScopeLabel = 'Vista global',
   isMobileDevice = false,
   setActiveRestaurantAction,
   currentUserName = null,
@@ -51,11 +65,6 @@ export function AppHeader({
   const desktopMenuId = useId();
   const desktopMenuRef = useRef<HTMLDivElement>(null);
   const isDesktopMenuVisible = desktopMenuOpen && !isMobileDevice;
-  const closeDesktopMenuAfterSubmit = () => {
-    window.setTimeout(() => {
-      setDesktopMenuOpen(false);
-    }, 0);
-  };
 
   useEffect(() => {
     if (!isDesktopMenuVisible) return;
@@ -102,10 +111,17 @@ export function AppHeader({
           <div className="shrink-0">
             <MobileHeaderMenu
               canSeeEmployees={canSeeEmployees}
+              canSeeDocuments={canSeeDocuments}
+              canSeeIncidents={canSeeIncidents}
+              canSeeNotifications={canSeeNotifications}
+              canSeeRequests={canSeeRequests}
+              canSeeProcurement={canSeeProcurement}
               canSeeSchedules={canSeeSchedules}
+              canSeeTasks={canSeeTasks}
               canPickRestaurant={canPickRestaurant}
               restaurants={availableRestaurants}
               effectiveRestaurantId={effectiveRestaurantId}
+              activeScopeLabel={activeScopeLabel}
               setActiveRestaurantAction={setActiveRestaurantAction}
               currentUserName={currentUserName}
               currentUserRole={currentUserRole}
@@ -135,7 +151,13 @@ export function AppHeader({
             <div className="min-w-0 flex-1">
               <ScreenNav
                 canSeeEmployees={canSeeEmployees}
+                canSeeDocuments={canSeeDocuments}
+                canSeeIncidents={canSeeIncidents}
+                canSeeNotifications={canSeeNotifications}
+                canSeeRequests={canSeeRequests}
+                canSeeProcurement={canSeeProcurement}
                 canSeeSchedules={canSeeSchedules}
+                canSeeTasks={canSeeTasks}
                 className="flex min-w-0 flex-1 items-center justify-center"
               />
             </div>
@@ -171,6 +193,15 @@ export function AppHeader({
               </form>
             ) : null}
 
+            <div className="hidden min-w-[11rem] rounded-full border border-border bg-surface/70 px-4 py-2 text-right xl:block">
+              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-muted">
+                Contexto activo
+              </p>
+              <p className="truncate text-sm font-medium text-foreground">
+                {activeScopeLabel}
+              </p>
+            </div>
+
             <div ref={desktopMenuRef} className="relative block">
               <button
                 type="button"
@@ -202,20 +233,13 @@ export function AppHeader({
                   >
                     Mi perfil
                   </Link>
-                  <form
-                    action="/api/auth/signout"
-                    method="post"
-                    className="m-0 w-full"
-                    onSubmit={closeDesktopMenuAfterSubmit}
+                  <Link
+                    href="/api/auth/signout?next=/login"
+                    className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm text-danger transition-colors hover:bg-danger/20 hover:text-danger"
+                    onClick={() => setDesktopMenuOpen(false)}
                   >
-                    <input type="hidden" name="next" value="/login" />
-                    <button
-                      type="submit"
-                      className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm text-danger transition-colors hover:bg-danger/20 hover:text-danger"
-                    >
-                      Cerrar sesion
-                    </button>
-                  </form>
+                    Cerrar sesion
+                  </Link>
                 </div>
               ) : null}
             </div>

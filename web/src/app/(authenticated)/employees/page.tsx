@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { getCurrentUserContext } from '@/modules/auth_users';
-import { can } from '@/modules/authz';
-import { listEmployees } from '@/modules/employees';
+import { buildEmployeesPageViewModel } from '@/modules/employees/application/buildEmployeesPageViewModel';
 import {
   type EmployeeErrorCode,
   type EmployeeStatusFilter,
@@ -10,8 +9,6 @@ import {
   getEmployeeErrorMessage,
   getEmployeeSuccessMessage,
 } from '@/shared/feedbackMessages';
-import { roleLabel } from '@/shared/roleLabel';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 import { ButtonLink, ChipLink, Notice, RestaurantContextEmptyState } from '@/shared/ui';
 
 import { UserAvatar } from '../../components/user-avatar';
@@ -35,14 +32,13 @@ export default async function EmployeesPage({ searchParams }: Props) {
   const ctx = await getCurrentUserContext();
   if (!ctx) redirect('/login');
 
-  const canPickRestaurant = can(ctx.requestContext, 'restaurant_context.select');
-  const canManage = can(ctx.requestContext, 'employees.create');
-  if (!can(ctx.requestContext, 'employees.view')) redirect('/app');
+  const viewModel = await buildEmployeesPageViewModel(ctx, status);
 
-  const restaurantId = ctx.requestContext.effectiveRestaurantId;
-  const admin = createSupabaseAdminClient();
+  if (viewModel.mode === 'forbidden') {
+    redirect('/app');
+  }
 
-  if (!restaurantId) {
+  if (viewModel.mode === 'context_required') {
     return (
       <main id="main-content" tabIndex={-1} className="app-shell stack rise-in">
         <section className="page-intro">
@@ -53,33 +49,12 @@ export default async function EmployeesPage({ searchParams }: Props) {
         </section>
 
         <RestaurantContextEmptyState
-          canPickRestaurant={canPickRestaurant}
+          canPickRestaurant={viewModel.context.canChangeContext}
           moduleLabel="Equipo"
         />
       </main>
     );
   }
-
-  const employees = await listEmployees(restaurantId, status);
-  const avatarPaths = [
-    ...new Set(
-      employees.map((employee) => employee.avatar_path).filter((path): path is string => Boolean(path)),
-    ),
-  ];
-  const avatarUrlByPath = new Map<string, string>();
-
-  await Promise.all(
-    avatarPaths.map(async (path) => {
-      const { data } = await admin.storage.from('avatars').createSignedUrl(path, 60 * 60);
-      if (data?.signedUrl) avatarUrlByPath.set(path, data.signedUrl);
-    }),
-  );
-
-  const { data: restaurantZones } = await admin
-    .from('restaurant_zones')
-    .select('id, name')
-    .eq('restaurant_id', restaurantId)
-    .eq('is_active', true);
 
   const errorMsg = getEmployeeErrorMessage(sp.e);
   const successMsg = getEmployeeSuccessMessage(sp.ok);
@@ -109,22 +84,19 @@ export default async function EmployeesPage({ searchParams }: Props) {
               <ChipLink active={status === 'active'} href="/employees?status=active">
                 Activos
               </ChipLink>
-              <ChipLink
-                active={status === 'inactive'}
-                href="/employees?status=inactive"
-              >
+              <ChipLink active={status === 'inactive'} href="/employees?status=inactive">
                 Inactivos
               </ChipLink>
               <ChipLink active={status === 'all'} href="/employees?status=all">
                 Todos
               </ChipLink>
             </nav>
-            {canManage ? (
+            {viewModel.createForm ? (
               <NewEmployeeDrawer
-                restaurantId={restaurantId}
-                restaurantZones={restaurantZones || []}
-                canAssignManager={canPickRestaurant}
+                allowedRoles={viewModel.createForm.allowedRoles}
                 createEmployeeAction={createEmployeeAction}
+                restaurantId={viewModel.createForm.restaurantId}
+                restaurantZones={viewModel.createForm.zoneOptions}
               />
             ) : null}
           </div>
@@ -140,31 +112,23 @@ export default async function EmployeesPage({ searchParams }: Props) {
               </tr>
             </thead>
             <tbody>
-              {employees.length ? (
-                employees.map((employee) => (
+              {viewModel.rows.length ? (
+                viewModel.rows.map((employee) => (
                   <tr key={employee.id}>
                     <td>
                       <div className="inline-flex items-center gap-2">
                         <UserAvatar
-                          fullName={employee.full_name}
-                          role={employee.system_role}
-                          avatarUrl={
-                            employee.avatar_path
-                              ? (avatarUrlByPath.get(employee.avatar_path) ?? null)
-                              : null
-                          }
+                          fullName={employee.fullName}
+                          role={null}
+                          avatarUrl={employee.avatarUrl}
                           size="sm"
                         />
-                        <span>{employee.full_name || '(sin nombre)'}</span>
+                        <span>{employee.fullName}</span>
                       </div>
                     </td>
-                    <td>{roleLabel(employee.system_role)}</td>
+                    <td>{employee.roleLabel}</td>
                     <td>
-                      <ButtonLink
-                        href={`/employees/${employee.id}`}
-                        size="small"
-                        variant="secondary"
-                      >
+                      <ButtonLink href={employee.href} size="small" variant="secondary">
                         Editar
                       </ButtonLink>
                     </td>
@@ -173,7 +137,7 @@ export default async function EmployeesPage({ searchParams }: Props) {
               ) : (
                 <tr>
                   <td colSpan={3} className="muted">
-                    No hay empleados para este filtro.
+                    {viewModel.emptyState.description}
                   </td>
                 </tr>
               )}
@@ -182,39 +146,31 @@ export default async function EmployeesPage({ searchParams }: Props) {
         </div>
 
         <div className="mobile-employee-list mt-3">
-          {employees.length ? (
-            employees.map((employee) => (
+          {viewModel.rows.length ? (
+            viewModel.rows.map((employee) => (
               <article key={employee.id} className="mobile-employee-card">
                 <div className="mb-2 inline-flex items-center gap-2">
                   <UserAvatar
-                    fullName={employee.full_name}
-                    role={employee.system_role}
-                    avatarUrl={
-                      employee.avatar_path
-                        ? (avatarUrlByPath.get(employee.avatar_path) ?? null)
-                        : null
-                    }
+                    fullName={employee.fullName}
+                    role={null}
+                    avatarUrl={employee.avatarUrl}
                     size="md"
                   />
-                  <strong>{employee.full_name || '(sin nombre)'}</strong>
+                  <strong>{employee.fullName}</strong>
                 </div>
 
                 <p className="text-xs muted">rol</p>
-                <p>{roleLabel(employee.system_role)}</p>
+                <p>{employee.roleLabel}</p>
 
                 <div className="form-actions mt-3">
-                  <ButtonLink
-                    className="w-full"
-                    href={`/employees/${employee.id}`}
-                    variant="secondary"
-                  >
+                  <ButtonLink className="w-full" href={employee.href} variant="secondary">
                     Ver detalle
                   </ButtonLink>
                 </div>
               </article>
             ))
           ) : (
-            <p className="muted">No hay empleados para este filtro.</p>
+            <p className="muted">{viewModel.emptyState.description}</p>
           )}
         </div>
       </section>

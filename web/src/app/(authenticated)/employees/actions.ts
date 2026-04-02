@@ -17,10 +17,6 @@ export async function createEmployeeAction(formData: FormData) {
 
   if (!canCreate(ctx.requestContext)) redirect('/employees');
 
-  // chainId viene del contexto del usuario autenticado, no del form
-  const chainId = ctx.requestContext.chainId;
-  if (!chainId) redirect(employeesPathWithError('missing'));
-
   const email = String(formData.get('email') ?? '').trim();
   const fullName = String(formData.get('fullName') ?? '').trim();
   const phone = String(formData.get('phone') ?? '').trim();
@@ -37,7 +33,6 @@ export async function createEmployeeAction(formData: FormData) {
   });
 
   const result = await service.createEmployeeFromDraft({
-    chainId,
     effectiveRestaurantId: ctx.requestContext.effectiveRestaurantId,
     input: {
       email,

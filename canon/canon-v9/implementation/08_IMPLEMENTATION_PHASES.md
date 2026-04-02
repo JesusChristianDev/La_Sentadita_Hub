@@ -7,6 +7,8 @@
 
 Construir en orden de dependencia. Nunca abrir una fase si la anterior no está cerrada según su criterio `done when`.
 
+Para frontend, toda implementación de pantallas autenticadas debe seguir `12_FRONTEND_BLUEPRINT.md`.
+
 ---
 
 ## Gates previos (antes de escribir código)
@@ -51,11 +53,14 @@ Construir en orden de dependencia. Nunca abrir una fase si la anterior no está 
 - Schema SQL completo con naming canónico (sin `sub_manager`, sin `chain_owner`, sin `platform` scope)
 - Enums: `system_role_enum`, `access_status_enum`, `scope_type_enum`, `request_type_enum`, `incident_category_enum`, `incident_sensitivity_enum`, `schedule_status_enum`, `request_status_enum`
 - Tablas: todas las entidades canónicas de `02_DOMAIN_MODEL.md`
-- Triggers: `set_updated_at`, invariante I-003, invariante I-020, invariante I-024, inmutabilidad AuditLog
-- Índices: partial unique en `employment_relationships` (I-002), índices de performance en FKs críticas
+- Triggers: `set_updated_at`, invariantes I-003, I-004, I-009, I-020, I-024, inmutabilidad AuditLog
+- Restricciones de vigencia: `daterange` canónico + exclusión/validación de solapamientos donde aplique
+- Adaptación temporal canónica: `valid_from` / `valid_to` inclusivos en negocio + `valid_during` técnico derivado para constraints y consultas
+- Índices de performance en FKs críticas y columnas/rangos de vigencia
 - RLS base: política de servicio para operaciones backend
 - Funciones SQL: `current_person_id()`, `current_system_role()`
 - Seed de referencia con datos mínimos para desarrollo
+- Ejecución ordenada según `11_SUPABASE_CONVERGENCE_PLAN.md` cuando exista drift entre repo y base real
 
 **Done when:** schema desplegado en Supabase, triggers funcionando, seed ejecutado sin errores.
 
@@ -81,10 +86,10 @@ Construir en orden de dependencia. Nunca abrir una fase si la anterior no está 
 
 **Entregables:**
 - `modules/people/`: createPerson, updatePersonIdentity, archivePerson, changeAccessStatus
-- `modules/employment/`: createEmploymentRelationship, updateEmployment, terminateEmployment
+- `modules/employment/`: createEmploymentRelationship, updateEmployment, terminateEmployment, assignRestaurantOperation, scheduleRestaurantTransfer, assignAreaLeadZone, scheduleScopeAssignmentChange
 - Validación de invariantes I-001, I-002, I-003 en capa de aplicación
-- Validación de invariantes I-004, I-005, I-006 al cambiar system_role
-- Tests: createPerson, changeAccessStatus (transiciones), employeeMutationRules
+- Validación de invariantes I-004, I-005, I-006, I-008, I-009 al cambiar `system_role` o asignaciones
+- Tests: createPerson, changeAccessStatus (transiciones), employmentAssignmentRules
 - UI básica: listado de personas, formulario de alta, cambio de estado
 
 **Done when:** se puede crear una persona, asignarle empleo, cambiar su access_status y todo queda auditado. Tests de invariantes pasan.
@@ -224,7 +229,7 @@ Construir en orden de dependencia. Nunca abrir una fase si la anterior no está 
 |---|---|
 | AuthZ | `can()` por rol × acción × recurso. `deriveResponsibilityLevel()` |
 | People | createPerson, changeAccessStatus (todas las transiciones), archivePerson |
-| Employment | createEmploymentRelationship, invariante I-002, invariante I-003 |
+| Employment | createEmploymentRelationship, assignRestaurantOperation, assignAreaLeadZone, invariantes I-002, I-003, I-004 |
 | Schedule | no solapamientos, lock/unlock, publish, copyPreviousWeek, shiftTemplate |
 | Requests | approveRequest (invariante I-020), aprobación por tipo (I-021), efecto en schedule |
 | ShiftSwap | flujo completo, compatibilidad (I-011), efecto en schedule |

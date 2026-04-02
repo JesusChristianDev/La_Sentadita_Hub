@@ -22,27 +22,38 @@ Si una operación viola un invariante, lanza `InvariantViolationError` y no se e
 
 ### I-002 — Un empleo activo por persona
 Máximo 1 `EmploymentRelationship` activo simultáneamente por `Person`.
-**Implementación:** UNIQUE partial index en `employment_relationships(person_id) WHERE active_principal = true`
+La semántica de negocio usa `valid_from` / `valid_to` inclusivos (`[]`). Los solapamientos se evalúan sobre `valid_during`, derivado técnicamente en `[)`.
+**Implementación:** `EXCLUDE USING gist (person_id WITH =, valid_during WITH &&)` en `employment_relationships`, con `valid_during` generado desde `valid_from` / `valid_to`
 
-### I-003 — Coherencia company/restaurant en empleo
-`EmploymentRelationship.company_id` debe coincidir con `Restaurant.company_id`.
-**Implementación:** Trigger en INSERT/UPDATE de `employment_relationships`
+### I-003 — Coherencia company/restaurante y solapamiento controlado
+Todo `EmploymentRestaurantAssignment` debe apuntar a un `Restaurant` cuya `company_id` coincida con la `company_id` del `EmploymentRelationship`.
+Además, `employee` y `area_lead` no pueden tener dos `EmploymentRestaurantAssignment` activas o solapadas en la misma fecha. `manager` sí puede tener varias.
+**Implementación:** Trigger o validación en INSERT/UPDATE de `employment_restaurant_assignments` sobre `valid_during`, generado desde fechas inclusivas
 
-### I-004 — area_lead requiere Zone activa
-Si `system_role = 'area_lead'`, debe existir al menos 1 `RoleScopeAssignment` activo con `scope_type = 'zone'`.
-**Implementación:** Validación en capa de aplicación al asignar/cambiar system_role
+### I-004 — area_lead requiere Zone activa única y coherente
+Si `system_role = 'area_lead'`, debe existir exactamente 1 `EmploymentZoneAssignment` activa y exactamente 1 `RoleScopeAssignment` vigente con `scope_type = 'zone'`. Ambos deben apuntar a la misma `Zone`, y esa `Zone` debe pertenecer al `Restaurant` operativo activo.
+**Implementación:** Trigger en asignaciones operativas + validación en capa de aplicación al asignar/cambiar `system_role`
 
 ### I-005 — manager requiere Restaurant activo
-Si `system_role = 'manager'`, debe existir al menos 1 `RoleScopeAssignment` activo con `scope_type = 'restaurant'`.
+Si `system_role = 'manager'`, debe existir al menos 1 `RoleScopeAssignment` vigente con `scope_type = 'restaurant'`.
 **Implementación:** Validación en capa de aplicación
 
 ### I-006 — Roles de alcance amplio requieren scope
-`admin`, `owner` y `office` requieren al menos 1 `RoleScopeAssignment` activo.
+`admin`, `owner` y `office` requieren al menos 1 `RoleScopeAssignment` vigente.
 **Implementación:** Validación en capa de aplicación
 
 ### I-007 — Zone pertenece a Restaurant
 `Zone` no puede existir sin `Restaurant`. Si se archiva un `Restaurant`, sus `Zone` se archivan en cascada.
 **Implementación:** FK NOT NULL + trigger de cascada en archivado
+
+### I-008 — employee no tiene RoleScopeAssignment
+Si `system_role = 'employee'`, no puede existir ningún `RoleScopeAssignment` activo para esa persona.
+**Implementación:** Validación en capa de aplicación al asignar/cambiar `system_role`
+
+### I-009 — RoleScopeAssignment no redundante
+No se permiten `RoleScopeAssignment` redundantes cubiertos por un scope superior vigente del mismo actor y rol dentro del mismo subárbol.
+Sí se permiten varios scopes vigentes si ninguno cubre jerárquicamente al otro.
+**Implementación:** Trigger en INSERT/UPDATE de `role_scope_assignments` + validación en capa de aplicación
 
 ---
 
@@ -98,8 +109,9 @@ La persona que sube un `DeliveryNote` no puede ser la misma que lo valida como `
 ## BLOQUE IV — Datos y consistencia
 
 ### I-030 — Tarea siempre con responsable
-Una `TaskInstance` no puede existir sin `assigned_employee_id`.
-**Implementación:** NOT NULL constraint en `task_instances.assigned_employee_id`
+Una `TaskInstance` no puede existir sin al menos un responsable operativo:
+`assigned_employee_id` o `assigned_role` o `assigned_zone_id`.
+**Implementación:** CHECK constraint o trigger de validación sobre `task_instances`
 
 ### I-031 — Soft delete universal
 Ninguna entidad se elimina físicamente. Todo archivado usa `is_archived = true` + `deleted_at = NOW()`.
@@ -154,7 +166,7 @@ La lógica de autorización vive exclusivamente en el backend. El frontend puede
 **Implementación:** Convención arquitectónica — toda acción pasa por `assertCan()`
 
 ### I-061 — RequestContext en toda operación
-Toda operación de escritura debe construir un `RequestContext` válido con `personId`, `systemRole`, `activeScopeId` y `traceId`.
+Toda operación de escritura debe construir un `RequestContext` válido con `personId`, `systemRole`, `traceId` y `activeScopeType` / `activeScopeId` opcionales. Si existe `active_scope`, debe quedar contenido dentro del árbol ya autorizado del actor o dentro de su asignación operativa vigente si `system_role = 'employee'`.
 **Implementación:** Middleware de aplicación
 
 ### I-062 — Transiciones de access_status auditadas
@@ -168,6 +180,6 @@ Toda transición de `access_status` queda registrada en `AuditLog`.
 | Capa | Invariantes |
 |---|---|
 | PostgreSQL CHECK/FK | I-001, I-002, I-007, I-014, I-023, I-024, I-030, I-031, I-034, I-040, I-042, I-051 |
-| PostgreSQL Triggers | I-003, I-007 (cascada), I-010, I-020, I-032 |
-| Capa de aplicación | I-004, I-005, I-006, I-011, I-012, I-013, I-021, I-022, I-033, I-041, I-050, I-060, I-061, I-062 |
+| PostgreSQL Triggers | I-003, I-004, I-007 (cascada), I-009, I-010, I-020, I-032 |
+| Capa de aplicación | I-004, I-005, I-006, I-008, I-009, I-011, I-012, I-013, I-021, I-022, I-033, I-041, I-050, I-060, I-061, I-062 |
 | RLS Supabase | I-032 (inmutabilidad AuditLog) |

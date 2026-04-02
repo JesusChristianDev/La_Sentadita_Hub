@@ -1,20 +1,27 @@
 'use client';
 
 import {
+  AlertTriangle,
+  Bell,
   CalendarDays,
   CheckSquare,
   FileText,
   LayoutDashboard,
   type LucideIcon,
+  Package,
   UserCircle,
   Users,
 } from 'lucide-react';
 
 type BuildAppNavigationItemsParams = {
   canSeeEmployees: boolean;
+  canSeeDocuments?: boolean;
+  canSeeIncidents?: boolean;
+  canSeeNotifications?: boolean;
+  canSeeRequests?: boolean;
+  canSeeProcurement?: boolean;
   canSeeSchedules: boolean;
   canSeeTasks?: boolean;
-  canSeeRequests?: boolean;
   includeProfile?: boolean;
 };
 
@@ -27,18 +34,26 @@ export type AppNavigationItem = {
 };
 
 export function isAppNavigationItemActive(pathname: string, href: string): boolean {
-  if (href === '/employees') {
-    return pathname === '/employees' || pathname.startsWith('/employees/');
+  if (href === '/app') {
+    return pathname === '/app';
   }
 
-  return pathname === href;
+  if (href === '/me') {
+    return pathname === '/me';
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function buildAppNavigationItems({
   canSeeEmployees,
+  canSeeDocuments = false,
+  canSeeIncidents = false,
+  canSeeNotifications = false,
+  canSeeProcurement = false,
   canSeeSchedules,
-  canSeeTasks = true,
-  canSeeRequests = true,
+  canSeeTasks = false,
+  canSeeRequests = false,
   includeProfile = false,
 }: BuildAppNavigationItemsParams): AppNavigationItem[] {
   return [
@@ -90,6 +105,50 @@ export function buildAppNavigationItems({
             label: 'Solicitudes',
             mobileDescription: 'Solicitudes operativas',
             shortLabel: 'Solicitudes',
+          },
+        ]
+      : []),
+    ...(canSeeIncidents
+      ? [
+          {
+            href: '/incidents',
+            icon: AlertTriangle,
+            label: 'Incidencias',
+            mobileDescription: 'Avisos y seguimiento',
+            shortLabel: 'Incidencias',
+          },
+        ]
+      : []),
+    ...(canSeeDocuments
+      ? [
+          {
+            href: '/documents',
+            icon: FileText,
+            label: 'Documentos',
+            mobileDescription: 'Contratos y archivos',
+            shortLabel: 'Docs',
+          },
+        ]
+      : []),
+    ...(canSeeProcurement
+      ? [
+          {
+            href: '/suppliers',
+            icon: Package,
+            label: 'Proveedores',
+            mobileDescription: 'Albaranes y catalogo',
+            shortLabel: 'Compras',
+          },
+        ]
+      : []),
+    ...(canSeeNotifications
+      ? [
+          {
+            href: '/notifications',
+            icon: Bell,
+            label: 'Avisos',
+            mobileDescription: 'Tus notificaciones',
+            shortLabel: 'Avisos',
           },
         ]
       : []),
