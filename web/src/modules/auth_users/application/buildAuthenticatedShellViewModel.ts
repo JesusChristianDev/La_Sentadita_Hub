@@ -2,13 +2,16 @@ import type { FrontendSessionView } from '../domain/frontendSession';
 
 export type AuthenticatedShellViewModel = {
   activeScopeLabel: string;
-  contextSelector: {
-    canSelectRestaurant: boolean;
-    effectiveRestaurantId: string | null;
-    restaurants: Array<{
-      id: string;
-      is_active: boolean;
-      name: string;
+  scopeSelector: {
+    activeScopeId: string | null;
+    activeScopeType: FrontendSessionView['activeScope']['scopeType'];
+    canSelectScope: boolean;
+    scopes: Array<{
+      authorityTier: string | null;
+      isDerived: boolean;
+      label: string;
+      scopeId: string | null;
+      scopeType: FrontendSessionView['activeScope']['scopeType'];
     }>;
   };
   navigation: FrontendSessionView['capabilities']['navigation'];
@@ -19,16 +22,11 @@ export function buildAuthenticatedShellViewModel(
 ): AuthenticatedShellViewModel {
   return {
     activeScopeLabel: session.activeScope.label,
-    contextSelector: {
-      canSelectRestaurant: session.capabilities.context.canSelectRestaurant,
-      effectiveRestaurantId: session.effectiveRestaurantId,
-      restaurants: session.capabilities.context.canSelectRestaurant
-        ? session.visibleRestaurants.map((restaurant) => ({
-            id: restaurant.id,
-            is_active: restaurant.isActive,
-            name: restaurant.name,
-          }))
-        : [],
+    scopeSelector: {
+      activeScopeId: session.activeScope.scopeId,
+      activeScopeType: session.activeScope.scopeType,
+      canSelectScope: session.capabilities.context.canSelectScope,
+      scopes: session.availableScopes,
     },
     navigation: session.capabilities.navigation,
   };

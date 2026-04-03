@@ -1,8 +1,8 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { AUDIT_ACTIONS, writeAuditLog } from '@/modules/audit';
 import { getCurrentUserContext } from '@/modules/auth_users';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 import type {
   NotificationRecord,

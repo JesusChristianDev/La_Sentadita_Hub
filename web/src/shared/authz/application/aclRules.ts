@@ -1,5 +1,3 @@
-import type { AppRole } from '@/modules/people';
-
 import type { ScopeType, SystemRole } from '../domain/systemRoles';
 import type { ActorLike, RequestContext } from './requestContext';
 
@@ -31,7 +29,6 @@ export type AuthzAction =
 export type AuthzResource = {
   restaurantId?: string | null;
   targetRestaurantId?: string | null;
-  targetRole?: AppRole;
   targetSystemRole?: SystemRole;
   targetUserId?: string | null;
   targetZoneId?: string | null;
@@ -77,8 +74,8 @@ export function getActorScopeType(actor: ActorLike): ScopeType {
 
   if ('systemRole' in actor) return actor.scopeType;
 
-  const profile = 'profile' in actor ? actor.profile : actor;
-  const role = profile.role;
+  const profile = 'profile' in actor ? (actor as { profile: { system_role: SystemRole } }).profile : actor as unknown as { system_role: SystemRole };
+  const role = profile.system_role;
 
   if (role === 'admin' || role === 'owner' || role === 'office') {
     return 'organization';
@@ -105,7 +102,7 @@ export function can(
       return isGlobalRole(ctx.systemRole);
 
     case 'employees.manage_target': {
-      const targetRole = resource?.targetSystemRole ?? resource?.targetRole;
+      const targetRole = resource?.targetSystemRole;
       if (isGlobalRole(ctx.systemRole)) return true;
       if (
         ctx.systemRole === 'manager' &&
@@ -134,12 +131,21 @@ export function can(
       return true;
 
     case 'tasks.manage':
-    case 'requests.manage':
-      return (
-        isGlobalRole(ctx.systemRole) ||
-        ctx.systemRole === 'manager' ||
-        isAreaLead(ctx.systemRole)
-      );
+    case 'requests.manage': {
+      if (isGlobalRole(ctx.systemRole) || ctx.systemRole === 'manager') {
+        return true;
+      }
+
+      if (!isAreaLead(ctx.systemRole)) return false;
+      if (!ctx.zoneId) return false;
+
+      // Para area_lead, el manejo es por zona: si no se pasa un resource.zoneId,
+      // asumimos que la acción apunta a la zona activa (ctx.zoneId).
+      const targetZoneId = resource?.targetZoneId ?? resource?.zoneId ?? null;
+      if (!targetZoneId) return true;
+
+      return targetZoneId === ctx.zoneId;
+    }
 
     case 'incidents.manage':
       return isGlobalRole(ctx.systemRole) || ctx.systemRole === 'manager';
@@ -197,10 +203,11 @@ export function getAllowedScopeForAction(action: AuthzAction): ScopeType[] {
     case 'requests.view':
       return ['organization', 'restaurant', 'zone', 'self'];
     case 'schedule.edit_draft':
-    case 'tasks.manage':
     case 'incidents.manage':
-    case 'requests.manage':
       return ['organization', 'restaurant', 'zone'];
+    case 'tasks.manage':
+    case 'requests.manage':
+      return ['organization', 'restaurant'];
     case 'documents.manage':
       return ['organization', 'restaurant'];
     case 'procurement.manage':

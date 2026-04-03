@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createSupabaseServerClient } from '@/shared/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 import type { WriteAuditLogInput } from '../domain/auditActions';
 

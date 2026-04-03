@@ -1,9 +1,9 @@
 import 'server-only';
 
-import { coerceSystemRole, type SystemRole } from '@/modules/authz';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { AccessStatus, PersonProfile } from '@/modules/people';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
-import { createSupabaseServerClient } from '@/shared/supabase/server';
+import { coerceSystemRole, type SystemRole } from '@/shared/authz';
 
 type PersonRow = {
   person_id: string;
@@ -252,7 +252,6 @@ export async function loadPersonProfileByIdWithClient(
     id: typedPerson.person_id,
     is_archived: typedPerson.is_archived,
     restaurant_id: snapshot.restaurantId,
-    role: systemRole,
     system_role: systemRole,
     zone_id: snapshot.zoneId,
   };

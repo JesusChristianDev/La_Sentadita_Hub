@@ -1,7 +1,7 @@
 import type {
   CanonicalScopeType,
   CanonicalSystemRole,
-} from '@/modules/authz/domain/canonicalCatalog';
+} from '@/shared/authz/domain/canonicalCatalog';
 
 export type CanonicalRoleScopeAssignment = {
   authority_tier: 'primary' | 'secondary' | null;

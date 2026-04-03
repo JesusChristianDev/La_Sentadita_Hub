@@ -19,7 +19,7 @@ type TasksPageClientProps = {
   canManage: boolean;
   mode: Extract<
     FrontendPageMode,
-    'restaurant_workspace' | 'self_service' | 'zone_workspace'
+    'restaurant_workspace' | 'self_service' | 'zone_workspace' | 'global_overview'
   >;
   restaurantId: string;
 };
@@ -40,7 +40,9 @@ export function TasksPageClient({
       ? 'Vista operativa por zona con capacidad de gestion.'
       : mode === 'restaurant_workspace'
         ? 'Vista operativa del restaurante con capacidad de gestion.'
-        : 'Vista personal de tareas asignadas.';
+        : mode === 'global_overview'
+          ? 'Vista agregada pendiente de implementar para scopes de organizacion/empresa.'
+          : 'Vista personal de tareas asignadas.';
 
   const columns = useMemo(() => [
     columnHelper.accessor('task_status', {
@@ -67,10 +69,10 @@ export function TasksPageClient({
     }),
     columnHelper.display({
       id: 'actions',
-      cell: (info) => (
+      cell: () => (
         <button
           className="text-xs font-medium text-amber-500 hover:text-amber-400 transition"
-          onClick={() => alert(`Acción para tarea: ${info.row.original.task_instance_id}`)}
+          type="button"
         >
           Gestionar
         </button>

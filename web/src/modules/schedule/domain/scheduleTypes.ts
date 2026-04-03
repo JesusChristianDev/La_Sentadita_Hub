@@ -1,4 +1,4 @@
-import type { SystemRole } from '@/modules/authz';
+import type { SystemRole } from '@/shared/authz';
 
 export type DayType =
   | 'work'

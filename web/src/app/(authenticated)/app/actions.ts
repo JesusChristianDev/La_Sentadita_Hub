@@ -2,9 +2,10 @@
 
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { z } from 'zod';
 
 import { getCurrentUserContext, persistActiveScope } from '@/modules/auth_users';
-import { can } from '@/modules/authz';
+import { can } from '@/shared/authz';
 
 async function getReturnPath(): Promise<string> {
   const h = await headers();
@@ -22,6 +23,50 @@ async function getReturnPath(): Promise<string> {
   }
 }
 
+const scopeFormSchema = z.object({
+  scopeId: z.string().uuid().nullable(),
+  scopeType: z.enum(['organization', 'chain', 'company', 'restaurant', 'zone', 'self']),
+});
+
+function coerceNullableScopeId(value: FormDataEntryValue | null): string | null {
+  const parsed = String(value ?? '').trim();
+  return parsed.length > 0 ? parsed : null;
+}
+
+export async function setActiveScope(formData: FormData) {
+  const returnPath = await getReturnPath();
+  const payload = scopeFormSchema.safeParse({
+    scopeId: coerceNullableScopeId(formData.get('scopeId')),
+    scopeType: String(formData.get('scopeType') ?? '').trim(),
+  });
+
+  if (!payload.success) redirect(returnPath);
+
+  const ctx = await getCurrentUserContext();
+  if (!ctx) redirect('/login');
+
+  const nextScope = payload.data;
+  const allowedScope = ctx.backendSession.availableScopes.find(
+    (scope) =>
+      scope.scopeType === nextScope.scopeType && scope.scopeId === nextScope.scopeId,
+  );
+
+  if (!allowedScope) redirect(returnPath);
+
+  const effectiveRestaurantId =
+    nextScope.scopeType === 'restaurant'
+      ? nextScope.scopeId
+      : nextScope.scopeType === 'zone'
+        ? ctx.backendSession.currentEmployment?.zoneAssignments.find(
+            (assignment) => assignment.isCurrent && assignment.zoneId === nextScope.scopeId,
+          )?.restaurantId ?? null
+        : null;
+
+  await persistActiveScope(nextScope, effectiveRestaurantId);
+
+  redirect(returnPath);
+}
+
 export async function setActiveRestaurant(formData: FormData) {
   const returnPath = await getReturnPath();
   const restaurantId = String(formData.get('restaurantId') ?? '').trim();
@@ -37,10 +82,9 @@ export async function setActiveRestaurant(formData: FormData) {
   );
   if (!allowedRestaurant) redirect(returnPath);
 
-  await persistActiveScope(
-    { scopeId: restaurantId, scopeType: 'restaurant' },
-    restaurantId,
-  );
+  const nextFormData = new FormData();
+  nextFormData.set('scopeId', restaurantId);
+  nextFormData.set('scopeType', 'restaurant');
 
-  redirect(returnPath);
+  return setActiveScope(nextFormData);
 }

@@ -1,4 +1,4 @@
-import type { SystemRole } from '@/modules/authz';
+import type { SystemRole } from '@/shared/authz';
 
 export type AccessStatus =
   | 'pending_activation'
@@ -7,7 +7,6 @@ export type AccessStatus =
   | 'archived'
   | 'blocked';
 
-export type AppRole = SystemRole;
 
 export type PersonProfile = {
   access_status: AccessStatus;
@@ -16,7 +15,7 @@ export type PersonProfile = {
   employee_code: number;
   full_name: string;
   is_archived?: boolean;
-  role: SystemRole;
+
   restaurant_id: string | null;
   system_role: SystemRole;
   zone_id: string | null;

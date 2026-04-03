@@ -1,11 +1,11 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { AUDIT_ACTIONS, writeAuditLog } from '@/modules/audit';
 import { getCurrentUserContext } from '@/modules/auth_users';
-import { assertRestaurantManagement, isGlobalSystemRole } from '@/modules/authz';
 import { notifyPerson } from '@/modules/notifications';
+import { assertRestaurantManagement, isGlobalSystemRole } from '@/shared/authz';
 import { loadPersonProfileById } from '@/shared/db/persons';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 import type {
   CreateDocumentInput,

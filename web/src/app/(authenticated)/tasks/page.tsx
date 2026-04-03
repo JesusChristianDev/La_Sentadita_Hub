@@ -21,7 +21,11 @@ export default async function TasksPage() {
     redirect('/app');
   }
 
-  if (viewModel.mode === 'context_required' || !viewModel.restaurantId) {
+  if (
+    viewModel.mode === 'context_required' ||
+    viewModel.mode === 'global_overview' ||
+    !viewModel.restaurantId
+  ) {
     return (
       <main className="app-shell stack rise-in">
         <section className="page-intro">
@@ -31,10 +35,18 @@ export default async function TasksPage() {
           </div>
         </section>
 
-        <RestaurantContextEmptyState
-          canPickRestaurant={frontendSession.capabilities.context.canSelectRestaurant}
-          moduleLabel="Tareas"
-        />
+        {viewModel.mode === 'global_overview' ? (
+          <p className="panel-subtitle mt-4 text-sm text-muted">
+            Estas en un scope global (organizacion/empresa). La vista agregada de tareas aun no
+            esta implementada, pero ya no es obligatorio elegir un restaurante solo para entrar en
+            la pantalla.
+          </p>
+        ) : (
+          <RestaurantContextEmptyState
+            canPickRestaurant={frontendSession.capabilities.context.canSelectRestaurant}
+            moduleLabel="Tareas"
+          />
+        )}
       </main>
     );
   }
@@ -57,7 +69,7 @@ export default async function TasksPage() {
               canManage={viewModel.canManage}
               initialTasks={viewModel.initialTasks}
               mode={viewModel.mode}
-              restaurantId={viewModel.restaurantId}
+              restaurantId={viewModel.restaurantId ?? ''}
             />
           </Suspense>
         </div>

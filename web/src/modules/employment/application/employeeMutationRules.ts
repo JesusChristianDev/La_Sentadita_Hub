@@ -1,4 +1,4 @@
-import type { SystemRole } from '@/modules/authz';
+import type { SystemRole } from '@/shared/authz';
 
 import { isValidAccountEmail } from '../../auth_users/application/accountCredentialRules';
 import type { EditableEmploymentSystemRole } from '../domain/employmentTypes';

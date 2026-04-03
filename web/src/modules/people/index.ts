@@ -14,7 +14,6 @@ export { updatePersonIdentity } from './application/updatePersonIdentity';
 export type { CanonicalPerson } from './domain/personCanonical';
 export type {
   AccessStatus,
-  AppRole,
   PersonProfile,
   PersonProfile as Profile,
 } from './domain/personProfile';

@@ -1,14 +1,14 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { AUDIT_ACTIONS, writeAuditLog } from '@/modules/audit';
 import { getCurrentUserContext } from '@/modules/auth_users';
+import { notifyPeople, notifyPerson } from '@/modules/notifications';
 import {
   assertRestaurantAccess,
   assertRestaurantManagement,
   canAccessZone,
-} from '@/modules/authz';
-import { notifyPeople, notifyPerson } from '@/modules/notifications';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
+} from '@/shared/authz';
 
 import type {
   CreateIncidentInput,

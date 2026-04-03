@@ -1,8 +1,8 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { buildFrontendSessionView, type CurrentSession } from '@/modules/auth_users';
 import type { FrontendVisibleRestaurant } from '@/modules/auth_users/domain/frontendSession';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 import type { DeliveryNote } from '../domain/deliveryNoteTypes';
 import type { Product } from '../domain/productTypes';

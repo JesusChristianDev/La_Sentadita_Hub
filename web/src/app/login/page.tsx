@@ -54,6 +54,7 @@ export default async function LoginPage({ searchParams }: Props) {
               autoCorrect="off"
               aria-invalid={Boolean(emailError)}
               aria-describedby={emailError ? 'email-error' : undefined}
+              suppressHydrationWarning
             />
           </label>
           {emailError ? (

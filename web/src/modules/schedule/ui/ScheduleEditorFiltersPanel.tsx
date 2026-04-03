@@ -2,8 +2,8 @@
 
 import { Search, ShieldAlert } from 'lucide-react';
 
-import type { SystemRole } from '@/modules/authz';
 import type { EmployeeListItem } from '@/modules/employees';
+import type { SystemRole } from '@/shared/authz';
 import { roleLabel } from '@/shared/roleLabel';
 import { ChipButton, Select } from '@/shared/ui';
 

@@ -1,10 +1,10 @@
 import Image from 'next/image';
 
-import type { AppRole } from '@/modules/people';
+import type { SystemRole } from '@/shared/authz';
 
 type Props = {
   fullName?: string | null;
-  role?: AppRole | null;
+  role?: SystemRole | null;
   avatarUrl?: string | null;
   size?: 'sm' | 'md' | 'lg';
   alt?: string;
@@ -23,7 +23,7 @@ function getInitials(value?: string | null): string {
   return parts.map((part) => part[0]?.toUpperCase() ?? '').join('') || 'US';
 }
 
-function roleBadge(role?: AppRole | null): string {
+function roleBadge(role?: SystemRole | null): string {
   if (!role) return 'US';
   if (role === 'admin') return 'AD';
   if (role === 'owner') return 'PR';

@@ -1,14 +1,15 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { AUDIT_ACTIONS, writeAuditLog } from '@/modules/audit';
 import { getCurrentUserContext } from '@/modules/auth_users';
+import { notifyPeople, notifyPerson } from '@/modules/notifications';
 import {
   assertRestaurantAccess,
   assertRestaurantManagement,
+  assertZoneAccess,
   canManageRestaurant,
-} from '@/modules/authz';
-import { notifyPeople, notifyPerson } from '@/modules/notifications';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
+} from '@/shared/authz';
 
 import type {
   CreateTaskInstanceInput,
@@ -197,10 +198,23 @@ export async function listTaskInstances(
     query = query.eq('task_date', taskDate);
   }
 
+  if (ctx.requestContext.systemRole === 'area_lead') {
+    if (!ctx.requestContext.zoneId) {
+      throw new Error('FORBIDDEN: area_lead requiere zone activa.');
+    }
+    // Para area_lead, la vista/gestión es por zona: limitamos por assigned_zone_id.
+    query = query.eq('assigned_zone_id', ctx.requestContext.zoneId);
+  }
+
   if (!canManageRestaurant(ctx.requestContext, restaurantId)) {
-    query = query.or(
-      `assigned_employee_id.eq.${ctx.userId},assigned_role.eq.${ctx.requestContext.systemRole}`,
-    );
+    // Para manager/admin/admin-like se gestiona todo en el restaurante.
+    // Para roles no-management (incluyendo area_lead, pero ya filtramos arriba por zona),
+    // mostramos únicamente tareas asignadas al usuario o al rol.
+    if (ctx.requestContext.systemRole !== 'area_lead') {
+      query = query.or(
+        `assigned_employee_id.eq.${ctx.userId},assigned_role.eq.${ctx.requestContext.systemRole}`,
+      );
+    }
   }
 
   const { data, error } = await query;
@@ -215,7 +229,14 @@ export async function createTaskInstance(
   input: CreateTaskInstanceInput,
 ): Promise<TaskInstanceRecord> {
   const ctx = await getRequiredCurrentUserContext();
-  assertRestaurantManagement(ctx.requestContext, input.restaurantId);
+  if (ctx.requestContext.systemRole === 'area_lead') {
+    if (!input.assignedZoneId) {
+      throw new Error('TASK_ZONE_REQUIRED: area_lead requiere assignedZoneId.');
+    }
+    assertZoneAccess(ctx.requestContext, input.restaurantId, input.assignedZoneId);
+  } else {
+    assertRestaurantManagement(ctx.requestContext, input.restaurantId);
+  }
   assertTaskHasResponsible(input);
 
   const admin = createSupabaseAdminClient();
@@ -280,9 +301,15 @@ export async function completeTaskInstance(
   assertRestaurantAccess(ctx.requestContext, current.restaurant_id);
 
   const canComplete =
-    canManageRestaurant(ctx.requestContext, current.restaurant_id) ||
-    current.assigned_employee_id === ctx.userId ||
-    current.assigned_role === ctx.requestContext.systemRole;
+    ctx.requestContext.systemRole === 'area_lead'
+      ? Boolean(
+          current.assigned_zone_id &&
+            ctx.requestContext.zoneId &&
+            current.assigned_zone_id === ctx.requestContext.zoneId,
+        )
+      : canManageRestaurant(ctx.requestContext, current.restaurant_id) ||
+          current.assigned_employee_id === ctx.userId ||
+          current.assigned_role === ctx.requestContext.systemRole;
 
   if (!canComplete) {
     throw new Error('FORBIDDEN: No puedes completar esta tarea.');
@@ -327,7 +354,14 @@ export async function confirmTaskInstance(
 ): Promise<TaskInstanceRecord> {
   const ctx = await getRequiredCurrentUserContext();
   const current = await loadTaskInstance(taskInstanceId);
-  assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
+  if (ctx.requestContext.systemRole === 'area_lead') {
+    if (!current.assigned_zone_id) {
+      throw new Error('FORBIDDEN: La tarea no tiene zona asignada.');
+    }
+    assertZoneAccess(ctx.requestContext, current.restaurant_id, current.assigned_zone_id);
+  } else {
+    assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
+  }
 
   if (!current.requires_confirmation) {
     throw new Error('TASK_CONFIRMATION_NOT_REQUIRED: Esta tarea no requiere confirmacion.');
@@ -371,7 +405,14 @@ export async function cancelTaskInstance(
 ): Promise<TaskInstanceRecord> {
   const ctx = await getRequiredCurrentUserContext();
   const current = await loadTaskInstance(taskInstanceId);
-  assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
+  if (ctx.requestContext.systemRole === 'area_lead') {
+    if (!current.assigned_zone_id) {
+      throw new Error('FORBIDDEN: La tarea no tiene zona asignada.');
+    }
+    assertZoneAccess(ctx.requestContext, current.restaurant_id, current.assigned_zone_id);
+  } else {
+    assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
+  }
 
   const patch = {
     cancel_reason: reason,
@@ -425,7 +466,14 @@ export async function reassignTaskInstance(
 ): Promise<TaskInstanceRecord> {
   const ctx = await getRequiredCurrentUserContext();
   const current = await loadTaskInstance(input.taskInstanceId);
-  assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
+  if (ctx.requestContext.systemRole === 'area_lead') {
+    if (!current.assigned_zone_id) {
+      throw new Error('FORBIDDEN: La tarea no tiene zona asignada.');
+    }
+    assertZoneAccess(ctx.requestContext, current.restaurant_id, current.assigned_zone_id);
+  } else {
+    assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
+  }
   assertTaskHasResponsible(input);
 
   const patch = {

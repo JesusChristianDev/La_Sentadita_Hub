@@ -34,9 +34,9 @@ type DashboardHeroWidgetViewProps = DashboardHeroWidgetProps & {
 };
 
 export function DashboardHeroWidget({
-  canPickRestaurant,
-  effectiveRestaurantName,
-  hasEffectiveRestaurant,
+  activeScopeLabel,
+  canSelectScope,
+  isGlobalScope,
   userName,
 }: DashboardHeroWidgetProps) {
   const [now, setNow] = useState(() => new Date());
@@ -54,9 +54,9 @@ export function DashboardHeroWidget({
 
   return (
     <DashboardHeroWidgetView
-      canPickRestaurant={canPickRestaurant}
-      effectiveRestaurantName={effectiveRestaurantName}
-      hasEffectiveRestaurant={hasEffectiveRestaurant}
+      activeScopeLabel={activeScopeLabel}
+      canSelectScope={canSelectScope}
+      isGlobalScope={isGlobalScope}
       now={now}
       onRequestWeather={requestWeather}
       userName={userName}
@@ -66,9 +66,9 @@ export function DashboardHeroWidget({
 }
 
 export function DashboardHeroWidgetView({
-  canPickRestaurant,
-  effectiveRestaurantName,
-  hasEffectiveRestaurant,
+  activeScopeLabel,
+  canSelectScope,
+  isGlobalScope,
   now,
   onRequestWeather,
   userName,
@@ -77,15 +77,10 @@ export function DashboardHeroWidgetView({
   const timeBlock = getTimeBlock(now);
   const firstName = getFirstName(userName);
   const greeting = getGreeting(timeBlock);
-  const operationalLabel = getOperationalLabel(
-    canPickRestaurant,
-    hasEffectiveRestaurant,
-    effectiveRestaurantName,
-  );
+  const operationalLabel = getOperationalLabel(activeScopeLabel);
   const operationalPillLabel = getOperationalPillLabel(
-    canPickRestaurant,
-    hasEffectiveRestaurant,
-    effectiveRestaurantName,
+    activeScopeLabel,
+    isGlobalScope,
   );
   const heroMessage = buildHeroMessage({
     operationalLabel,
@@ -93,7 +88,8 @@ export function DashboardHeroWidgetView({
     weather,
   });
   const heroNote = buildSupportingNote({
-    needsRestaurantSelection: canPickRestaurant && !hasEffectiveRestaurant,
+    canSelectScope,
+    isGlobalScope,
     operationalLabel,
     timeBlock,
     weather,

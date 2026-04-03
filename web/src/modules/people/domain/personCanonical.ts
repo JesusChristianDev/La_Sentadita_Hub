@@ -1,4 +1,4 @@
-import type { CanonicalSystemRole } from '@/modules/authz/domain/canonicalCatalog';
+import type { CanonicalSystemRole } from '@/shared/authz';
 
 /**
  * Estado canónico de acceso funcional.

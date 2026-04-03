@@ -31,6 +31,7 @@ export default function PasswordInput({
         autoComplete={autoComplete}
         aria-invalid={ariaInvalid}
         aria-describedby={ariaDescribedBy}
+        suppressHydrationWarning
       />
       <button
         type="button"

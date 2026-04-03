@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { buildFrontendSessionView, type CurrentSession } from '@/modules/auth_users';
-import { can } from '@/modules/authz';
+import { can } from '@/shared/authz';
 
 import type { NotificationRecord, PushDeviceRecord } from '../domain/notificationTypes';
 import { listMyNotifications, listMyPushDevices } from './notificationService';

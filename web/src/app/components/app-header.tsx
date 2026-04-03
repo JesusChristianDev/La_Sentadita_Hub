@@ -4,9 +4,10 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
 
-import type { AppRole } from '@/modules/people';
-import { Button, Select } from '@/shared/ui';
+import type { BackendScopeType } from '@/modules/auth_users';
+import type { SystemRole } from '@/shared/authz';
 
+import { ScopeSelector } from './scope-selector';
 import { ScreenNav } from './screen-nav';
 import { UserAvatar } from './user-avatar';
 
@@ -14,10 +15,12 @@ const MobileHeaderMenu = dynamic(() =>
   import('./mobile-header-menu').then((mod) => mod.MobileHeaderMenu),
 );
 
-type RestaurantOption = {
-  id: string;
-  name: string;
-  is_active: boolean;
+type ScopeOption = {
+  authorityTier: string | null;
+  isDerived: boolean;
+  label: string;
+  scopeId: string | null;
+  scopeType: BackendScopeType;
 };
 
 export type AppHeaderProps = {
@@ -29,14 +32,15 @@ export type AppHeaderProps = {
   canSeeProcurement?: boolean;
   canSeeSchedules: boolean;
   canSeeTasks: boolean;
-  canPickRestaurant?: boolean;
-  restaurants?: RestaurantOption[];
-  effectiveRestaurantId?: string | null;
+  canSelectScope?: boolean;
+  availableScopes?: ScopeOption[];
+  activeScopeId?: string | null;
+  activeScopeType?: BackendScopeType;
   activeScopeLabel?: string;
   isMobileDevice?: boolean;
-  setActiveRestaurantAction?: (formData: FormData) => void;
+  setActiveScopeAction?: (formData: FormData) => void;
   currentUserName?: string | null;
-  currentUserRole?: AppRole | null;
+  currentUserRole?: SystemRole | null;
   currentUserAvatarUrl?: string | null;
 };
 
@@ -49,17 +53,17 @@ export function AppHeader({
   canSeeProcurement = false,
   canSeeSchedules,
   canSeeTasks,
-  canPickRestaurant = false,
-  restaurants = [],
-  effectiveRestaurantId = null,
+  canSelectScope = false,
+  availableScopes = [],
+  activeScopeId = null,
+  activeScopeType = 'self',
   activeScopeLabel = 'Vista global',
   isMobileDevice = false,
-  setActiveRestaurantAction,
+  setActiveScopeAction,
   currentUserName = null,
   currentUserRole = null,
   currentUserAvatarUrl = null,
 }: AppHeaderProps) {
-  const availableRestaurants = restaurants.filter((restaurant) => restaurant.is_active);
   const shortName = currentUserName?.trim() || 'Cuenta';
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
   const desktopMenuId = useId();
@@ -118,11 +122,12 @@ export function AppHeader({
               canSeeProcurement={canSeeProcurement}
               canSeeSchedules={canSeeSchedules}
               canSeeTasks={canSeeTasks}
-              canPickRestaurant={canPickRestaurant}
-              restaurants={availableRestaurants}
-              effectiveRestaurantId={effectiveRestaurantId}
+              canSelectScope={canSelectScope}
+              availableScopes={availableScopes}
+              activeScopeId={activeScopeId}
+              activeScopeType={activeScopeType}
               activeScopeLabel={activeScopeLabel}
-              setActiveRestaurantAction={setActiveRestaurantAction}
+              setActiveScopeAction={setActiveScopeAction}
               currentUserName={currentUserName}
               currentUserRole={currentUserRole}
               currentUserAvatarUrl={currentUserAvatarUrl}
@@ -164,33 +169,17 @@ export function AppHeader({
           </div>
 
           <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3 lg:gap-4">
-            {canPickRestaurant && setActiveRestaurantAction ? (
-              <form
-                action={setActiveRestaurantAction}
+            {canSelectScope && setActiveScopeAction ? (
+              <ScopeSelector
+                action={setActiveScopeAction}
+                activeScopeId={activeScopeId}
+                activeScopeType={activeScopeType}
+                scopes={availableScopes}
+                ariaLabel="Contexto activo"
                 className="flex items-center gap-2 rounded-full border border-border bg-surface/70 p-1.5"
-              >
-                <Select
-                  className="h-10 min-w-[10rem] max-w-[12rem] rounded-full border border-transparent bg-surface-strong px-4 py-0 text-sm lg:max-w-[14rem] xl:max-w-[18rem]"
-                  defaultValue={effectiveRestaurantId ?? ''}
-                  name="restaurantId"
-                  aria-label="Sucursal activa"
-                >
-                  <option value="" disabled>
-                    Sucursal...
-                  </option>
-                  {availableRestaurants.map((restaurant) => (
-                    <option key={restaurant.id} value={restaurant.id}>
-                      {restaurant.name}
-                    </option>
-                  ))}
-                </Select>
-                <Button
-                  className="h-10 rounded-full px-4 py-0 text-sm"
-                  type="submit"
-                >
-                  Aplicar
-                </Button>
-              </form>
+                selectClassName="h-10 min-w-[12rem] max-w-[16rem] rounded-full border border-transparent bg-surface-strong px-4 py-0 text-sm lg:max-w-[18rem] xl:max-w-[22rem]"
+                submitClassName="h-10 rounded-full px-4 py-0 text-sm"
+              />
             ) : null}
 
             <div className="hidden min-w-[11rem] rounded-full border border-border bg-surface/70 px-4 py-2 text-right xl:block">

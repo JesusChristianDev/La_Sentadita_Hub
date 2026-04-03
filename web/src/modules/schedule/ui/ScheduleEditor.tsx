@@ -10,8 +10,8 @@ import {
   useState,
 } from 'react';
 
-import type { SystemRole } from '@/modules/authz';
 import type { EmployeeListItem } from '@/modules/employees';
+import type { SystemRole } from '@/shared/authz';
 import {
   MOBILE_VIEWPORT_MEDIA_QUERY,
 } from '@/shared/responsive';

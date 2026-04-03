@@ -2,8 +2,8 @@
 
 import { type RefObject,useEffect, useMemo, useState } from 'react';
 
-import type { SystemRole } from '@/modules/authz';
 import type { EmployeeListItem } from '@/modules/employees';
+import type { SystemRole } from '@/shared/authz';
 import { Notice } from '@/shared/ui';
 
 import type {

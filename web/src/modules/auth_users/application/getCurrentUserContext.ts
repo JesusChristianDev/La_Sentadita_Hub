@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
 
+import type { PersonProfile } from '@/modules/people';
 import {
   buildRequestContextFromProfile,
   type RequestContext,
-} from '@/modules/authz';
-import type { PersonProfile } from '@/modules/people';
+} from '@/shared/authz';
 
 import type { BackendSession } from '../domain/backendSession';
 import {
@@ -53,6 +53,7 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
     requestContext: buildRequestContextFromProfile(
       person,
       backendSession.effectiveRestaurantId,
+      backendSession.activeScope,
     ),
     userId: backendSession.userId,
   });

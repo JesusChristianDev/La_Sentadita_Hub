@@ -26,6 +26,12 @@ export type FrontendCapabilities = {
     canSelectRestaurant: boolean;
     canSelectScope: boolean;
     hasEffectiveRestaurant: boolean;
+    isChainScope: boolean;
+    isCompanyScope: boolean;
+    isGlobalScope: boolean;
+    isRestaurantScope: boolean;
+    isSelfScope: boolean;
+    isZoneScope: boolean;
   };
   employees: {
     create: boolean;

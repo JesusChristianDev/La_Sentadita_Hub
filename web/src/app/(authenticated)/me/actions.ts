@@ -2,13 +2,13 @@
 
 import { redirect } from 'next/navigation';
 
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   updatePersonIdentity,
   validateEmailChangeInput,
   validatePasswordChangeInput,
 } from '@/modules/people';
 import { mePathWithError, mePathWithSuccess } from '@/shared/feedbackMessages';
-import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 async function requireAuthenticatedUser(): Promise<{
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;

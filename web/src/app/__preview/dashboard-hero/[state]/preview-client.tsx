@@ -73,9 +73,9 @@ export function DashboardHeroPreviewPage({
       </section>
 
       <DashboardHeroWidgetView
-        canPickRestaurant={false}
-        effectiveRestaurantName="Madrid - Paseo de la Habana"
-        hasEffectiveRestaurant={true}
+        activeScopeLabel="Madrid - Paseo de la Habana"
+        canSelectScope={true}
+        isGlobalScope={false}
         now={previewDate}
         onRequestWeather={() => {}}
         userName="Jesus Christian"

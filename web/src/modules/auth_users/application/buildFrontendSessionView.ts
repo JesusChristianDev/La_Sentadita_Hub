@@ -1,10 +1,11 @@
-import { type AuthzAction,can } from '@/modules/authz';
+import { type AuthzAction, can } from '@/shared/authz';
 
 import type {
   FrontendCapabilities,
   FrontendSessionView,
 } from '../domain/frontendSession';
 import type { CurrentSession } from './getCurrentUserContext';
+import { resolveScopeUiState } from './resolveScopeUiState';
 
 const ACTIONS = {
   employeesCreate: 'employees.create',
@@ -59,12 +60,19 @@ function buildCapabilities(ctx: CurrentSession): FrontendCapabilities {
   const schedulesView = can(ctx.requestContext, ACTIONS.scheduleView);
   const tasksView = can(ctx.requestContext, ACTIONS.tasksView);
   const requestsView = can(ctx.requestContext, ACTIONS.requestsView);
+  const scopeUiState = resolveScopeUiState(ctx.backendSession.activeScope.scopeType);
 
   return {
     context: {
       canSelectRestaurant,
       canSelectScope: ctx.backendSession.availableScopes.length > 1,
       hasEffectiveRestaurant: Boolean(ctx.backendSession.effectiveRestaurantId),
+      isChainScope: scopeUiState.isChainScope,
+      isCompanyScope: scopeUiState.isCompanyScope,
+      isGlobalScope: scopeUiState.isGlobalScope,
+      isRestaurantScope: scopeUiState.isRestaurantScope,
+      isSelfScope: scopeUiState.isSelfScope,
+      isZoneScope: scopeUiState.isZoneScope,
     },
     employees: {
       create: can(ctx.requestContext, ACTIONS.employeesCreate),

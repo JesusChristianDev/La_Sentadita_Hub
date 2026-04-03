@@ -1,8 +1,8 @@
 import 'server-only';
 
 import type { CurrentSession } from '@/modules/auth_users';
-import { can, deriveSystemRole } from '@/modules/authz';
 import type { EditableEmploymentSystemRole } from '@/modules/employment';
+import { can, deriveSystemRole } from '@/shared/authz';
 import { loadEmployeeDetailPageProjection, loadRestaurantZonesMap } from '@/shared/db/employment';
 import { roleLabel } from '@/shared/roleLabel';
 

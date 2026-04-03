@@ -8,7 +8,12 @@ import { listMyRequests, listRestaurantRequests } from './requestService';
 export type RequestsPageViewModel = {
   currentEmploymentId: string | null;
   currentRestaurantId: string | null;
-  mode: 'forbidden' | 'context_required' | 'self_service' | 'team_workspace';
+  mode:
+    | 'forbidden'
+    | 'context_required'
+    | 'self_service'
+    | 'team_workspace'
+    | 'team_scope_overview';
   myRequests: RequestRecord[];
   teamRequests: RequestRecord[];
 };
@@ -43,6 +48,16 @@ export async function buildRequestsPageViewModel(
   }
 
   if (!currentRestaurantId) {
+    if (frontendSession.capabilities.context.isGlobalScope) {
+      return {
+        currentEmploymentId,
+        currentRestaurantId: null,
+        mode: 'team_scope_overview',
+        myRequests,
+        teamRequests: [],
+      };
+    }
+
     return {
       currentEmploymentId,
       currentRestaurantId: null,

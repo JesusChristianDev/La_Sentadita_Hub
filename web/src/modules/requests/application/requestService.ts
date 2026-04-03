@@ -1,15 +1,17 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { AUDIT_ACTIONS, writeAuditLog } from '@/modules/audit';
 import { getCurrentUserContext } from '@/modules/auth_users';
+import { notifyPeople, notifyPerson } from '@/modules/notifications';
 import {
+  assertRestaurantAccess,
   assertRestaurantManagement,
+  assertZoneAccess,
   coerceSystemRole,
   deriveResponsibilityLevel,
-} from '@/modules/authz';
-import type { SystemRole } from '@/modules/authz/domain/systemRoles';
-import { notifyPeople, notifyPerson } from '@/modules/notifications';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
+  type SystemRole,
+} from '@/shared/authz';
 
 import type {
   CreateRequestInput,
@@ -26,6 +28,7 @@ type EmploymentSnapshot = {
   job_title: string | null;
   person_id: string;
   restaurant_id: string | null;
+  zone_id: string | null;
   system_role: SystemRole;
   valid_from: string;
   valid_to: string | null;
@@ -117,10 +120,25 @@ async function loadEmploymentSnapshot(
     throw new Error(`Failed to load employment restaurant assignment: ${assignmentError.message}`);
   }
 
+  const { data: zoneAssignment, error: zoneError } = await admin
+    .from('employment_zone_assignments')
+    .select('employment_id, zone_id, valid_from, valid_to')
+    .eq('employment_id', employmentId)
+    .lte('valid_from', anchorDate)
+    .or(`valid_to.is.null,valid_to.gte.${anchorDate}`)
+    .order('valid_from', { ascending: false })
+    .maybeSingle();
+
+  if (zoneError && zoneError.code !== 'PGRST116') {
+    throw new Error(`Failed to load employment zone assignment: ${zoneError.message}`);
+  }
+
   return {
     ...(data as Omit<EmploymentSnapshot, 'restaurant_id' | 'system_role'>),
     restaurant_id:
       ((restaurantAssignment ?? null) as RestaurantAssignmentSnapshot | null)?.restaurant_id ?? null,
+    zone_id:
+      ((zoneAssignment ?? null) as { zone_id: string | null } | null)?.zone_id ?? null,
     system_role: coerceSystemRole(person.system_role as string),
   };
 }
@@ -209,6 +227,39 @@ async function listRestaurantAssignmentsForEmployments(
   return assignmentsByEmploymentId;
 }
 
+async function listZoneAssignmentsForEmployments(
+  employmentIds: string[],
+  zoneId: string,
+): Promise<Map<string, Array<{ valid_from: string; valid_to: string | null }>>> {
+  if (employmentIds.length === 0) return new Map();
+
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from('employment_zone_assignments')
+    .select('employment_id, valid_from, valid_to')
+    .in('employment_id', employmentIds)
+    .eq('zone_id', zoneId);
+
+  if (error) {
+    throw new Error(`Failed to load zone assignments: ${error.message}`);
+  }
+
+  const rows = (data ?? []) as Array<{
+    employment_id: string;
+    valid_from: string;
+    valid_to: string | null;
+  }>;
+
+  const assignmentsByEmploymentId = new Map<string, Array<{ valid_from: string; valid_to: string | null }>>();
+  for (const row of rows) {
+    const current = assignmentsByEmploymentId.get(row.employment_id) ?? [];
+    current.push({ valid_from: row.valid_from, valid_to: row.valid_to });
+    assignmentsByEmploymentId.set(row.employment_id, current);
+  }
+
+  return assignmentsByEmploymentId;
+}
+
 export async function listMyRequests(): Promise<RequestRecord[]> {
   const ctx = await getRequiredCurrentUserContext();
   const admin = createSupabaseAdminClient();
@@ -231,7 +282,17 @@ export async function listRestaurantRequests(
   restaurantId: string,
 ): Promise<RequestRecord[]> {
   const ctx = await getRequiredCurrentUserContext();
-  assertRestaurantManagement(ctx.requestContext, restaurantId);
+  const isAreaLead = ctx.requestContext.systemRole === 'area_lead';
+  if (isAreaLead) {
+    if (!ctx.requestContext.zoneId) {
+      throw new Error('FORBIDDEN: area_lead requiere zone activa.');
+    }
+    // El manejo es por zona para area_lead, pero el recurso principal sigue siendo el restaurante.
+    assertRestaurantAccess(ctx.requestContext, restaurantId);
+    assertZoneAccess(ctx.requestContext, restaurantId, ctx.requestContext.zoneId);
+  } else {
+    assertRestaurantManagement(ctx.requestContext, restaurantId);
+  }
 
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
@@ -251,13 +312,31 @@ export async function listRestaurantRequests(
     restaurantId,
   );
 
+  const zoneAssignmentsByEmploymentId = isAreaLead
+    ? await listZoneAssignmentsForEmployments(
+        [...new Set(requests.map((request) => request.employment_id))],
+        ctx.requestContext.zoneId as string,
+      )
+    : new Map<string, Array<{ valid_from: string; valid_to: string | null }>>();
+
   return requests.filter((request) => {
     const anchorDate = getRequestAnchorDate(request);
     const assignments = assignmentsByEmploymentId.get(request.employment_id) ?? [];
+    const zoneAssignments = zoneAssignmentsByEmploymentId.get(request.employment_id) ?? [];
 
-    return assignments.some((assignment) =>
+    const inRestaurant = assignments.some((assignment) =>
       isDateWithinRange(anchorDate, assignment.valid_from, assignment.valid_to),
     );
+
+    if (!inRestaurant) return false;
+
+    if (isAreaLead) {
+      return zoneAssignments.some((assignment) =>
+        isDateWithinRange(anchorDate, assignment.valid_from, assignment.valid_to),
+      );
+    }
+
+    return true;
   });
 }
 
@@ -271,7 +350,15 @@ export async function createRequest(input: CreateRequestInput): Promise<RequestR
   }
 
   if (ctx.userId !== employment.person_id) {
-    assertRestaurantManagement(ctx.requestContext, employment.restaurant_id);
+    if (ctx.requestContext.systemRole === 'area_lead') {
+      if (!employment.zone_id) {
+        throw new Error('FORBIDDEN: El empleo no tiene zona asignada en esa fecha.');
+      }
+      assertRestaurantAccess(ctx.requestContext, employment.restaurant_id);
+      assertZoneAccess(ctx.requestContext, employment.restaurant_id, employment.zone_id);
+    } else {
+      assertRestaurantManagement(ctx.requestContext, employment.restaurant_id);
+    }
   }
 
   const admin = createSupabaseAdminClient();
@@ -347,9 +434,18 @@ export async function reviewRequest(input: ReviewRequestInput): Promise<RequestR
   const employment = await loadEmploymentSnapshot(current.employment_id as string, anchorDate);
 
   if (!employment.restaurant_id) {
-    throw new Error('REQUEST_EMPLOYMENT_RESTAURANT_NOT_FOUND: La solicitud ya no tiene un restaurante operativo resoluble.');
+    throw new Error(
+      'REQUEST_EMPLOYMENT_RESTAURANT_NOT_FOUND: La solicitud ya no tiene un restaurante operativo resoluble.',
+    );
   }
-  assertRestaurantManagement(ctx.requestContext, employment.restaurant_id);
+  if (ctx.requestContext.systemRole === 'area_lead') {
+    if (!employment.zone_id) {
+      throw new Error('FORBIDDEN: La solicitud no tiene zona asignada resoluble para este empleo.');
+    }
+    assertZoneAccess(ctx.requestContext, employment.restaurant_id, employment.zone_id);
+  } else {
+    assertRestaurantManagement(ctx.requestContext, employment.restaurant_id);
+  }
 
   if (current.requested_by === ctx.userId) {
     throw new Error('REQUEST_SELF_APPROVAL_FORBIDDEN: No puedes autorizar tu propia solicitud.');

@@ -1,4 +1,4 @@
-import type { AppRole, PersonProfile } from '@/modules/people';
+import type { PersonProfile } from '@/modules/people';
 
 import {
   deriveResponsibilityLevel,
@@ -37,10 +37,10 @@ export type UserContextLike = {
 };
 
 export type ActorLike =
-  | AppRole
+  | SystemRole
   | UserContextLike
   | RequestContext
-  | Pick<PersonProfile, 'id' | 'restaurant_id' | 'role' | 'system_role' | 'zone_id'>;
+  | Pick<PersonProfile, 'id' | 'restaurant_id' | 'system_role' | 'zone_id'>;
 
 export function deriveSystemRole(profile: PersonProfile): SystemRole {
   return coerceSystemRole(profile.system_role);
@@ -55,51 +55,109 @@ export function deriveScopeType(profile: PersonProfile, systemRole: SystemRole):
   return 'self';
 }
 
+function buildDefaultActiveScope(
+  profile: PersonProfile,
+  systemRole: SystemRole,
+  effectiveRestaurantId: string | null,
+): ActiveScope {
+  if (systemRole === 'admin' || systemRole === 'owner' || systemRole === 'office') {
+    return { scopeId: null, scopeType: 'organization' };
+  }
+
+  if (systemRole === 'manager') {
+    return {
+      scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null,
+      scopeType: 'restaurant',
+    };
+  }
+
+  if (systemRole === 'area_lead') {
+    return {
+      scopeId: profile.zone_id ?? null,
+      scopeType: 'zone',
+    };
+  }
+
+  return { scopeId: profile.id, scopeType: 'self' };
+}
+
 export function deriveActiveScopes(
   profile: PersonProfile,
   systemRole: SystemRole,
   effectiveRestaurantId: string | null,
+  activeScope: ActiveScope,
 ): ActiveScope[] {
+  const scopes: ActiveScope[] = [];
+  const pushScope = (scope: ActiveScope) => {
+    if (
+      scopes.some(
+        (current) =>
+          current.scopeType === scope.scopeType && current.scopeId === scope.scopeId,
+      )
+    ) {
+      return;
+    }
+
+    scopes.push(scope);
+  };
+
+  pushScope(activeScope);
+
   if (systemRole === 'admin' || systemRole === 'owner' || systemRole === 'office') {
-    return [
-      { scopeId: null, scopeType: 'organization' },
-      ...(effectiveRestaurantId
-        ? [{ scopeId: effectiveRestaurantId, scopeType: 'restaurant' as const }]
-        : []),
-    ];
+    if (
+      activeScope.scopeType !== 'organization' &&
+      activeScope.scopeType !== 'chain' &&
+      activeScope.scopeType !== 'company' &&
+      activeScope.scopeType !== 'restaurant' &&
+      activeScope.scopeType !== 'self'
+    ) {
+      pushScope({ scopeId: null, scopeType: 'organization' });
+    }
+
+    if (effectiveRestaurantId) {
+      pushScope({ scopeId: effectiveRestaurantId, scopeType: 'restaurant' });
+    }
+
+    return scopes;
   }
 
   if (systemRole === 'manager') {
-    return [
-      {
-        scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null,
-        scopeType: 'restaurant',
-      },
-    ];
+    pushScope({
+      scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null,
+      scopeType: 'restaurant',
+    });
+    return scopes;
   }
 
   if (systemRole === 'area_lead') {
-    return [
-      {
-        scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null,
-        scopeType: 'restaurant',
-      },
-      { scopeId: profile.zone_id ?? null, scopeType: 'zone' },
-    ];
+    pushScope({
+      scopeId: effectiveRestaurantId ?? profile.restaurant_id ?? null,
+      scopeType: 'restaurant',
+    });
+    pushScope({ scopeId: profile.zone_id ?? null, scopeType: 'zone' });
+    return scopes;
   }
 
-  return [{ scopeId: profile.id, scopeType: 'self' }];
+  return scopes;
 }
 
 export function buildRequestContextFromProfile(
   profile: PersonProfile,
   effectiveRestaurantId: string | null = profile.restaurant_id ?? null,
+  activeScope?: ActiveScope,
 ): RequestContext {
   const systemRole = deriveSystemRole(profile);
-  const scopeType = deriveScopeType(profile, systemRole);
+  const resolvedActiveScope =
+    activeScope ?? buildDefaultActiveScope(profile, systemRole, effectiveRestaurantId);
+  const scopeType = resolvedActiveScope.scopeType;
 
   return {
-    activeScopes: deriveActiveScopes(profile, systemRole, effectiveRestaurantId),
+    activeScopes: deriveActiveScopes(
+      profile,
+      systemRole,
+      effectiveRestaurantId,
+      resolvedActiveScope,
+    ),
     chainId: profile.chain_id ?? null,
     effectiveRestaurantId,
     now: new Date(),
@@ -118,10 +176,12 @@ export function buildRequestContextFromProfile(
 export function buildRequestContextFromUserContext(
   userContext: UserContextLike,
   effectiveRestaurantId: string | null = userContext.profile.restaurant_id ?? null,
+  activeScope?: ActiveScope,
 ): RequestContext {
   return buildRequestContextFromProfile(
     userContext.profile,
     effectiveRestaurantId,
+    activeScope,
   );
 }
 

@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import {
   buildFrontendSessionView,
   type CurrentSession,
@@ -8,7 +9,6 @@ import type { EmploymentStatusFilter } from '@/modules/employment';
 import type { RestaurantZoneSummary } from '@/modules/employment/infrastructure/employmentRepository';
 import { loadEmployeesPageProjection } from '@/shared/db/employment';
 import { roleLabel } from '@/shared/roleLabel';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 type EmployeeRoleOption = {
   description: string;
@@ -34,7 +34,12 @@ export type EmployeesListPageViewModel = {
   filters: {
     currentStatus: EmploymentStatusFilter;
   };
-  mode: 'context_required' | 'forbidden' | 'ready';
+  mode:
+    | 'forbidden'
+    | 'context_required'
+    | 'organization_overview'
+    | 'company_overview'
+    | 'ready';
   rows: Array<{
     avatarUrl: string | null;
     fullName: string;
@@ -117,7 +122,7 @@ export async function buildEmployeesPageViewModel(
   if (!frontendSession.capabilities.employees.view) {
     return {
       context: {
-        canChangeContext: frontendSession.capabilities.context.canSelectRestaurant,
+        canChangeContext: frontendSession.capabilities.context.canSelectScope,
         restaurantId: frontendSession.effectiveRestaurantId,
       },
       createForm: null,
@@ -129,9 +134,29 @@ export async function buildEmployeesPageViewModel(
   }
 
   if (!frontendSession.effectiveRestaurantId) {
+    if (frontendSession.capabilities.context.isGlobalScope) {
+      return {
+        context: {
+          canChangeContext: frontendSession.capabilities.context.canSelectScope,
+          restaurantId: null,
+        },
+        createForm: null,
+        emptyState: {
+          description:
+            'Vista agregada por organizacion/empresa aun sin datos. Selecciona un restaurante si necesitas bajar al detalle.',
+          title: 'Vista global de empleados',
+        },
+        filters: { currentStatus: status },
+        mode: frontendSession.capabilities.context.isCompanyScope
+          ? 'company_overview'
+          : 'organization_overview',
+        rows: [],
+      };
+    }
+
     return {
       context: {
-        canChangeContext: frontendSession.capabilities.context.canSelectRestaurant,
+        canChangeContext: frontendSession.capabilities.context.canSelectScope,
         restaurantId: null,
       },
       createForm: null,

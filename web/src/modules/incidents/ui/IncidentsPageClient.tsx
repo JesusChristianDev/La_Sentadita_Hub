@@ -135,7 +135,7 @@ function IncidentStatusButtons({
               startTransition(async () => {
                 const result = await updateIncidentStatusAction(formData);
                 if (!result.ok) {
-                  window.alert(result.error);
+                  console.error('Failed to update incident status', result.error);
                   return;
                 }
 

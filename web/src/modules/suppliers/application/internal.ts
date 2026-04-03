@@ -2,11 +2,11 @@ import 'server-only';
 
 import type { ZodType } from 'zod';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { AuditAction, AuditJsonValue, AuditScopeType } from '@/modules/audit';
 import { AUDIT_ACTIONS, writeAuditLog } from '@/modules/audit';
 import { getCurrentUserContext } from '@/modules/auth_users';
-import { assertRestaurantAccess, canManageRestaurant, isGlobalSystemRole, type RequestContext } from '@/modules/authz';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
+import { assertRestaurantAccess, canManageRestaurant, isGlobalSystemRole, type RequestContext } from '@/shared/authz';
 
 import { type CreateDeliveryNoteLineInput, type DeliveryNote, type DeliveryNoteLine, deliveryNoteLineSchema, deliveryNoteSchema, type DeliveryNoteStatus } from '../domain/deliveryNoteTypes';
 import { type Product,productSchema } from '../domain/productTypes';

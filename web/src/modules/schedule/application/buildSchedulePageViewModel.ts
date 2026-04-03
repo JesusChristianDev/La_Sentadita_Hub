@@ -8,7 +8,7 @@ import { loadEmployeeScheduleWeekAction, loadScheduleHomeAction } from './server
 export type SchedulePageViewModel = {
   initialEmployeeWeek: EmployeeScheduleWeekView | null;
   initialHome: ScheduleHomePayload | null;
-  mode: 'context_required' | 'employee_view' | 'forbidden' | 'workspace';
+  mode: 'context_required' | 'employee_view' | 'forbidden' | 'workspace' | 'global_overview';
 };
 
 export async function buildSchedulePageViewModel(
@@ -25,6 +25,13 @@ export async function buildSchedulePageViewModel(
   }
 
   if (!frontendSession.effectiveRestaurantId) {
+    if (frontendSession.capabilities.context.isGlobalScope) {
+      return {
+        initialEmployeeWeek: null,
+        initialHome: null,
+        mode: 'global_overview',
+      };
+    }
     return {
       initialEmployeeWeek: null,
       initialHome: null,

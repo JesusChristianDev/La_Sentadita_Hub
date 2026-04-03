@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "gemini-api-docs": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "mcpdoc",
+        "mcpdoc",
+        "--urls",
+        "GeminiApiDocs:https://ai.google.dev/gemini-api/docs/llms.txt",
+        "--transport",
+        "stdio"
+      ]
+    }
+  }
+}

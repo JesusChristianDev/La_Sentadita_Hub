@@ -3,7 +3,6 @@
 import {
   LogOut,
   Menu,
-  Store,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -11,19 +10,23 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import type { AppRole } from '@/modules/people';
+import type { BackendScopeType } from '@/modules/auth_users';
+import type { SystemRole } from '@/shared/authz';
 import { roleLabel } from '@/shared/roleLabel';
-import { Button, Select } from '@/shared/ui';
 
 import {
   buildAppNavigationItems,
   isAppNavigationItemActive,
 } from './app-navigation';
+import { ScopeSelector } from './scope-selector';
 import { UserAvatar } from './user-avatar';
 
-type RestaurantOption = {
-  id: string;
-  name: string;
+type ScopeOption = {
+  authorityTier: string | null;
+  isDerived: boolean;
+  label: string;
+  scopeId: string | null;
+  scopeType: BackendScopeType;
 };
 
 type Props = {
@@ -35,13 +38,14 @@ type Props = {
   canSeeProcurement?: boolean;
   canSeeSchedules: boolean;
   canSeeTasks?: boolean;
-  canPickRestaurant?: boolean;
-  restaurants?: RestaurantOption[];
-  effectiveRestaurantId?: string | null;
+  canSelectScope?: boolean;
+  availableScopes?: ScopeOption[];
+  activeScopeId?: string | null;
+  activeScopeType?: BackendScopeType;
   activeScopeLabel?: string;
-  setActiveRestaurantAction?: (formData: FormData) => void;
+  setActiveScopeAction?: (formData: FormData) => void;
   currentUserName?: string | null;
-  currentUserRole?: AppRole | null;
+  currentUserRole?: SystemRole | null;
   currentUserAvatarUrl?: string | null;
 };
 
@@ -54,11 +58,12 @@ export function MobileHeaderMenu({
   canSeeProcurement = false,
   canSeeSchedules,
   canSeeTasks = false,
-  canPickRestaurant = false,
-  restaurants = [],
-  effectiveRestaurantId = null,
+  canSelectScope = false,
+  availableScopes = [],
+  activeScopeId = null,
+  activeScopeType = 'self',
   activeScopeLabel = 'Vista global',
-  setActiveRestaurantAction,
+  setActiveScopeAction,
   currentUserName = null,
   currentUserRole = null,
   currentUserAvatarUrl = null,
@@ -269,44 +274,27 @@ export function MobileHeaderMenu({
                     })}
                   </nav>
 
-                  {canPickRestaurant && setActiveRestaurantAction ? (
-                    <form
-                      action={setActiveRestaurantAction}
-                      className="mt-6 grid gap-3 rounded-[1.75rem] border border-border/70 bg-surface/70 p-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent/14 text-accent-strong">
-                          <Store className="h-5 w-5" />
-                        </span>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">Sucursal activa</p>
-                          <p className="text-xs text-muted">
-                            Cambia el contexto del restaurante.
-                          </p>
-                        </div>
+                  {canSelectScope && setActiveScopeAction ? (
+                    <div className="mt-6 grid gap-3 rounded-[1.75rem] border border-border/70 bg-surface/70 p-4">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Contexto activo</p>
+                        <p className="text-xs text-muted">
+                          Cambia entre organizacion, empresa, restaurante o perfil.
+                        </p>
                       </div>
 
-                      <Select
-                        id="mobile-restaurant-select"
-                        className="min-h-11 rounded-2xl bg-surface-strong"
-                        defaultValue={effectiveRestaurantId ?? ''}
-                        name="restaurantId"
-                        aria-label="Sucursal activa"
-                      >
-                        <option value="" disabled>
-                          Selecciona sucursal...
-                        </option>
-                        {restaurants.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </Select>
-
-                      <Button className="w-full rounded-2xl" type="submit">
-                        Aplicar sucursal
-                      </Button>
-                    </form>
+                      <ScopeSelector
+                        action={setActiveScopeAction}
+                        activeScopeId={activeScopeId}
+                        activeScopeType={activeScopeType}
+                        scopes={availableScopes}
+                        ariaLabel="Contexto activo"
+                        buttonLabel="Aplicar contexto"
+                        className="grid gap-3"
+                        selectClassName="min-h-11 rounded-2xl bg-surface-strong"
+                        submitClassName="w-full rounded-2xl"
+                      />
+                    </div>
                   ) : null}
 
                   <div className="mt-4 rounded-[1.6rem] border border-white/8 bg-white/[0.04] px-4 py-3">

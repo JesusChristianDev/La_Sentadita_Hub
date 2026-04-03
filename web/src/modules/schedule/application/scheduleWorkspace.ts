@@ -6,7 +6,7 @@ import {
   canReviewSchedules,
   getScheduleRequestContext,
   hasRestaurantWideScheduleAccess,
-} from '@/shared/schedulePolicy';
+} from '@/shared/authz/schedulePolicy';
 
 import type {
   DayType,

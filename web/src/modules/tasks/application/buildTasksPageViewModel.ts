@@ -10,7 +10,7 @@ export type TasksPageViewModel = {
   initialTasks: TaskInstanceRecord[];
   mode: Extract<
     FrontendPageMode,
-    'context_required' | 'forbidden' | 'restaurant_workspace' | 'self_service' | 'zone_workspace'
+    'context_required' | 'forbidden' | 'restaurant_workspace' | 'self_service' | 'zone_workspace' | 'global_overview'
   >;
   restaurantId: string | null;
 };
@@ -23,6 +23,9 @@ function resolveMode(session: CurrentSession): TasksPageViewModel['mode'] {
   }
 
   if (!frontendSession.effectiveRestaurantId) {
+    if (frontendSession.capabilities.context.isGlobalScope) {
+      return 'global_overview';
+    }
     return 'context_required';
   }
 
@@ -49,6 +52,18 @@ export async function buildTasksPageViewModel(
       initialTasks: [],
       mode,
       restaurantId: frontendSession.effectiveRestaurantId,
+    };
+  }
+
+  if (mode === 'global_overview') {
+    // La vista agregada no está implementada y, además, crear tarea es
+    // una acción restaurant-bound: no habilitamos el CTA hasta que exista
+    // un restaurante efectivo.
+    return {
+      canManage: false,
+      initialTasks: [],
+      mode,
+      restaurantId: null,
     };
   }
 

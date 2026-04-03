@@ -6,7 +6,13 @@ export type SystemRole =
   | 'area_lead'
   | 'employee';
 
-export type ScopeType = 'organization' | 'company' | 'restaurant' | 'zone' | 'self';
+export type ScopeType =
+  | 'organization'
+  | 'chain'
+  | 'company'
+  | 'restaurant'
+  | 'zone'
+  | 'self';
 
 export const SYSTEM_ROLES: SystemRole[] = [
   'admin',

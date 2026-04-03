@@ -1,4 +1,4 @@
-import type { SystemRole } from '@/modules/authz';
+import type { SystemRole } from '@/shared/authz';
 
 import type { PersonProfile } from './personProfile';
 

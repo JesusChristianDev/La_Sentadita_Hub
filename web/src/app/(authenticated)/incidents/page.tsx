@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 
 import { getCurrentUserContext } from '@/modules/auth_users';
-import { can } from '@/modules/authz';
 import { buildIncidentsPageViewModel } from '@/modules/incidents/application/buildIncidentsPageViewModel';
 import { IncidentsPageClient } from '@/modules/incidents/ui/IncidentsPageClient';
+import { can } from '@/shared/authz';
 import { RestaurantContextEmptyState } from '@/shared/ui';
 
 export const metadata = {
@@ -20,7 +20,13 @@ export default async function IncidentsPage() {
     redirect('/app');
   }
 
-  if (viewModel.mode === 'context_required' || !viewModel.currentRestaurantId) {
+  const isGlobalOverview = viewModel.mode === 'global_overview';
+
+  if (
+    viewModel.mode === 'context_required' ||
+    viewModel.mode === 'global_overview' ||
+    !viewModel.currentRestaurantId
+  ) {
     return (
       <main className="app-shell stack rise-in">
         <section className="page-intro">
@@ -30,10 +36,18 @@ export default async function IncidentsPage() {
           </div>
         </section>
 
-        <RestaurantContextEmptyState
-          canPickRestaurant={can(ctx.requestContext, 'restaurant_context.select')}
-          moduleLabel="Incidencias"
-        />
+        {isGlobalOverview ? (
+          <p className="panel-subtitle mt-4 text-sm text-muted">
+            Estás en un scope global (organizacion/empresa). La vista agregada de incidencias aun no
+            esta implementada, pero ya no es necesario forzar una sucursal solo para entrar en la
+            pantalla.
+          </p>
+        ) : (
+          <RestaurantContextEmptyState
+            canPickRestaurant={can(ctx.requestContext, 'restaurant_context.select')}
+            moduleLabel="Incidencias"
+          />
+        )}
       </main>
     );
   }

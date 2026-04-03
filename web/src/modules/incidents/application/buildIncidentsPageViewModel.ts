@@ -1,9 +1,9 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { buildFrontendSessionView, type CurrentSession } from '@/modules/auth_users';
-import { can } from '@/modules/authz';
+import { can } from '@/shared/authz';
 import { loadEmployeesPageProjection } from '@/shared/db/employment';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 import type { IncidentRecord } from '../domain/incidentTypes';
 import { listVisibleIncidents } from './incidentService';
@@ -25,7 +25,13 @@ export type IncidentsPageViewModel = {
   currentRestaurantId: string | null;
   currentRestaurantName: string | null;
   incidents: IncidentRecord[];
-  mode: 'context_required' | 'forbidden' | 'restaurant_workspace' | 'self_service' | 'zone_workspace';
+  mode:
+    | 'context_required'
+    | 'forbidden'
+    | 'restaurant_workspace'
+    | 'self_service'
+    | 'zone_workspace'
+    | 'global_overview';
   ownerOptions: IncidentOwnerOption[];
   zones: IncidentZone[];
 };
@@ -70,6 +76,19 @@ export async function buildIncidentsPageViewModel(
       ?.name ?? null;
 
   if (!currentRestaurantId) {
+    if (frontendSession.capabilities.context.isGlobalScope) {
+      return {
+        canCreate: false,
+        canManage: false,
+        currentRestaurantId: null,
+        currentRestaurantName: null,
+        incidents: [],
+        mode: 'global_overview',
+        ownerOptions: [],
+        zones: [],
+      };
+    }
+
     return {
       canCreate: false,
       canManage: false,

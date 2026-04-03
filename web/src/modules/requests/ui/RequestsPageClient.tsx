@@ -16,7 +16,7 @@ import { RequestCreateDialog } from './RequestCreateDialog';
 type RequestsPageClientProps = {
   currentEmploymentId: string;
   initialRequests: RequestRecord[];
-  mode: 'context_required' | 'self_service' | 'team_workspace';
+  mode: 'context_required' | 'self_service' | 'team_workspace' | 'team_scope_overview';
   teamRequests?: RequestRecord[];
 };
 
@@ -48,6 +48,7 @@ function translateType(type: string) {
 
 function ReviewButtons({ requestId }: { requestId: string }) {
   const [isPending, startTransition] = useTransition();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleReview = (status: 'approved' | 'rejected') => {
     startTransition(async () => {
@@ -55,7 +56,7 @@ function ReviewButtons({ requestId }: { requestId: string }) {
         await reviewRequestAction({ requestId, status });
       } catch (error) {
         console.error('Error reviewing request:', error);
-        alert('Error al revisar la solicitud');
+        setErrorMsg('Error al revisar la solicitud');
       }
     });
   };
@@ -76,6 +77,9 @@ function ReviewButtons({ requestId }: { requestId: string }) {
       >
         Rechazar
       </button>
+      {errorMsg ? (
+        <span className="text-xs text-red-400">{errorMsg}</span>
+      ) : null}
     </div>
   );
 }
@@ -91,9 +95,9 @@ export function RequestsPageClient({
   const [activeTab, setActiveTab] = useState<'my' | 'team'>('my');
 
   const canManageTeam =
-    mode === 'team_workspace' || mode === 'context_required';
+    mode === 'team_workspace' || mode === 'context_required' || mode === 'team_scope_overview';
   const canReviewTeam = mode === 'team_workspace';
-  const isTeamTabDisabled = mode === 'context_required';
+  const isTeamTabDisabled = mode === 'context_required' || mode === 'team_scope_overview';
 
   const columns = [
     columnHelper.accessor('status', {
@@ -176,6 +180,17 @@ export function RequestsPageClient({
         </div>
       ) : null}
 
+      {mode === 'team_scope_overview' ? (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            Estas en un scope global (organizacion/empresa). La vista agregada de equipo aun no
+            muestra datos consolidados, pero puedes gestionar tus propias solicitudes sin elegir
+            un restaurante concreto.
+          </p>
+        </div>
+      ) : null}
+
       {canManageTeam ? (
         <div className="border-b border-border/50 pb-px">
           <div className="flex gap-4">
@@ -236,7 +251,7 @@ export function RequestsPageClient({
                 <tr>
                   <td colSpan={columns.length} className="py-8 text-center text-muted">
                     {activeTab === 'team' && isTeamTabDisabled
-                      ? 'Activa una sucursal para revisar solicitudes del equipo.'
+                      ? 'La vista de equipo requiere un restaurante o zona especifica. Cambia el scope si necesitas mas detalle.'
                       : 'No hay solicitudes registradas.'}
                   </td>
                 </tr>

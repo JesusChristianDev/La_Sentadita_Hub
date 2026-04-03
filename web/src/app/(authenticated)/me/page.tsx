@@ -8,6 +8,7 @@ import {
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { buildMePageViewModel, getCurrentUserContext } from '@/modules/auth_users';
 import {
   getProfileErrorMessage,
@@ -15,7 +16,6 @@ import {
   type ProfileErrorCode,
   type ProfileSuccessCode,
 } from '@/shared/feedbackMessages';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 import { UserAvatar } from '../../components/user-avatar';
 import { changeAvatarAction, changeEmailAction, changePasswordAction } from './actions';

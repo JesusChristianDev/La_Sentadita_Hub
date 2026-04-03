@@ -1,6 +1,6 @@
 import type { SystemRole } from './systemRoles';
 
-export type ResponsibilityLevel = 0 | 10 | 20 | 40 | 45 | 48 | 50;
+export type ResponsibilityLevel = 10 | 20 | 40 | 45 | 48 | 50;
 
 const RESPONSIBILITY_LEVEL_BY_ROLE: Record<SystemRole, ResponsibilityLevel> = {
   admin: 50,

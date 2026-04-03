@@ -71,7 +71,7 @@ function NotificationReadButton({ notificationId }: { notificationId: string }) 
         startTransition(async () => {
           const result = await markNotificationReadAction(notificationId);
           if (!result.ok) {
-            window.alert(result.error);
+            console.error('Failed to mark notification as read', result.error);
             return;
           }
 

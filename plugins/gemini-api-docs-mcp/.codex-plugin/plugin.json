@@ -1,0 +1,42 @@
+{
+  "name": "gemini-api-docs-mcp",
+  "version": "0.1.0",
+  "description": "Gemini API Docs MCP plugin for Gemini API documentation lookup over stdio.",
+  "author": {
+    "name": "[TODO: author-name]",
+    "email": "[TODO: author-email]",
+    "url": "[TODO: author-url]"
+  },
+  "homepage": "https://gemini-api-docs-mcp.dev",
+  "repository": "https://github.com/markmcd/gemini-docs-ext",
+  "license": "[TODO: license]",
+  "keywords": [
+    "gemini",
+    "mcp",
+    "docs",
+    "google-ai"
+  ],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Gemini API Docs MCP",
+    "shortDescription": "Gemini API docs via MCP over stdio",
+    "longDescription": "Connect Gemini API documentation to Codex through an MCP stdio server launched with uvx and mcpdoc.",
+    "developerName": "[TODO: developer-name]",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://gemini-api-docs-mcp.dev",
+    "privacyPolicyURL": "[TODO: privacy-policy-url]",
+    "termsOfServiceURL": "[TODO: terms-of-service-url]",
+    "defaultPrompt": [
+      "Look up Gemini API model docs",
+      "Find Gemini API examples in the docs",
+      "Summarize Gemini API guidance for this task"
+    ],
+    "brandColor": "#1A73E8",
+    "composerIcon": "[TODO: composer-icon]",
+    "logo": "[TODO: logo]",
+    "screenshots": []
+  }
+}

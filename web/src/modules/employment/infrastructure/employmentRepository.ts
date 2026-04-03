@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { coerceSystemRole, type SystemRole } from '@/modules/authz';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import {
   type EditableEmployeeRole,
   type EditableEmploymentSystemRole,
@@ -9,7 +9,7 @@ import {
   type EmploymentSystemRole,
 } from '@/modules/employment/domain/employmentTypes';
 import type { PersonProfile } from '@/modules/people';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
+import { coerceSystemRole, type SystemRole } from '@/shared/authz';
 
 type PersonRow = {
   access_status: string | null;
@@ -419,7 +419,6 @@ export async function loadEmployeeProfileProjectionById(
     id: person.person_id,
     is_archived: person.is_archived,
     restaurant_id: restaurantAssignment?.restaurant_id ?? null,
-    role: systemRole,
     system_role: systemRole,
     zone_id: zoneAssignment?.zone_id ?? null,
   };

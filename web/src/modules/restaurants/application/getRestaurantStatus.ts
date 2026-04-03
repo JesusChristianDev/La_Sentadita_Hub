@@ -1,4 +1,4 @@
-﻿import { createSupabaseServerClient } from '@/shared/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export type RestaurantStatus = {
   id: string;

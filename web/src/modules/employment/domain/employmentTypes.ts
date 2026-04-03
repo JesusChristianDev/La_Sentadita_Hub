@@ -1,7 +1,5 @@
-import type { SystemRole } from '@/modules/authz';
-import type { AppRole } from '@/modules/people';
-
-export type EditableEmployeeRole = Extract<AppRole, 'employee' | 'manager' | 'area_lead'>;
+import type { SystemRole } from '@/shared/authz';
+export type EditableEmployeeRole = Extract<SystemRole, 'employee' | 'manager' | 'area_lead'>;
 export type EditableEmploymentSystemRole = Extract<
   SystemRole,
   'employee' | 'area_lead' | 'manager'

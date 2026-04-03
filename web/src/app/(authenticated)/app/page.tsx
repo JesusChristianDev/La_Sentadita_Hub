@@ -27,9 +27,9 @@ export default async function AppPage() {
       </section>
 
       <DashboardHeroWidget
-        canPickRestaurant={viewModel.hero.canPickRestaurant}
-        effectiveRestaurantName={viewModel.hero.effectiveRestaurantName}
-        hasEffectiveRestaurant={viewModel.hero.hasEffectiveRestaurant}
+        activeScopeLabel={viewModel.hero.activeScopeLabel}
+        canSelectScope={viewModel.hero.canSelectScope}
+        isGlobalScope={viewModel.hero.isGlobalScope}
         userName={viewModel.hero.userName}
       />
 

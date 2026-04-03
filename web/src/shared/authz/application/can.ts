@@ -1,5 +1,6 @@
-import type { AppRole, PersonProfile } from '@/modules/people';
+import type { PersonProfile } from '@/modules/people';
 
+import type { SystemRole } from '../domain/systemRoles';
 import type { AuthzAction, AuthzResource } from './aclRules';
 import { can as canAgainstContext } from './aclRules';
 import {
@@ -12,9 +13,9 @@ import {
 
 function isProfileLike(actor: ActorLike): actor is Pick<
   PersonProfile,
-  'id' | 'restaurant_id' | 'role' | 'system_role' | 'zone_id'
+  'id' | 'restaurant_id' | 'system_role' | 'zone_id'
 > {
-  return typeof actor !== 'string' && !('systemRole' in actor) && 'role' in actor;
+  return typeof actor !== 'string' && !('systemRole' in actor) && 'system_role' in actor;
 }
 
 function normalizeActor(actor: ActorLike): RequestContext {
@@ -28,8 +29,7 @@ function normalizeActor(actor: ActorLike): RequestContext {
       full_name: '',
       id: '',
       restaurant_id: null,
-      role: actor,
-      system_role: actor,
+      system_role: actor as SystemRole,
       zone_id: null,
     });
   }
@@ -46,13 +46,12 @@ function normalizeActor(actor: ActorLike): RequestContext {
       full_name: '',
       id: actor.id,
       restaurant_id: actor.restaurant_id ?? null,
-      role: actor.role,
-      system_role: actor.system_role ?? actor.role,
+      system_role: actor.system_role,
       zone_id: actor.zone_id ?? null,
     });
   }
 
-  const fallbackRole = (actor as { role: AppRole }).role;
+  const fallbackRole = ((actor as Record<string, unknown>).system_role ?? (actor as Record<string, unknown>).role) as SystemRole;
   return buildRequestContextFromProfile({
     access_status: 'active',
     avatar_path: null,
@@ -60,7 +59,6 @@ function normalizeActor(actor: ActorLike): RequestContext {
     full_name: '',
     id: '',
     restaurant_id: null,
-    role: fallbackRole,
     system_role: fallbackRole,
     zone_id: null,
   });

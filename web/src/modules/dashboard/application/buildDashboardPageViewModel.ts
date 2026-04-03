@@ -8,14 +8,14 @@ export type DashboardShortcut = {
 
 export type DashboardPageViewModel = {
   hero: {
-    canPickRestaurant: boolean;
-    effectiveRestaurantName: string;
-    hasEffectiveRestaurant: boolean;
+    activeScopeLabel: string;
+    canSelectScope: boolean;
+    isGlobalScope: boolean;
     userName: string;
   };
   mode: Extract<
     FrontendPageMode,
-    'context_required' | 'global_overview' | 'restaurant_workspace'
+    'global_overview' | 'restaurant_workspace'
   >;
   shortcuts: DashboardShortcut[];
 };
@@ -94,13 +94,9 @@ function resolveDashboardMode(
   session: FrontendSessionView,
 ): DashboardPageViewModel['mode'] {
   if (
-    session.capabilities.context.canSelectRestaurant &&
-    !session.capabilities.context.hasEffectiveRestaurant
+    session.capabilities.context.isRestaurantScope ||
+    session.capabilities.context.isZoneScope
   ) {
-    return 'context_required';
-  }
-
-  if (session.capabilities.context.hasEffectiveRestaurant) {
     return 'restaurant_workspace';
   }
 
@@ -116,13 +112,9 @@ export function buildDashboardPageViewModel(
 
   return {
     hero: {
-      canPickRestaurant: session.capabilities.context.canSelectRestaurant,
-      effectiveRestaurantName:
-        currentRestaurant?.name ??
-        (session.capabilities.context.hasEffectiveRestaurant
-          ? 'Sucursal asignada'
-          : 'Vista global'),
-      hasEffectiveRestaurant: session.capabilities.context.hasEffectiveRestaurant,
+      activeScopeLabel: currentRestaurant?.name ?? session.activeScope.label,
+      canSelectScope: session.capabilities.context.canSelectScope,
+      isGlobalScope: session.capabilities.context.isGlobalScope,
       userName: session.person.fullName || 'Sin nombre',
     },
     mode: resolveDashboardMode(session),

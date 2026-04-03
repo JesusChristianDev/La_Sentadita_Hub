@@ -1,15 +1,15 @@
 import { redirect } from 'next/navigation';
 
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import {
   buildAuthenticatedShellViewModel,
   buildFrontendSessionView,
   getCurrentUserContext,
 } from '@/modules/auth_users';
 import { getIsMobileDevice } from '@/shared/deviceDetection';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
 
 import { ResponsiveAppFrame } from '../components/responsive-app-frame';
-import { setActiveRestaurant } from './app/actions';
+import { setActiveScope } from './app/actions';
 
 export default async function AuthenticatedLayout({
   children,
@@ -43,11 +43,12 @@ export default async function AuthenticatedLayout({
       canSeeRequests={shellView.navigation.requests}
       canSeeSchedules={shellView.navigation.schedules}
       canSeeTasks={shellView.navigation.tasks}
-      canPickRestaurant={shellView.contextSelector.canSelectRestaurant}
-      restaurants={shellView.contextSelector.restaurants}
-      effectiveRestaurantId={shellView.contextSelector.effectiveRestaurantId}
+      canSelectScope={shellView.scopeSelector.canSelectScope}
+      availableScopes={shellView.scopeSelector.scopes}
+      activeScopeId={shellView.scopeSelector.activeScopeId}
+      activeScopeType={shellView.scopeSelector.activeScopeType}
       initialIsMobileHint={initialIsMobileHint}
-      setActiveRestaurantAction={setActiveRestaurant}
+      setActiveScopeAction={setActiveScope}
       currentUserName={ctx.person.full_name}
       currentUserRole={ctx.requestContext.systemRole}
       currentUserAvatarUrl={currentUserAvatarUrl}

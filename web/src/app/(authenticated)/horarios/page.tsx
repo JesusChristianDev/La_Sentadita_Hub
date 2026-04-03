@@ -21,7 +21,9 @@ export default async function SchedulePage() {
     redirect('/app');
   }
 
-  if (viewModel.mode === 'context_required' || !viewModel.initialHome) {
+  const isGlobalOverview = viewModel.mode === 'global_overview';
+
+  if (!viewModel.initialHome) {
     return (
       <main
         id="main-content"
@@ -37,19 +39,29 @@ export default async function SchedulePage() {
           </div>
         </section>
 
-        <RestaurantContextEmptyState
-          canPickRestaurant={frontendSession.capabilities.context.canSelectRestaurant}
-          moduleLabel="Horarios"
-        />
+        {isGlobalOverview ? (
+          <p className="panel-subtitle mt-4 text-sm text-muted">
+            Estas en un scope global (organizacion/empresa). La vista agregada de horarios aun no
+            esta implementada, pero ya no se bloquea la pantalla por no tener un restaurante
+            efectivo seleccionado.
+          </p>
+        ) : (
+          <RestaurantContextEmptyState
+            canPickRestaurant={frontendSession.capabilities.context.canSelectRestaurant}
+            moduleLabel="Horarios"
+          />
+        )}
       </main>
     );
   }
+
+  const initialHome = viewModel.initialHome!;
 
   return (
     <ScheduleEditor
       actorName={ctx.person.full_name || 'Empleado'}
       initialEmployeeWeek={viewModel.initialEmployeeWeek}
-      initialHome={viewModel.initialHome}
+      initialHome={initialHome}
     />
   );
 }

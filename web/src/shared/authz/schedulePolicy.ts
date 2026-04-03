@@ -1,20 +1,21 @@
+import type { EmployeeListItem } from '@/modules/employees';
+import type { PersonProfile } from '@/modules/people';
+
 import type {
   ActorLike,
   RequestContext,
   SystemRole,
-} from '@/modules/authz';
+} from './index';
 import {
   can,
   isRequestContext,
   toRequestContext,
-} from '@/modules/authz';
-import type { EmployeeListItem } from '@/modules/employees';
-import type { PersonProfile } from '@/modules/people';
+} from './index';
 
 type ScheduleActor =
   | SystemRole
   | RequestContext
-  | (Pick<PersonProfile, 'id' | 'role' | 'zone_id'> & {
+  | (Pick<PersonProfile, 'id' | 'system_role' | 'zone_id'> & {
       restaurant_id?: string | null;
     })
   | (Pick<EmployeeListItem, 'id' | 'system_role' | 'zone_id'> & {
@@ -33,12 +34,11 @@ function normalizeActor(actor: ScheduleActor): ActorLike {
     return actor as ActorLike;
   }
 
-  const systemRole = 'system_role' in actor ? actor.system_role : actor.role;
+  const systemRole = actor.system_role;
 
   return {
     id: actor.id,
     restaurant_id: actor.restaurant_id ?? null,
-    role: systemRole,
     system_role: systemRole,
     zone_id: actor.zone_id ?? null,
   };

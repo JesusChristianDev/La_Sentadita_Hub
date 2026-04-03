@@ -55,9 +55,9 @@ export type DashboardWeatherState =
     };
 
 export type DashboardHeroWidgetProps = {
-  canPickRestaurant: boolean;
-  effectiveRestaurantName: string;
-  hasEffectiveRestaurant: boolean;
+  activeScopeLabel: string;
+  canSelectScope: boolean;
+  isGlobalScope: boolean;
   userName: string;
 };
 
@@ -77,7 +77,8 @@ type HeroCopyParams = {
 };
 
 type SupportingNoteParams = HeroCopyParams & {
-  needsRestaurantSelection: boolean;
+  canSelectScope: boolean;
+  isGlobalScope: boolean;
 };
 
 const heroVisuals: Record<DashboardHeroVisualTone, DashboardHeroVisual> = {
@@ -247,13 +248,16 @@ export function buildHeroMessage({ operationalLabel, timeBlock, weather }: HeroC
 }
 
 export function buildSupportingNote({
-  needsRestaurantSelection,
+  canSelectScope,
+  isGlobalScope,
   operationalLabel,
   timeBlock,
   weather,
 }: SupportingNoteParams) {
-  if (needsRestaurantSelection) {
-    return 'Sin una sucursal activa, el resto del dashboard pierde contexto operativo.';
+  if (isGlobalScope) {
+    return canSelectScope
+      ? 'Estas viendo una capa agregada. Cambia el contexto activo desde el header cuando quieras bajar a una empresa o restaurante.'
+      : 'Estas viendo una capa agregada del sistema con contexto global valido.';
   }
 
   if (weather.status === 'partial') {
@@ -340,27 +344,18 @@ export function getHeroStatusLabel(weather: DashboardWeatherState) {
 }
 
 export function getOperationalLabel(
-  canPickRestaurant: boolean,
-  hasEffectiveRestaurant: boolean,
-  effectiveRestaurantName: string,
+  activeScopeLabel: string,
 ) {
-  if (canPickRestaurant && !hasEffectiveRestaurant) {
-    return 'tu sucursal pendiente';
-  }
-
-  return effectiveRestaurantName;
+  return activeScopeLabel;
 }
 
 export function getOperationalPillLabel(
-  canPickRestaurant: boolean,
-  hasEffectiveRestaurant: boolean,
-  effectiveRestaurantName: string,
+  activeScopeLabel: string,
+  isGlobalScope: boolean,
 ) {
-  if (canPickRestaurant && !hasEffectiveRestaurant) {
-    return 'Selecciona una sucursal';
-  }
-
-  return `Operacion en ${effectiveRestaurantName}`;
+  return isGlobalScope
+    ? `Vista en ${activeScopeLabel}`
+    : `Operacion en ${activeScopeLabel}`;
 }
 
 export function getTemperatureLabel(weather: DashboardWeatherState) {

@@ -1,8 +1,8 @@
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { ScheduleActorProjection } from '@/shared/db/employment';
 import { loadScheduleActorProjection } from '@/shared/db/employment';
 import { loadProjectedPersonDisplayName } from '@/shared/db/persons';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
-import { createSupabaseServerClient } from '@/shared/supabase/server';
 
 import type {
   RestaurantZone,

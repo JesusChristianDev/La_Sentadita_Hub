@@ -1,13 +1,13 @@
 import { redirect } from 'next/navigation';
 
+import type { EditableEmploymentSystemRole } from '@/modules/employment';
 import {
   type ActorLike,
   can,
   deriveSystemRole,
   type SystemRole,
   toRequestContext,
-} from '@/modules/authz';
-import type { EditableEmploymentSystemRole } from '@/modules/employment';
+} from '@/shared/authz';
 import {
   getEmploymentRoleSlotConflictCode,
   hasActiveAreaLead as hasAreaLeadProjection,

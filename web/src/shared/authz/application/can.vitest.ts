@@ -1,26 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertCan, can } from '@/modules/authz';
 import type { PersonProfile } from '@/modules/people';
 
+import type { SystemRole } from '..';
+import { assertCan, can } from '..';
 import { buildRequestContextFromProfile } from './requestContext';
 
-function buildProfile(overrides: Partial<PersonProfile> = {}): PersonProfile {
+function buildProfile(overrides: Partial<PersonProfile> & { role?: string } = {}): PersonProfile {
   const role =
-    (overrides.system_role ?? overrides.role ?? 'employee') as PersonProfile['role'];
+    (overrides.system_role ?? overrides.role ?? 'employee') as SystemRole;
 
-  return {
-    access_status: 'active',
+  const result = {
+    access_status: 'active' as const,
     avatar_path: null,
     employee_code: 1001,
     full_name: 'Test User',
     id: overrides.id ?? 'user-1',
     restaurant_id: 'restaurant-1',
-    role,
     system_role: role,
     zone_id: null,
     ...overrides,
   };
+  delete (result as Record<string, unknown>).role;
+  return result;
 }
 
 describe('authz can', () => {
@@ -38,8 +40,8 @@ describe('authz can', () => {
     expect(ctx.responsibilityLevel).toBe(20);
     expect(ctx.personId).toBe('user-1');
     expect(ctx.activeScopes).toEqual([
-      { scopeId: 'restaurant-1', scopeType: 'restaurant' },
       { scopeId: 'zone-1', scopeType: 'zone' },
+      { scopeId: 'restaurant-1', scopeType: 'restaurant' },
     ]);
     expect(ctx.traceId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
@@ -174,13 +176,13 @@ describe('authz can', () => {
     expect(
       can(manager, 'employees.manage_target', {
         targetRestaurantId: 'restaurant-1',
-        targetRole: 'employee',
+        targetSystemRole: 'employee',
       }),
     ).toBe(true);
     expect(
       can(manager, 'employees.manage_target', {
         targetRestaurantId: 'restaurant-1',
-        targetRole: 'manager',
+        targetSystemRole: 'manager',
       }),
     ).toBe(false);
   });
@@ -218,6 +220,8 @@ describe('authz can', () => {
 
     expect(can(areaLead, 'incidents.view')).toBe(true);
     expect(can(areaLead, 'incidents.manage')).toBe(false);
+    expect(can(areaLead, 'tasks.manage')).toBe(false);
+    expect(can(areaLead, 'requests.manage')).toBe(false);
     expect(can(manager, 'incidents.manage')).toBe(true);
   });
 });

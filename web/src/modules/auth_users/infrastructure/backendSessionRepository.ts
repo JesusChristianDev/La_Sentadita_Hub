@@ -1,9 +1,9 @@
 import 'server-only';
 
-import { coerceSystemRole } from '@/modules/authz';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { AccessStatus, PersonProfile } from '@/modules/people';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
-import { createSupabaseServerClient } from '@/shared/supabase/server';
+import { coerceSystemRole } from '@/shared/authz';
 
 import {
   readLegacyActiveRestaurantId,
@@ -209,7 +209,7 @@ function resolveProfileFromSession(session: BackendSession): PersonProfile {
     id: session.person.id,
     is_archived: session.person.isArchived,
     restaurant_id: currentRestaurantAssignment?.restaurantId ?? null,
-    role: session.person.systemRole,
+
     system_role: session.person.systemRole,
     zone_id: currentZoneAssignment?.zoneId ?? null,
   };
@@ -600,8 +600,7 @@ export async function loadBackendSession(): Promise<BackendSession | null> {
         ? currentEmployment?.zoneAssignments.find(
             (assignment) => assignment.isCurrent && assignment.zoneId === activeScope.scopeId,
           )?.restaurantId ?? null
-        : currentEmployment?.restaurantAssignments.find((assignment) => assignment.isCurrent)
-              ?.restaurantId ?? null;
+        : null;
 
   return {
     activeScope,

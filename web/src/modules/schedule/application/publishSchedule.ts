@@ -1,4 +1,4 @@
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 import type { Schedule, ScheduleWithEntries } from '../domain/scheduleTypes';
 

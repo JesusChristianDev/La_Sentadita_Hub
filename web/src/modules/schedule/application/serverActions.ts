@@ -10,11 +10,10 @@ import type { UserContext } from '@/modules/auth_users';
 import {
   getCurrentUserContext,
 } from '@/modules/auth_users';
-import { assertCan } from '@/modules/authz';
-import { deriveResponsibilityLevel } from '@/modules/authz';
 import type { EmployeeListItem } from '@/modules/employees';
 import { listEmployees } from '@/modules/employees';
 import { getRestaurantStatus } from '@/modules/restaurants';
+import { assertCan, deriveResponsibilityLevel } from '@/shared/authz';
 import { loadEmployeeScopeProjection } from '@/shared/db/employment';
 
 import type {
@@ -1040,5 +1039,5 @@ export async function unlockScheduleAction(scheduleId: string) {
   assertCanManageDraft(ctx);
 
   const schedule = await loadAuthorizedSchedule(ctx, scheduleId);
-  await unlockSchedule(schedule.id);
+  await unlockSchedule(ctx.requestContext, schedule.id);
 }

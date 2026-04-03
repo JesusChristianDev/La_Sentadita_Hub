@@ -1,5 +1,5 @@
-import type { SystemRole } from '@/modules/authz';
 import type { RestaurantStatus } from '@/modules/restaurants/application/getRestaurantStatus';
+import type { SystemRole } from '@/shared/authz';
 
 import type {
   CreateEmployeeValidatedInput,

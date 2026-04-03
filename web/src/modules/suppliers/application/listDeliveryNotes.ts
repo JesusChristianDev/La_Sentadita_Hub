@@ -1,7 +1,7 @@
 import 'server-only';
 
-import { assertRestaurantAccess } from '@/modules/authz';
-import { createSupabaseAdminClient } from '@/shared/supabase/admin';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { assertRestaurantAccess } from '@/shared/authz';
 
 import {
   type DeliveryNote,

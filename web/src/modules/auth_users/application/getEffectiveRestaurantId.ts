@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 
-import { deriveSystemRole } from '@/modules/authz';
 import type { PersonProfile } from '@/modules/people';
+import { deriveSystemRole } from '@/shared/authz';
 
 /**
  * Resolves the effective restaurant ID for a given user profile.
