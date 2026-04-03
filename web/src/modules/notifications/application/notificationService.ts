@@ -13,7 +13,7 @@ import type {
 
 type NotificationInsertRow = Pick<
   NotificationRecord,
-  'delivery_type' | 'entity_id' | 'entity_type' | 'notification_type' | 'recipient_user_id'
+  'delivery_type' | 'entity_id' | 'entity_type' | 'notification_type' | 'recipient_user_id' | 'restaurant_id'
 >;
 
 type NotificationOutboxInsertRow = {
@@ -24,6 +24,7 @@ type NotificationOutboxInsertRow = {
   max_attempts: number;
   notification_type: NotificationRecord['notification_type'];
   recipient_person_id: string;
+  restaurant_id: string | null;
   send_after: string;
   title: string;
 };
@@ -43,7 +44,7 @@ export async function listMyNotifications(limit = 50): Promise<NotificationRecor
   const { data, error } = await admin
     .from('notifications')
     .select(
-      'notification_id, recipient_user_id, notification_type, entity_type, entity_id, delivery_type, created_at, read_at',
+      'notification_id, recipient_user_id, notification_type, entity_type, entity_id, delivery_type, created_at, read_at, restaurant_id',
     )
     .eq('recipient_user_id', ctx.userId)
     .order('created_at', { ascending: false })
@@ -106,12 +107,14 @@ export async function markNotificationRead(notificationId: string): Promise<void
 
 export async function notifyPerson(input: NotifyPersonInput): Promise<void> {
   const admin = createSupabaseAdminClient();
+  const restaurantId = input.scopeType === 'restaurant' ? input.scopeId : null;
   const notificationPayload: NotificationInsertRow = {
     delivery_type: 'in_app',
     entity_id: input.entityId ?? null,
     entity_type: input.entityType,
     notification_type: input.notificationType,
     recipient_user_id: input.recipientPersonId,
+    restaurant_id: restaurantId ?? null,
   };
 
   const { data, error } = await admin
@@ -146,6 +149,7 @@ export async function notifyPerson(input: NotifyPersonInput): Promise<void> {
     max_attempts: input.maxAttempts ?? 5,
     notification_type: input.notificationType,
     recipient_person_id: input.recipientPersonId,
+    restaurant_id: restaurantId ?? null,
     send_after: input.sendAfter ?? new Date().toISOString(),
     title: input.title?.trim() || 'Nueva notificacion',
   };

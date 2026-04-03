@@ -31,6 +31,8 @@ export type AppNavigationItem = {
   label: string;
   mobileDescription: string;
   shortLabel: string;
+  category?: 'equipo' | 'operaciones' | 'recursos' | 'avisos' | 'perfil';
+  description?: string;
 };
 
 export function isAppNavigationItemActive(pathname: string, href: string): boolean {
@@ -63,6 +65,7 @@ export function buildAppNavigationItems({
       label: 'Dashboard',
       mobileDescription: 'Vista general',
       shortLabel: 'Panel',
+      description: 'Vista general del estado de tus restaurantes.',
     },
     ...(canSeeEmployees
       ? [
@@ -70,8 +73,10 @@ export function buildAppNavigationItems({
             href: '/employees',
             icon: Users,
             label: 'Personal',
-            mobileDescription: 'Gestion del equipo',
+            mobileDescription: 'Gestión del equipo',
             shortLabel: 'Personal',
+            category: 'equipo' as const,
+            description: 'Gestiona la plantilla, roles y expedientes.',
           },
         ]
       : []),
@@ -81,8 +86,10 @@ export function buildAppNavigationItems({
             href: '/horarios',
             icon: CalendarDays,
             label: 'Horarios',
-            mobileDescription: 'Operacion semanal',
+            mobileDescription: 'Operación semanal',
             shortLabel: 'Horarios',
+            category: 'equipo' as const,
+            description: 'Turnos, rotaciones y cuadrantes semanales.',
           },
         ]
       : []),
@@ -94,6 +101,8 @@ export function buildAppNavigationItems({
             label: 'Tareas',
             mobileDescription: 'Operaciones diarias',
             shortLabel: 'Tareas',
+            category: 'operaciones' as const,
+            description: 'Listas de control y tareas operativas.',
           },
         ]
       : []),
@@ -105,6 +114,8 @@ export function buildAppNavigationItems({
             label: 'Solicitudes',
             mobileDescription: 'Solicitudes operativas',
             shortLabel: 'Solicitudes',
+            category: 'operaciones' as const,
+            description: 'Altas, bajas y modificaciones de personal.',
           },
         ]
       : []),
@@ -116,6 +127,8 @@ export function buildAppNavigationItems({
             label: 'Incidencias',
             mobileDescription: 'Avisos y seguimiento',
             shortLabel: 'Incidencias',
+            category: 'operaciones' as const,
+            description: 'Reportes de anomalías y seguimiento.',
           },
         ]
       : []),
@@ -127,6 +140,8 @@ export function buildAppNavigationItems({
             label: 'Documentos',
             mobileDescription: 'Contratos y archivos',
             shortLabel: 'Docs',
+            category: 'recursos' as const,
+            description: 'Contratos, nóminas y biblioteca compartida.',
           },
         ]
       : []),
@@ -136,8 +151,10 @@ export function buildAppNavigationItems({
             href: '/suppliers',
             icon: Package,
             label: 'Proveedores',
-            mobileDescription: 'Albaranes y catalogo',
+            mobileDescription: 'Albaranes y catálogo',
             shortLabel: 'Compras',
+            category: 'recursos' as const,
+            description: 'Entrada de mercancía y gestión de productos.',
           },
         ]
       : []),
@@ -149,6 +166,8 @@ export function buildAppNavigationItems({
             label: 'Avisos',
             mobileDescription: 'Tus notificaciones',
             shortLabel: 'Avisos',
+            category: 'avisos' as const,
+            description: 'Centro de notificaciones y alertas.',
           },
         ]
       : []),
@@ -159,7 +178,9 @@ export function buildAppNavigationItems({
             icon: UserCircle,
             label: 'Mi perfil',
             mobileDescription: 'Tu cuenta',
-            shortLabel: 'Mi perfil',
+            shortLabel: 'Perfil',
+            category: 'perfil' as const,
+            description: 'Datos personales y preferencias.',
           },
         ]
       : []),

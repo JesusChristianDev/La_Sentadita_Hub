@@ -142,15 +142,15 @@ export function AppHeader({
     <>
       <header
         data-app-header
-        className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/92 backdrop-blur-xl"
+        className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/94 backdrop-blur-xl transition-shadow duration-300"
       >
-        <div className="mx-auto flex min-h-[4.5rem] w-full max-w-[1720px] items-center gap-3 px-4 sm:px-6 lg:px-7 xl:px-8">
-          <div className="flex min-w-0 flex-1 items-center gap-4 lg:gap-8">
+        <div className="mx-auto flex min-h-[4.75rem] w-full max-w-[1840px] items-center gap-3 px-4 sm:px-6 lg:px-8 xl:px-10">
+          <div className="flex min-w-0 flex-1 items-center gap-4 lg:gap-10">
             <Link
               href="/app"
-              className="shrink-0 text-base font-bold tracking-tight text-white transition-colors hover:text-amber-500 sm:text-lg"
+              className="shrink-0 text-base font-extrabold tracking-[-0.03em] text-white transition-colors hover:text-accent sm:text-xl"
             >
-              La Sentadita Hub
+              La Sentadita <span className="text-accent-strong">Hub</span>
             </Link>
 
             <div className="min-w-0 flex-1">
@@ -168,7 +168,7 @@ export function AppHeader({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3 lg:gap-4">
+          <div className="flex shrink-0 items-center justify-end gap-3 sm:gap-4 lg:gap-5">
             {canSelectScope && setActiveScopeAction ? (
               <ScopeSelector
                 action={setActiveScopeAction}
@@ -176,17 +176,17 @@ export function AppHeader({
                 activeScopeType={activeScopeType}
                 scopes={availableScopes}
                 ariaLabel="Contexto activo"
-                className="flex items-center gap-2 rounded-full border border-border bg-surface/70 p-1.5"
-                selectClassName="h-10 min-w-[12rem] max-w-[16rem] rounded-full border border-transparent bg-surface-strong px-4 py-0 text-sm lg:max-w-[18rem] xl:max-w-[22rem]"
-                submitClassName="h-10 rounded-full px-4 py-0 text-sm"
+                className="flex items-center gap-2 rounded-full border border-border/80 bg-surface/40 p-1.5 transition-colors hover:bg-surface/60"
+                selectClassName="h-10 min-w-[12rem] max-w-[16rem] rounded-full border border-transparent bg-surface-strong/80 px-4 py-0 text-sm font-medium lg:max-w-[18rem] xl:max-w-[22rem]"
+                submitClassName="h-10 rounded-full px-5 py-0 text-sm font-semibold shadow-lg shadow-accent/20"
               />
             ) : null}
 
-            <div className="hidden min-w-[11rem] rounded-full border border-border bg-surface/70 px-4 py-2 text-right xl:block">
-              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-muted">
+            <div className="hidden min-w-[12rem] rounded-[1.25rem] border border-border/80 bg-surface/40 px-4 py-2 text-right xl:block">
+              <p className="text-[0.6rem] font-bold uppercase tracking-[0.24em] text-muted">
                 Contexto activo
               </p>
-              <p className="truncate text-sm font-medium text-foreground">
+              <p className="truncate text-sm font-semibold text-foreground">
                 {activeScopeLabel}
               </p>
             </div>
@@ -194,40 +194,47 @@ export function AppHeader({
             <div ref={desktopMenuRef} className="relative block">
               <button
                 type="button"
-                className="flex cursor-pointer items-center gap-2 rounded-full border border-border bg-surface-strong/85 py-1 pl-1 pr-2 transition-colors hover:border-muted hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 xl:pr-3"
+                className="group flex cursor-pointer items-center gap-2 rounded-full border border-border/80 bg-surface-strong/80 py-1 pl-1 pr-2 transition-all hover:border-muted hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 xl:pr-4"
                 aria-expanded={isDesktopMenuVisible}
                 aria-controls={desktopMenuId}
                 aria-label={isDesktopMenuVisible ? 'Cerrar menu de cuenta' : 'Abrir menu de cuenta'}
                 onClick={() => setDesktopMenuOpen((open) => !open)}
               >
-                <UserAvatar
-                  fullName={currentUserName}
-                  role={currentUserRole}
-                  avatarUrl={currentUserAvatarUrl}
-                  size="md"
-                />
-                <span className="hidden max-w-[160px] truncate text-sm font-medium text-foreground xl:block">
+                <div className="relative">
+                  <UserAvatar
+                    fullName={currentUserName}
+                    role={currentUserRole}
+                    avatarUrl={currentUserAvatarUrl}
+                    size="md"
+                  />
+                  <div className="absolute inset-0 rounded-full border border-white/10 group-hover:border-white/20 transition-colors" />
+                </div>
+                <span className="hidden max-w-[160px] truncate text-sm font-semibold text-foreground group-hover:text-white transition-colors xl:block">
                   {shortName}
                 </span>
               </button>
               {isDesktopMenuVisible ? (
                 <div
                   id={desktopMenuId}
-                  className="absolute right-0 top-[calc(100%+8px)] z-50 flex min-w-[220px] flex-col gap-1 rounded-[1.15rem] border border-border bg-background/95 p-2 shadow-2xl backdrop-blur-xl"
+                  className="absolute right-0 top-[calc(100%+12px)] z-50 flex min-w-[240px] flex-col gap-1 rounded-[1.5rem] border border-border bg-background/96 p-2 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-200"
                 >
+                  <div className="px-3 py-2 mb-1 border-b border-border/40">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted">Cuenta</p>
+                    <p className="truncate text-sm font-medium text-foreground">{currentUserName || 'Usuario'}</p>
+                  </div>
                   <Link
                     href="/me"
-                    className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-surface hover:text-white"
+                    className="flex w-full items-center rounded-xl px-4 py-3 text-sm font-medium text-foreground transition-all hover:bg-surface hover:text-white"
                     onClick={() => setDesktopMenuOpen(false)}
                   >
                     Mi perfil
                   </Link>
                   <Link
                     href="/api/auth/signout?next=/login"
-                    className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm text-danger transition-colors hover:bg-danger/20 hover:text-danger"
+                    className="flex w-full items-center rounded-xl px-4 py-3 text-sm font-medium text-danger transition-all hover:bg-danger/15 hover:text-danger"
                     onClick={() => setDesktopMenuOpen(false)}
                   >
-                    Cerrar sesion
+                    Cerrar sesión
                   </Link>
                 </div>
               ) : null}

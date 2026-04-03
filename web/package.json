@@ -20,7 +20,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "format": "prettier . --write",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "preinstall": "npx only-allow pnpm"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -47,6 +47,7 @@ export type NotificationRecord = {
   notification_type: NotificationType;
   read_at: string | null;
   recipient_user_id: string;
+  restaurant_id: string | null;
 };
 
 export type PushDeviceRecord = {
