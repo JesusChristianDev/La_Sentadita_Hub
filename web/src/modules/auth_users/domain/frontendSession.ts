@@ -88,6 +88,9 @@ export type FrontendScopeOption = {
   authorityTier: string | null;
   isDerived: boolean;
   label: string;
+  groupLabel?: string | null;
+  companyId?: string | null;
+  chainId?: string | null;
   scopeId: string | null;
   scopeType: BackendScopeType;
 };

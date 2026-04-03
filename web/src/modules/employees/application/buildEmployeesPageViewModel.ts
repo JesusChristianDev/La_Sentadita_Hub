@@ -7,7 +7,12 @@ import {
 } from '@/modules/auth_users';
 import type { EmploymentStatusFilter } from '@/modules/employment';
 import type { RestaurantZoneSummary } from '@/modules/employment/infrastructure/employmentRepository';
-import { loadEmployeesPageProjection } from '@/shared/db/employment';
+import {
+  listEmploymentForChainProjection,
+  listEmploymentForCompanyProjection,
+  listEmploymentForOrganizationProjection,
+  loadEmployeesPageProjection,
+} from '@/shared/db/employment';
 import { roleLabel } from '@/shared/roleLabel';
 
 type EmployeeRoleOption = {
@@ -135,22 +140,64 @@ export async function buildEmployeesPageViewModel(
 
   if (!frontendSession.effectiveRestaurantId) {
     if (frontendSession.capabilities.context.isGlobalScope) {
+      const scopeId = frontendSession.activeScope.scopeId;
+      const scopeType = frontendSession.activeScope.scopeType;
+
+      const employees = !scopeId
+        ? []
+        : scopeType === 'organization'
+          ? await listEmploymentForOrganizationProjection(scopeId, status)
+          : scopeType === 'chain'
+            ? await listEmploymentForChainProjection(scopeId, status)
+            : scopeType === 'company'
+              ? await listEmploymentForCompanyProjection(scopeId, status)
+              : [];
+
+      const avatarUrlByPath = await signAvatarUrls(
+        employees
+          .map((employee) => employee.avatar_path)
+          .filter((path): path is string => Boolean(path)),
+      );
+
+      const emptyStateForGlobal =
+        status === 'active'
+          ? {
+              description:
+                'Vista agregada por organizacion/empresa. No hay empleados activos en esta vista.',
+              title: 'Vista global de empleados',
+            }
+          : status === 'inactive'
+            ? {
+                description:
+                  'Vista agregada por organizacion/empresa. No hay empleados inactivos (incluye archivados) en esta vista.',
+                title: 'Vista global de empleados',
+              }
+            : {
+                description:
+                  'Vista agregada por organizacion/empresa. No hay empleados en esta vista.',
+                title: 'Vista global de empleados',
+              };
+
       return {
         context: {
           canChangeContext: frontendSession.capabilities.context.canSelectScope,
           restaurantId: null,
         },
         createForm: null,
-        emptyState: {
-          description:
-            'Vista agregada por organizacion/empresa aun sin datos. Selecciona un restaurante si necesitas bajar al detalle.',
-          title: 'Vista global de empleados',
-        },
+        emptyState: emptyStateForGlobal,
         filters: { currentStatus: status },
         mode: frontendSession.capabilities.context.isCompanyScope
           ? 'company_overview'
           : 'organization_overview',
-        rows: [],
+        rows: employees.map((employee) => ({
+          avatarUrl: employee.avatar_path
+            ? (avatarUrlByPath.get(employee.avatar_path) ?? null)
+            : null,
+          fullName: employee.full_name || '(sin nombre)',
+          href: `/employees/${employee.id}`,
+          id: employee.id,
+          roleLabel: roleLabel(employee.system_role),
+        })),
       };
     }
 

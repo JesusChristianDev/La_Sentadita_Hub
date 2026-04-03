@@ -27,6 +27,8 @@ export function EmployeeDetailForm({ submitAction, viewModel }: Props) {
 
   return (
     <form action={submitAction} className="mt-3 grid gap-3">
+      <h3 className="text-sm font-semibold text-foreground">Datos de identidad</h3>
+
       <label className="field">
         <span>Email (Auth)</span>
         <input defaultValue={viewModel.form.email} name="email" className="input" />
@@ -45,6 +47,8 @@ export function EmployeeDetailForm({ submitAction, viewModel }: Props) {
           className="input"
         />
       </label>
+
+      <h3 className="mt-1 text-sm font-semibold text-foreground">Datos contractuales</h3>
 
       {viewModel.form.fieldLocks.role ? (
         <label className="field">

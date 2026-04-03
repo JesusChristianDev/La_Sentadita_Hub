@@ -25,6 +25,7 @@ type ScopeOption = {
   authorityTier: string | null;
   isDerived: boolean;
   label: string;
+  groupLabel?: string | null;
   scopeId: string | null;
   scopeType: BackendScopeType;
 };

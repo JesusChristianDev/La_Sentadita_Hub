@@ -9,6 +9,7 @@ type ScopeOption = {
   authorityTier: string | null;
   isDerived: boolean;
   label: string;
+  groupLabel?: string | null;
   scopeId: string | null;
   scopeType: BackendScopeType;
 };
@@ -20,6 +21,7 @@ type ScopeSelectorProps = {
   ariaLabel?: string;
   buttonLabel?: string;
   className?: string;
+  dropdownVariant?: 'nav';
   scopes: ScopeOption[];
   selectClassName?: string;
   submitClassName?: string;
@@ -51,10 +53,16 @@ function buildOptionLabel(scope: ScopeOption): string {
         : scope.scopeType === 'company'
           ? 'Empresa'
           : scope.scopeType === 'restaurant'
-            ? 'Restaurante'
+            ? null
             : scope.scopeType === 'zone'
               ? 'Zona'
               : 'Personal';
+
+  // En la vista del dropdown agrupamos restaurantes por company, así que dentro del grupo
+  // mostramos solo el nombre del restaurante.
+  if (scope.scopeType === 'restaurant') {
+    return scope.label;
+  }
 
   return `${typeLabel} - ${scope.label}`;
 }
@@ -67,6 +75,7 @@ export function ScopeSelector({
   buttonLabel = 'Aplicar',
   className,
   scopes,
+  dropdownVariant,
   selectClassName,
   submitClassName,
 }: ScopeSelectorProps) {
@@ -74,6 +83,18 @@ export function ScopeSelector({
     serializeScope(activeScopeType, activeScopeId),
   );
   const selectedScope = deserializeScope(selectedScopeValue);
+
+  const otherScopes = scopes.filter((s) => s.scopeType !== 'restaurant');
+  const restaurantScopes = scopes.filter((s) => s.scopeType === 'restaurant');
+
+  // Mantener el orden de llegada (ya viene ordenado desde el backend).
+  const restaurantGroups = new Map<string, ScopeOption[]>();
+  for (const scope of restaurantScopes) {
+    const groupLabel = scope.groupLabel ?? 'Empresa';
+    const current = restaurantGroups.get(groupLabel) ?? [];
+    current.push(scope);
+    restaurantGroups.set(groupLabel, current);
+  }
 
   return (
     <form action={action} className={className}>
@@ -84,14 +105,28 @@ export function ScopeSelector({
         className={selectClassName}
         value={selectedScopeValue}
         onChange={(event) => setSelectedScopeValue(event.target.value)}
+        dropdownVariant={dropdownVariant}
       >
-        {scopes.map((scope) => (
+        {otherScopes.map((scope) => (
           <option
             key={serializeScope(scope.scopeType, scope.scopeId)}
             value={serializeScope(scope.scopeType, scope.scopeId)}
           >
             {buildOptionLabel(scope)}
           </option>
+        ))}
+
+        {Array.from(restaurantGroups.entries()).map(([groupLabel, groupScopes]) => (
+          <optgroup key={groupLabel} label={groupLabel}>
+            {groupScopes.map((scope) => (
+              <option
+                key={serializeScope(scope.scopeType, scope.scopeId)}
+                value={serializeScope(scope.scopeType, scope.scopeId)}
+              >
+                {buildOptionLabel(scope)}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </Select>
       <Button className={submitClassName} type="submit">

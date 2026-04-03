@@ -143,7 +143,7 @@ function buildScopeLabel(params: {
   chainName?: string | null;
   companyName?: string | null;
   restaurantName?: string | null;
-  scopeType: Exclude<BackendScopeType, 'self'>;
+  scopeType: BackendScopeType;
   zoneName?: string | null;
 }): string {
   switch (params.scopeType) {
@@ -157,6 +157,8 @@ function buildScopeLabel(params: {
       return params.restaurantName ?? 'Restaurante';
     case 'zone':
       return params.zoneName ?? 'Zona';
+    case 'self':
+      return 'Mi perfil';
   }
 }
 
@@ -513,7 +515,69 @@ export async function loadBackendSession(): Promise<BackendSession | null> {
     };
   });
 
-  const availableScopes = dedupeScopes([
+  const isHighLevelManagement = ['admin', 'owner', 'office'].includes(backendPerson.systemRole);
+
+  // Derived scopes:
+  // - Si el usuario puede ver ciertos restaurantes, entonces también puede seleccionar
+  //   sus ramas jerarquicas (company / chain / organization) para cambiar el "scope" de la UI.
+  const derivedCompanyScopes: BackendAvailableScope[] = [];
+  const derivedChainScopes: BackendAvailableScope[] = [];
+  const derivedOrganizationScopes: BackendAvailableScope[] = [];
+
+  const companiesById = new Map<string, { name: string; chainId: string | null; chainName: string | null }>();
+  const chainsById = new Map<string, { name: string | null }>();
+  const organizationsById = new Map<string, { name: string }>();
+
+  for (const restaurant of visibleRestaurants) {
+    companiesById.set(restaurant.companyId, {
+      name: restaurant.companyName ?? 'Empresa',
+      chainId: restaurant.chainId,
+      chainName: restaurant.chainName,
+    });
+
+    if (restaurant.chainId && restaurant.chainId !== null) {
+      chainsById.set(restaurant.chainId, { name: restaurant.chainName });
+    }
+
+    if (restaurant.organizationId && restaurant.organizationId !== null) {
+      // No tenemos nombre explícito de organization aquí; usamos etiqueta fija.
+      organizationsById.set(restaurant.organizationId, { name: 'Organizacion' });
+    }
+  }
+
+  for (const [companyId, data] of companiesById.entries()) {
+    derivedCompanyScopes.push({
+      authorityTier: null,
+      isDerived: true,
+      label: data.name,
+      scopeId: companyId,
+      scopeType: 'company',
+      groupLabel: data.name,
+      chainId: data.chainId,
+    });
+  }
+
+  for (const [chainId, data] of chainsById.entries()) {
+    derivedChainScopes.push({
+      authorityTier: null,
+      isDerived: true,
+      label: data.name ?? 'Cadena',
+      scopeId: chainId,
+      scopeType: 'chain',
+    });
+  }
+
+  for (const [organizationId, data] of organizationsById.entries()) {
+    derivedOrganizationScopes.push({
+      authorityTier: null,
+      isDerived: true,
+      label: data.name,
+      scopeId: organizationId,
+      scopeType: 'organization',
+    });
+  }
+
+  const rawAvailableScopes: BackendAvailableScope[] = [
     {
       authorityTier: null,
       isDerived: true,
@@ -530,10 +594,16 @@ export async function loadBackendSession(): Promise<BackendSession | null> {
         scopeId: scope.scopeId,
         scopeType: scope.scopeType,
       })),
+    ...derivedOrganizationScopes,
+    ...derivedChainScopes,
+    ...derivedCompanyScopes,
     ...visibleRestaurants.map<BackendAvailableScope>((restaurant) => ({
       authorityTier: null,
       isDerived: true,
       label: restaurant.name,
+      groupLabel: restaurant.companyName ?? 'Empresa',
+      companyId: restaurant.companyId,
+      chainId: restaurant.chainId,
       scopeId: restaurant.id,
       scopeType: 'restaurant',
     })),
@@ -546,7 +616,29 @@ export async function loadBackendSession(): Promise<BackendSession | null> {
         scopeId: assignment.zoneId,
         scopeType: 'zone',
       })) ?? []),
-  ]);
+  ];
+
+  // Logic: Remove 'self' if the user has management scopes, it's redundant/confusing.
+  // Unless it's a pure employee, who ONLY has self.
+  const refinedAvailableScopes = isHighLevelManagement
+    ? rawAvailableScopes.filter((s) => s.scopeType !== 'self')
+    : rawAvailableScopes;
+
+  const typeOrder: Record<BackendScopeType, number> = {
+    organization: 0,
+    chain: 1,
+    company: 2,
+    restaurant: 3,
+    zone: 4,
+    self: 5,
+  };
+
+  const availableScopes = dedupeScopes(refinedAvailableScopes).sort((a, b) => {
+    const orderA = typeOrder[a.scopeType] ?? 99;
+    const orderB = typeOrder[b.scopeType] ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return (a.label || '').localeCompare(b.label || '');
+  });
 
   const storedActiveScope = await readStoredActiveScope();
   const legacyActiveRestaurantId = await readLegacyActiveRestaurantId();

@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { BackendScopeType } from '@/modules/auth_users';
 import type { SystemRole } from '@/shared/authz';
 
-import { ScopeSelector } from './scope-selector';
+import { ScopeStepSelector } from './scope-step-selector';
 import { ScreenNav } from './screen-nav';
 import { UserAvatar } from './user-avatar';
 
@@ -19,6 +19,9 @@ type ScopeOption = {
   authorityTier: string | null;
   isDerived: boolean;
   label: string;
+  groupLabel?: string | null;
+  companyId?: string | null;
+  chainId?: string | null;
   scopeId: string | null;
   scopeType: BackendScopeType;
 };
@@ -144,57 +147,44 @@ export function AppHeader({
         data-app-header
         className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/94 backdrop-blur-xl transition-shadow duration-300"
       >
-        <div className="mx-auto flex min-h-[4.75rem] w-full max-w-[1840px] items-center gap-3 px-4 sm:px-6 lg:px-8 xl:px-10">
-          <div className="flex min-w-0 flex-1 items-center gap-4 lg:gap-10">
-            <Link
-              href="/app"
-              className="shrink-0 text-base font-extrabold tracking-[-0.03em] text-white transition-colors hover:text-accent sm:text-xl"
-            >
-              La Sentadita <span className="text-accent-strong">Hub</span>
-            </Link>
+        <div className="mx-auto grid min-h-[4.75rem] w-full max-w-[1840px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:gap-6 lg:px-8 xl:px-10">
+          <Link
+            href="/app"
+            className="shrink-0 text-base font-extrabold tracking-[-0.03em] text-white transition-colors hover:text-accent sm:text-xl"
+          >
+            La Sentadita <span className="text-accent-strong">Hub</span>
+          </Link>
 
-            <div className="min-w-0 flex-1">
-              <ScreenNav
-                canSeeEmployees={canSeeEmployees}
-                canSeeDocuments={canSeeDocuments}
-                canSeeIncidents={canSeeIncidents}
-                canSeeNotifications={canSeeNotifications}
-                canSeeRequests={canSeeRequests}
-                canSeeProcurement={canSeeProcurement}
-                canSeeSchedules={canSeeSchedules}
-                canSeeTasks={canSeeTasks}
-                className="flex min-w-0 flex-1 items-center justify-center"
-              />
-            </div>
+          <div className="min-w-0 px-2 lg:px-4">
+            <ScreenNav
+              canSeeEmployees={canSeeEmployees}
+              canSeeDocuments={canSeeDocuments}
+              canSeeIncidents={canSeeIncidents}
+              canSeeNotifications={canSeeNotifications}
+              canSeeRequests={canSeeRequests}
+              canSeeProcurement={canSeeProcurement}
+              canSeeSchedules={canSeeSchedules}
+              canSeeTasks={canSeeTasks}
+              className="flex min-w-0 items-center justify-center"
+            />
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-3 sm:gap-4 lg:gap-5">
+          <div className="relative flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-2.5 lg:gap-2">
             {canSelectScope && setActiveScopeAction ? (
-              <ScopeSelector
-                action={setActiveScopeAction}
-                activeScopeId={activeScopeId}
-                activeScopeType={activeScopeType}
-                scopes={availableScopes}
-                ariaLabel="Contexto activo"
-                className="flex items-center gap-2 rounded-full border border-border/80 bg-surface/40 p-1.5 transition-colors hover:bg-surface/60"
-                selectClassName="h-10 min-w-[12rem] max-w-[16rem] rounded-full border border-transparent bg-surface-strong/80 px-4 py-0 text-sm font-medium lg:max-w-[18rem] xl:max-w-[22rem]"
-                submitClassName="h-10 rounded-full px-5 py-0 text-sm font-semibold shadow-lg shadow-accent/20"
-              />
+              <div className="hidden min-w-0 lg:flex lg:w-[clamp(22.5rem,30vw,26.5rem)]">
+                <ScopeStepSelector
+                  action={setActiveScopeAction}
+                  activeScopeId={activeScopeId}
+                  activeScopeType={activeScopeType}
+                  scopes={availableScopes}
+                />
+              </div>
             ) : null}
-
-            <div className="hidden min-w-[12rem] rounded-[1.25rem] border border-border/80 bg-surface/40 px-4 py-2 text-right xl:block">
-              <p className="text-[0.6rem] font-bold uppercase tracking-[0.24em] text-muted">
-                Contexto activo
-              </p>
-              <p className="truncate text-sm font-semibold text-foreground">
-                {activeScopeLabel}
-              </p>
-            </div>
 
             <div ref={desktopMenuRef} className="relative block">
               <button
                 type="button"
-                className="group flex cursor-pointer items-center gap-2 rounded-full border border-border/80 bg-surface-strong/80 py-1 pl-1 pr-2 transition-all hover:border-muted hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 xl:pr-4"
+                className="group flex h-11 cursor-pointer items-center gap-2 rounded-full border border-border/80 bg-surface-strong/80 pl-1 pr-2.5 transition-all hover:border-muted hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 xl:pr-3.5"
                 aria-expanded={isDesktopMenuVisible}
                 aria-controls={desktopMenuId}
                 aria-label={isDesktopMenuVisible ? 'Cerrar menu de cuenta' : 'Abrir menu de cuenta'}

@@ -24,7 +24,9 @@ async function getReturnPath(): Promise<string> {
 }
 
 const scopeFormSchema = z.object({
-  scopeId: z.string().uuid().nullable(),
+  // No forzamos UUID aquí: algunas instalaciones pueden usar IDs no-UUID
+  // para ciertos scopes. La validación de seguridad real es `allowedScope`.
+  scopeId: z.string().trim().min(1).nullable(),
   scopeType: z.enum(['organization', 'chain', 'company', 'restaurant', 'zone', 'self']),
 });
 

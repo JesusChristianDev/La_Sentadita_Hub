@@ -222,7 +222,7 @@ async function loadEmploymentsByIds(employmentIds: string[]): Promise<Map<string
 
   return new Map(
     ((data ?? []) as EmploymentRow[])
-      .filter((row) => !row.is_archived && row.deleted_at === null)
+      .filter((row) => row.deleted_at === null)
       .map((row) => [row.employment_id, row]),
   );
 }
@@ -955,35 +955,135 @@ export async function listEmploymentForRestaurantProjection(
   restaurantId: string,
   status: EmploymentStatusFilter = 'active',
 ): Promise<EmploymentListItem[]> {
+  return listEmploymentForGenericScopeProjection({
+    scopeId: restaurantId,
+    scopeType: 'restaurant',
+    status,
+  });
+}
+
+export async function listEmploymentForOrganizationProjection(
+  organizationId: string,
+  status: EmploymentStatusFilter = 'active',
+): Promise<EmploymentListItem[]> {
+  return listEmploymentForGenericScopeProjection({
+    scopeId: organizationId,
+    scopeType: 'organization',
+    status,
+  });
+}
+
+export async function listEmploymentForChainProjection(
+  chainId: string,
+  status: EmploymentStatusFilter = 'active',
+): Promise<EmploymentListItem[]> {
+  return listEmploymentForGenericScopeProjection({
+    scopeId: chainId,
+    scopeType: 'chain',
+    status,
+  });
+}
+
+export async function listEmploymentForCompanyProjection(
+  companyId: string,
+  status: EmploymentStatusFilter = 'active',
+): Promise<EmploymentListItem[]> {
+  return listEmploymentForGenericScopeProjection({
+    scopeId: companyId,
+    scopeType: 'company',
+    status,
+  });
+}
+
+async function loadRestaurantIdsForEmploymentScope(params: {
+  scopeId: string;
+  scopeType: 'organization' | 'chain' | 'company' | 'restaurant';
+}): Promise<string[]> {
+  const admin = createSupabaseAdminClient();
+
+  if (params.scopeType === 'restaurant') {
+    return [params.scopeId];
+  }
+
+  if (params.scopeType === 'company') {
+    const { data, error } = await admin
+      .from('restaurants')
+      .select('id')
+      .eq('company_id', params.scopeId);
+
+    if (error) throw new Error(`Failed to load restaurant ids: ${error.message}`);
+    return (data ?? []).map((row: { id: string }) => row.id);
+  }
+
+  // organization / chain => resolve company_ids first, then restaurants.
+  const companiesQuery =
+    params.scopeType === 'organization'
+      ? admin.from('companies').select('company_id').eq('organization_id', params.scopeId)
+      : admin.from('companies').select('company_id').eq('chain_id', params.scopeId);
+
+  const { data: companiesData, error: companiesError } = await companiesQuery;
+  if (companiesError) throw new Error(`Failed to load company ids: ${companiesError.message}`);
+
+  const companyIds = Array.from(
+    new Set((companiesData ?? []).map((row: { company_id: string }) => row.company_id)),
+  );
+  if (companyIds.length === 0) return [];
+
+  const { data: restaurantsData, error: restaurantsError } = await admin
+    .from('restaurants')
+    .select('id')
+    .in('company_id', companyIds);
+
+  if (restaurantsError) {
+    throw new Error(`Failed to load restaurant ids: ${restaurantsError.message}`);
+  }
+
+  return (restaurantsData ?? []).map((row: { id: string }) => row.id);
+}
+
+async function listEmploymentForGenericScopeProjection(params: {
+  scopeId: string;
+  scopeType: 'organization' | 'chain' | 'company' | 'restaurant';
+  status: EmploymentStatusFilter;
+}): Promise<EmploymentListItem[]> {
   const today = todayIsoDate();
   const admin = createSupabaseAdminClient();
+
+  const restaurantIds = await loadRestaurantIdsForEmploymentScope({
+    scopeId: params.scopeId,
+    scopeType: params.scopeType,
+  });
+
+  if (restaurantIds.length === 0) return [];
+
   const { data, error } = await admin
     .from('employment_restaurant_assignments')
     .select('assignment_id, employment_id, restaurant_id, valid_from, valid_to, created_at')
-    .eq('restaurant_id', restaurantId)
+    .in('restaurant_id', restaurantIds)
     .order('valid_from', { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to list restaurant assignments: ${error.message}`);
+    throw new Error(`Failed to list scope assignments: ${error.message}`);
   }
 
   const restaurantAssignments = (data ?? []) as RestaurantAssignmentRow[];
-  const employmentsById = await loadEmploymentsByIds(
-    Array.from(new Set(restaurantAssignments.map((row) => row.employment_id))),
-  );
+
+  const employmentIds = Array.from(new Set(restaurantAssignments.map((row) => row.employment_id)));
+  const employmentsById = await loadEmploymentsByIds(employmentIds);
+
   const relevantAssignments = restaurantAssignments.filter((assignment) =>
     employmentsById.has(assignment.employment_id),
   );
 
-  const peopleById = await loadPeopleByIds(
-    Array.from(
-      new Set(
-        relevantAssignments
-          .map((assignment) => employmentsById.get(assignment.employment_id)?.person_id ?? null)
-          .filter((personId): personId is string => Boolean(personId)),
-      ),
+  const personIds = Array.from(
+    new Set(
+      relevantAssignments
+        .map((assignment) => employmentsById.get(assignment.employment_id)?.person_id ?? null)
+        .filter((personId): personId is string => Boolean(personId)),
     ),
   );
+
+  const peopleById = await loadPeopleByIds(personIds);
   const zoneAssignmentsByEmploymentId = await loadZoneAssignmentsByEmploymentIds(
     Array.from(new Set(relevantAssignments.map((row) => row.employment_id))),
   );
@@ -998,9 +1098,12 @@ export async function listEmploymentForRestaurantProjection(
     if (!person) continue;
 
     const systemRole = coerceSystemRole(person.system_role);
-    if (systemRole !== 'employee' && systemRole !== 'manager' && systemRole !== 'area_lead') {
-      continue;
-    }
+    // El módulo "Equipo" está pensado para roles operativos.
+    // Pero para visibilidad de archivados (ej: YANI), incluimos roles no-operativos
+    // cuando la persona está archivada (soporta listado por `inactive/all`).
+    const isOperationalRole =
+      systemRole === 'employee' || systemRole === 'manager' || systemRole === 'area_lead';
+    if (!isOperationalRole && person.is_archived === false) continue;
 
     const zoneAssignment = pickCurrentOrLatest(
       zoneAssignmentsByEmploymentId.get(employment.employment_id) ?? [],
@@ -1025,6 +1128,7 @@ export async function listEmploymentForRestaurantProjection(
     };
 
     const existing = itemsByPersonId.get(person.person_id);
+    // If multiple assignments, keep the active one or the latest one
     if (!existing || (!existing.is_active && isActive)) {
       itemsByPersonId.set(person.person_id, nextItem);
     }
@@ -1034,8 +1138,8 @@ export async function listEmploymentForRestaurantProjection(
     (left, right) => left.employee_code - right.employee_code,
   );
 
-  if (status === 'active') return items.filter((item) => item.is_active);
-  if (status === 'inactive') return items.filter((item) => !item.is_active);
+  if (params.status === 'active') return items.filter((item) => item.is_active);
+  if (params.status === 'inactive') return items.filter((item) => !item.is_active);
   return items;
 }
 

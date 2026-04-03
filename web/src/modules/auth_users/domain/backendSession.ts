@@ -95,6 +95,17 @@ export type BackendAvailableScope = {
   authorityTier: string | null;
   isDerived: boolean;
   label: string;
+  /**
+   * Para scopes de tipo `restaurant`, se usa como agrupador visual
+   * (por ejemplo: nombre de la company).
+   */
+  groupLabel?: string | null;
+  /**
+   * Para `restaurant`, identificadores de su relación jerarquica.
+   * Se usan para construir el árbol: Organization -> (Chain) -> Company -> Restaurant.
+   */
+  companyId?: string | null;
+  chainId?: string | null;
   scopeId: string | null;
   scopeType: BackendScopeType;
 };

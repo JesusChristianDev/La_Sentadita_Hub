@@ -23,7 +23,11 @@ import { createPortal } from 'react-dom';
 
 import { cx } from './cx';
 
-type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
+type DropdownVariant = 'default' | 'nav';
+
+type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
+  dropdownVariant?: DropdownVariant;
+};
 
 type FlatOption = {
   disabled: boolean;
@@ -211,10 +215,14 @@ const NativeSelectFallback = forwardRef<HTMLSelectElement, SelectProps>(
       size,
       title,
       value,
+      dropdownVariant: _dropdownVariant,
       ...nativeProps
     },
     forwardedRef,
   ) {
+    // Solo para evitar que `dropdownVariant` se propague al `<select>` nativo.
+    void _dropdownVariant;
+
     return (
       <div className={cx('select-field', className)} data-disabled={disabled ? 'true' : 'false'}>
         <select
@@ -266,6 +274,7 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
     required = false,
     title,
     value,
+    dropdownVariant,
     ...nativeProps
   },
   forwardedRef,
@@ -735,7 +744,12 @@ const CustomSelect = forwardRef<HTMLSelectElement, SelectProps>(function CustomS
 
       {open && typeof document !== 'undefined'
         ? createPortal(
-            <div className="select-dropdown" data-side={panelSide} style={panelStyle}>
+            <div
+              className="select-dropdown"
+              data-side={panelSide}
+              data-variant={dropdownVariant}
+              style={panelStyle}
+            >
               <div
                 ref={listboxRef}
                 id={listboxId}

@@ -505,6 +505,78 @@ select.select option:checked {
   animation-name: select-dropdown-enter-top;
 }
 
+/* Nav-like dropdown variant (used in the header Scope selector) */
+.select-dropdown[data-variant='nav'] .select-dropdown__surface {
+  border-color: rgb(63 63 70 / 100%);
+  border-radius: 24px;
+  background: rgb(9 9 11 / 95%);
+  box-shadow:
+    0 32px 64px -16px rgb(0 0 0 / 70%),
+    inset 0 1px 0 rgb(255 255 255 / 6%);
+  backdrop-filter: blur(24px);
+  animation: nav-select-dropdown-enter 180ms ease-out;
+}
+
+.select-dropdown[data-variant='nav'][data-side='top'] .select-dropdown__surface {
+  animation-name: nav-select-dropdown-enter-top;
+}
+
+.select-dropdown[data-variant='nav'] .select-dropdown__list {
+  padding: 0.6rem;
+}
+
+.select-dropdown[data-variant='nav'] .select-dropdown__option:hover,
+.select-dropdown[data-variant='nav'] .select-dropdown__option.is-active {
+  border-color: rgb(255 255 255 / 10%);
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 8%) 0%,
+    rgb(255 255 255 / 3%) 100%
+  );
+  transform: translateY(-1px);
+}
+
+.select-dropdown[data-variant='nav'] .select-dropdown__option.is-selected {
+  border-color: rgb(245 158 11 / 22%);
+  background: rgb(178 148 94 / 14%);
+  color: var(--foreground);
+}
+
+.select-dropdown[data-variant='nav'] .select-dropdown__option {
+  gap: 0.65rem;
+  padding: 0.9rem 1rem;
+  border-radius: 20px;
+}
+
+.select-dropdown[data-variant='nav'] .select-dropdown__check {
+  display: none;
+}
+
+/* Scope step selector: merge inner triggers with outer capsule like header nav */
+.scope-step-selector :where(.select-field) {
+  min-height: 32px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.scope-step-selector :where(.select-field)::before {
+  display: none;
+}
+
+.scope-step-selector :where(.select-field:hover),
+.scope-step-selector :where(.select-field:focus-within),
+.scope-step-selector :where(.select-field[data-open='true']) {
+  border-color: rgb(255 255 255 / 8%);
+  background: rgb(39 39 42 / 46%);
+  box-shadow: none;
+}
+
+.scope-step-selector :where(.select-field__control) {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
 .select-dropdown__list {
   margin: 0;
   max-height: inherit;
@@ -607,6 +679,30 @@ select.select option:checked {
   from {
     opacity: 0;
     transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes nav-select-dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes nav-select-dropdown-enter-top {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
   }
 
   to {
