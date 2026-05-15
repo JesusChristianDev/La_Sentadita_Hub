@@ -48,6 +48,12 @@ REVOKE EXECUTE ON FUNCTION public.custom_access_token_hook FROM authenticated, a
 --    authenticated/anon session from writing directly)
 -- ─────────────────────────────────────────────────
 
+ALTER TABLE public.notification_outbox ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "notification_outbox_admin_insert" ON public.notification_outbox;
+DROP POLICY IF EXISTS "notification_outbox_admin_update" ON public.notification_outbox;
+DROP POLICY IF EXISTS "notification_outbox_admin_delete" ON public.notification_outbox;
+
 CREATE POLICY "notification_outbox_admin_insert"
   ON public.notification_outbox
   FOR INSERT
