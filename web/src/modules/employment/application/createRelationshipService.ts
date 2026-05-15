@@ -1,9 +1,18 @@
-import { archivePerson, createPerson } from '@/modules/people';
-import type { ArchivePersonInput, CreatePersonInput } from '@/modules/people';
-import { updateEmploymentProjection } from '@/shared/db/employment';
-
-import type { CreateEmployeeValidatedInput, EditableEmploymentSystemRole } from './employeeMutationRules';
+import type { EditableEmploymentSystemRole } from './employeeMutationRules';
 import { mapEmployeeMutationErrorCode } from './employeeMutationRules';
+
+export type CreateRelationshipInput = {
+  email: string;
+  emailConfirm?: boolean;
+  fullName: string;
+  phone: string;
+  identityDocument: string;
+  role: EditableEmploymentSystemRole;
+  zoneId: string | null;
+  restaurantId: string;
+};
+
+type ArchiveInput = { personId: string; soft?: boolean };
 
 type UpdateProjectionInput = {
   personId: string;
@@ -12,21 +21,26 @@ type UpdateProjectionInput = {
   zoneId: string | null;
 };
 
-type CreateRelationshipDeps = {
-  createPerson: (input: CreatePersonInput) => Promise<string>;
-  archivePerson: (input: ArchivePersonInput) => Promise<void>;
+export type CreateRelationshipDeps = {
+  createPerson: (input: {
+    email: string;
+    emailConfirm?: boolean;
+    fullName: string;
+    phone: string;
+    identityDocument: string;
+    systemRole: EditableEmploymentSystemRole;
+  }) => Promise<string>;
+  archivePerson: (input: ArchiveInput) => Promise<void>;
   updateEmploymentProjection: (input: UpdateProjectionInput) => Promise<void>;
 };
 
 export function createRelationshipService(deps: CreateRelationshipDeps) {
-  return async function executeCreateRelationship(
-    input: CreateEmployeeValidatedInput,
-  ): Promise<string> {
+  return async function execute(input: CreateRelationshipInput): Promise<string> {
     let personId: string | undefined;
     try {
       personId = await deps.createPerson({
         email: input.email,
-        emailConfirm: false,
+        emailConfirm: input.emailConfirm ?? false,
         fullName: input.fullName,
         phone: input.phone,
         identityDocument: input.identityDocument,
@@ -53,15 +67,3 @@ export function createRelationshipService(deps: CreateRelationshipDeps) {
     }
   };
 }
-
-export async function createEmploymentRelationship(
-  input: CreateEmployeeValidatedInput,
-): Promise<string> {
-  return createRelationshipService({
-    archivePerson,
-    createPerson,
-    updateEmploymentProjection,
-  })(input);
-}
-
-export const createEmployee = createEmploymentRelationship;
