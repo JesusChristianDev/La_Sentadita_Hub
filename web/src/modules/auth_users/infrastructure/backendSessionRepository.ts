@@ -687,7 +687,9 @@ export async function loadBackendSession(): Promise<BackendSession | null> {
 
   const effectiveRestaurantId =
     activeScope.scopeType === 'restaurant'
-      ? activeScope.scopeId
+      ? visibleRestaurants.some((r) => r.id === activeScope.scopeId)
+        ? activeScope.scopeId
+        : null
       : activeScope.scopeType === 'zone'
         ? currentEmployment?.zoneAssignments.find(
             (assignment) => assignment.isCurrent && assignment.zoneId === activeScope.scopeId,
