@@ -32,7 +32,6 @@ import type {
 } from '../domain/scheduleTypes';
 import {
   acquireLock,
-  createScheduleEntry,
   createShiftTemplateRecord,
   deactivateShiftTemplateRecord,
   forceReleaseLock,
@@ -52,6 +51,7 @@ import {
   listSchedulesByWeeks,
   listShiftTemplates,
   markScheduleAsDraft,
+  persistDraftEntryAtomic,
   updateShiftTemplateRecord,
 } from '../infrastructure/scheduleRepository';
 import { ensureScheduleDraft } from './getSchedule';
@@ -376,14 +376,12 @@ function getScheduleDraftService() {
   return createScheduleDraftService({
     buildIssueSummaryForSchedule,
     buildPublicationStateForSchedule,
-    createScheduleEntry,
     getEntryByNaturalKey,
     getScheduleConfig,
-    insertScheduleEntryLog,
     listEmployees,
     listScheduleEntries,
     markScheduleAsDraft,
-    updateEntry,
+    persistEntryAtomic: persistDraftEntryAtomic,
   });
 }
 

@@ -340,6 +340,52 @@ export async function updateSingleEntry(
   return data as ScheduleEntry;
 }
 
+export async function persistDraftEntryAtomic(params: {
+  actorUserId: string | null;
+  changeSource: 'manual' | 'auto';
+  date: string;
+  employeeId: string;
+  existing: ScheduleEntry | null;
+  payload: Partial<ScheduleEntry>;
+  scheduleId: string;
+}): Promise<ScheduleEntry> {
+  const supabase = createSupabaseAdminClient();
+  const { existing, payload } = params;
+
+  const { data, error } = await supabase.rpc('persist_draft_entry_atomic', {
+    p_change_source: params.changeSource,
+    p_changed_by: params.actorUserId ?? null,
+    p_date: params.date,
+    p_day_type: payload.day_type ?? null,
+    p_employee_id: params.employeeId,
+    p_end_time: payload.end_time ?? null,
+    p_entry_id: existing?.id ?? null,
+    p_expected_version: existing?.version ?? null,
+    p_prev_day_type: existing?.day_type ?? null,
+    p_prev_end_time: existing?.end_time ?? null,
+    p_prev_shift_tpl: existing?.shift_template_id ?? null,
+    p_prev_split_end: existing?.split_end_time ?? null,
+    p_prev_split_start: existing?.split_start_time ?? null,
+    p_prev_start_time: existing?.start_time ?? null,
+    p_prev_zone_id: existing?.zone_id ?? null,
+    p_schedule_id: params.scheduleId,
+    p_shift_template_id: payload.shift_template_id ?? null,
+    p_split_end_time: payload.split_end_time ?? null,
+    p_split_start_time: payload.split_start_time ?? null,
+    p_start_time: payload.start_time ?? null,
+    p_zone_id: payload.zone_id ?? null,
+  });
+
+  if (error) {
+    if (error.message?.includes('SCHEDULE_ENTRY_CONFLICT')) {
+      throw buildUpdateConflictError('La celda fue actualizada por otro usuario o es de solo lectura.');
+    }
+    throw error;
+  }
+
+  return data as ScheduleEntry;
+}
+
 export async function insertScheduleEntryLog(params: {
   changedBy: string | null;
   changeSource: 'manual' | 'auto';
