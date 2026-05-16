@@ -92,6 +92,7 @@ test('loadPublishReview uses repository deps and scoped employees', async () => 
         empty_keys: [],
         invalid_cells: 0,
         invalid_keys: [],
+        weekly_hours_warnings: [],
       };
     },
     getPublishedEntriesForSchedule: async () => [
@@ -152,6 +153,7 @@ test('publishSchedule delegates to publishScheduleWeek with affected employees',
       empty_keys: [],
       invalid_cells: 0,
       invalid_keys: [],
+      weekly_hours_warnings: [],
     }),
     getPublishedEntriesForSchedule: async () => [
       makeEntry({
@@ -203,6 +205,7 @@ test('publishSchedule fails fast when there are no pending changes', async () =>
       empty_keys: [],
       invalid_cells: 0,
       invalid_keys: [],
+      weekly_hours_warnings: [],
     }),
     getPublishedEntriesForSchedule: async () => [
       makeEntry({

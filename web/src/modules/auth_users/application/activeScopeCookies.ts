@@ -24,6 +24,7 @@ function isBackendScopeType(value: string | undefined | null): value is BackendS
 function cookieOptions() {
   return {
     httpOnly: true,
+    maxAge: 3600,
     path: '/',
     sameSite: 'lax' as const,
     secure: process.env.NODE_ENV === 'production',

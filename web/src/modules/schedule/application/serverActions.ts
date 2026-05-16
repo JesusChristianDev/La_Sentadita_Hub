@@ -32,7 +32,6 @@ import type {
 } from '../domain/scheduleTypes';
 import {
   acquireLock,
-  createScheduleEntry,
   createShiftTemplateRecord,
   deactivateShiftTemplateRecord,
   forceReleaseLock,
@@ -44,7 +43,6 @@ import {
   getScheduleConfig,
   getScheduleLockOwnerActor,
   getScheduleWithEntriesById,
-  insertScheduleEntryLog,
   listRestaurantZones,
   listScheduleEntries,
   listScheduleEntryLogs,
@@ -52,11 +50,13 @@ import {
   listSchedulesByWeeks,
   listShiftTemplates,
   markScheduleAsDraft,
+  persistDraftEntryAtomic,
   updateShiftTemplateRecord,
 } from '../infrastructure/scheduleRepository';
 import { ensureScheduleDraft } from './getSchedule';
 import { unlockSchedule } from './lockActions';
 import { publishScheduleWeek } from './publishSchedule';
+import { filterEmployeesForDraftScope as filterEmployeesByScope } from './scheduleDraftScope';
 import { createScheduleDraftService } from './scheduleDraftService';
 import { createScheduleLockService } from './scheduleLockService';
 import { createSchedulePublicationService } from './schedulePublicationService';
@@ -259,13 +259,7 @@ function filterEmployeesForDraftScope(
   ctx: UserContext,
   employees: EmployeeListItem[],
 ): EmployeeListItem[] {
-  if (ctx.requestContext.systemRole !== 'area_lead' || !ctx.requestContext.zoneId) {
-    return employees;
-  }
-
-  return employees.filter(
-    (employee) => employee.zone_id === ctx.requestContext.zoneId,
-  );
+  return filterEmployeesByScope(ctx.requestContext, employees);
 }
 
 function buildShiftTemplateText(input: ShiftTemplateDraftInput): string {
@@ -381,14 +375,12 @@ function getScheduleDraftService() {
   return createScheduleDraftService({
     buildIssueSummaryForSchedule,
     buildPublicationStateForSchedule,
-    createScheduleEntry,
     getEntryByNaturalKey,
     getScheduleConfig,
-    insertScheduleEntryLog,
     listEmployees,
     listScheduleEntries,
     markScheduleAsDraft,
-    updateEntry,
+    persistEntryAtomic: persistDraftEntryAtomic,
   });
 }
 
@@ -416,6 +408,7 @@ export async function loadScheduleHomeAction(
     return {
       current_week: buildWeekSummary({
         config: {
+          max_weekly_hours_employee: null,
           min_shift_duration_minutes: 60,
           min_split_break_minutes: 60,
           timezone: 'Europe/Madrid',
@@ -428,6 +421,7 @@ export async function loadScheduleHomeAction(
       history_weeks: [],
       next_week: buildWeekSummary({
         config: {
+          max_weekly_hours_employee: null,
           min_shift_duration_minutes: 60,
           min_split_break_minutes: 60,
           timezone: 'Europe/Madrid',

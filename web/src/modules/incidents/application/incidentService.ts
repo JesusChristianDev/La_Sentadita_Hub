@@ -10,9 +10,16 @@ import {
   canAccessZone,
 } from '@/shared/authz';
 
+import {
+  assertRoleAllowedToCreateCategory,
+  assertRoleAllowedToMarkRestricted,
+  assertValidIncidentTransition,
+} from '../domain/incidentStatusRules';
 import type {
   CreateIncidentInput,
+  IncidentCategory,
   IncidentRecord,
+  IncidentSeverity,
   IncidentStatus,
 } from '../domain/incidentTypes';
 
@@ -151,6 +158,8 @@ export async function listVisibleIncidents(
 export async function createIncident(input: CreateIncidentInput): Promise<IncidentRecord> {
   const ctx = await getRequiredCurrentUserContext();
   assertRestaurantAccess(ctx.requestContext, input.restaurantId);
+  assertRoleAllowedToCreateCategory(ctx.requestContext.systemRole, input.category);
+  assertRoleAllowedToMarkRestricted(ctx.requestContext.systemRole, input.sensitivity ?? 'normal');
 
   const admin = createSupabaseAdminClient();
   const payload = {
@@ -218,6 +227,7 @@ export async function updateIncidentStatus(
   const ctx = await getRequiredCurrentUserContext();
   const current = await loadIncident(incidentId);
   assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
+  assertValidIncidentTransition(current.status, status);
 
   const patch = { status };
   const admin = createSupabaseAdminClient();
@@ -263,6 +273,60 @@ export async function updateIncidentStatus(
   return data as IncidentRecord;
 }
 
+async function assertPersonActiveAtRestaurant(
+  personId: string,
+  restaurantId: string,
+): Promise<void> {
+  const admin = createSupabaseAdminClient();
+  const today = todayIsoDate();
+
+  const { data: person, error: personError } = await admin
+    .from('persons')
+    .select('person_id, is_archived')
+    .eq('person_id', personId)
+    .single();
+
+  if (personError || !person) {
+    throw new Error('OWNER_NOT_FOUND: La persona no existe.');
+  }
+
+  if (person.is_archived) {
+    throw new Error('OWNER_ARCHIVED: La persona está archivada y no puede ser asignada.');
+  }
+
+  const { data: assignments, error: assignError } = await admin
+    .from('employment_restaurant_assignments')
+    .select('employment_id, valid_from, valid_to')
+    .eq('restaurant_id', restaurantId);
+
+  if (assignError) {
+    throw new Error(`Failed to load restaurant assignments: ${assignError.message}`);
+  }
+
+  const employmentIds = (assignments ?? [])
+    .filter((a) => isCurrentTemporalRow(a as { valid_from: string; valid_to: string | null }, today))
+    .map((a) => a.employment_id as string);
+
+  if (employmentIds.length === 0) {
+    throw new Error('OWNER_NOT_IN_RESTAURANT: La persona no tiene empleo activo en este restaurante.');
+  }
+
+  const { data: employments, error: empError } = await admin
+    .from('employment_relationships')
+    .select('person_id')
+    .in('employment_id', employmentIds)
+    .eq('person_id', personId)
+    .eq('is_archived', false);
+
+  if (empError) {
+    throw new Error(`Failed to validate owner employment: ${empError.message}`);
+  }
+
+  if (!employments || employments.length === 0) {
+    throw new Error('OWNER_NOT_IN_RESTAURANT: La persona no tiene empleo activo en este restaurante.');
+  }
+}
+
 export async function assignIncidentOwner(
   incidentId: string,
   ownerPersonId: string,
@@ -270,6 +334,7 @@ export async function assignIncidentOwner(
   const ctx = await getRequiredCurrentUserContext();
   const current = await loadIncident(incidentId);
   assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
+  await assertPersonActiveAtRestaurant(ownerPersonId, current.restaurant_id);
 
   const patch = { primary_owner: ownerPersonId };
   const admin = createSupabaseAdminClient();
@@ -307,6 +372,72 @@ export async function assignIncidentOwner(
     scopeType: 'restaurant',
     sendPush: true,
     title: 'Incidencia asignada',
+    traceId: ctx.requestContext.traceId,
+  });
+
+  return data as IncidentRecord;
+}
+
+export type EditIncidentDetailsInput = {
+  category?: IncidentCategory;
+  description?: string;
+  severity?: IncidentSeverity;
+  title?: string;
+};
+
+export async function editIncidentDetails(
+  incidentId: string,
+  input: EditIncidentDetailsInput,
+): Promise<IncidentRecord> {
+  const ctx = await getRequiredCurrentUserContext();
+  const current = await loadIncident(incidentId);
+  assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
+
+  if (current.status === 'closed') {
+    throw new Error('INCIDENT_CLOSED: No se pueden editar los detalles de una incidencia cerrada.');
+  }
+
+  if (input.category !== undefined) {
+    assertRoleAllowedToCreateCategory(ctx.requestContext.systemRole, input.category);
+  }
+
+  const patch: Partial<Pick<IncidentRecord, 'category' | 'description' | 'severity' | 'title'>> = {};
+  if (input.category !== undefined) patch.category = input.category;
+  if (input.description !== undefined) patch.description = input.description;
+  if (input.severity !== undefined) patch.severity = input.severity;
+  if (input.title !== undefined) patch.title = input.title;
+
+  if (Object.keys(patch).length === 0) {
+    return current;
+  }
+
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from('incidents')
+    .update(patch)
+    .eq('incident_id', incidentId)
+    .select(
+      'incident_id, restaurant_id, zone_id, category, sensitivity, title, description, severity, reported_by, primary_owner, status, created_at, updated_at',
+    )
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to edit incident details: ${error.message}`);
+  }
+
+  await writeAuditLog({
+    action: AUDIT_ACTIONS.incidentStatusChanged,
+    entityId: incidentId,
+    entityType: 'incident',
+    newValue: patch,
+    previousValue: {
+      category: current.category,
+      description: current.description,
+      severity: current.severity,
+      title: current.title,
+    },
+    scopeId: current.restaurant_id,
+    scopeType: 'restaurant',
     traceId: ctx.requestContext.traceId,
   });
 

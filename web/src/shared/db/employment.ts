@@ -1,10 +1,7 @@
-export type {
-  EmployeeDetailPageProjection,
-  EmployeesPageProjection,
-  EmploymentScopeProjection,
-  RestaurantZonesMap,
-  ScheduleActorProjection,
-} from '@/modules/employment/infrastructure/employmentRepository';
+export {
+  setEmploymentActiveProjection,
+  updateEmploymentProjection,
+} from '@/modules/employment/infrastructure/employmentMutationService';
 export {
   getAreaLeadZoneConflictCode,
   getEmploymentRoleSlotConflictCode,
@@ -13,13 +10,20 @@ export {
   listEmploymentForCompanyProjection,
   listEmploymentForOrganizationProjection,
   listEmploymentForRestaurantProjection,
+  loadEmployeesPageProjection,
+} from '@/modules/employment/infrastructure/employmentProjectionService';
+export type {
+  EmployeeDetailPageProjection,
+  EmployeesPageProjection,
+  EmploymentScopeProjection,
+  RestaurantZonesMap,
+  ScheduleActorProjection,
+} from '@/modules/employment/infrastructure/employmentRepository';
+export {
   loadEmployeeDetailPageProjection,
   loadEmployeeProfileProjectionById,
   loadEmployeeScopeProjection,
-  loadEmployeesPageProjection,
   loadEmploymentScopeProjection,
   loadRestaurantZonesMap,
   loadScheduleActorProjection,
-  setEmploymentActiveProjection,
-  updateEmploymentProjection,
 } from '@/modules/employment/infrastructure/employmentRepository';

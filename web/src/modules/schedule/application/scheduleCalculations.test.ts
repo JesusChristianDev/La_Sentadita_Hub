@@ -17,6 +17,7 @@ import {
 } from './scheduleCalculations';
 
 const CONFIG: ScheduleConfig = {
+  max_weekly_hours_employee: null,
   min_shift_duration_minutes: 240,
   min_split_break_minutes: 180,
   timezone: 'Europe/Madrid',
@@ -168,6 +169,7 @@ test('buildPublishReview only flags changed employees during republication', () 
       empty_keys: [],
       invalid_cells: 0,
       invalid_keys: [],
+      weekly_hours_warnings: [],
     },
     publishedEntries,
     schedule,
@@ -177,6 +179,42 @@ test('buildPublishReview only flags changed employees during republication', () 
   assert.equal(review.has_changes, true);
   assert.deepEqual(review.affected_employee_ids, ['emp-1']);
   assert.equal(review.can_publish, true);
+});
+
+test('summarizeScheduleIssues emits no weekly_hours_warnings when limit is null', () => {
+  const issues = summarizeScheduleIssues({
+    config: { ...CONFIG, max_weekly_hours_employee: null },
+    employees: [{ full_name: 'Ana', id: 'emp-1', system_role: 'employee' }],
+    entries: [
+      makeEntry({ date: '2026-03-09', employee_id: 'emp-1', id: 'e1', start_time: '09:00', end_time: '17:00' }),
+      makeEntry({ date: '2026-03-10', employee_id: 'emp-1', id: 'e2', start_time: '09:00', end_time: '17:00' }),
+      makeEntry({ date: '2026-03-11', employee_id: 'emp-1', id: 'e3', start_time: '09:00', end_time: '17:00' }),
+      makeEntry({ date: '2026-03-12', employee_id: 'emp-1', id: 'e4', start_time: '09:00', end_time: '17:00' }),
+      makeEntry({ date: '2026-03-13', employee_id: 'emp-1', id: 'e5', start_time: '09:00', end_time: '17:00' }),
+    ],
+    weekStart: '2026-03-09',
+  });
+
+  assert.deepEqual(issues.weekly_hours_warnings, []);
+});
+
+test('summarizeScheduleIssues warns when employee exceeds max weekly hours', () => {
+  const issues = summarizeScheduleIssues({
+    config: { ...CONFIG, max_weekly_hours_employee: 40 },
+    employees: [{ full_name: 'Ana García', id: 'emp-1', system_role: 'employee' }],
+    entries: [
+      makeEntry({ date: '2026-03-09', employee_id: 'emp-1', id: 'e1', start_time: '08:00', end_time: '18:00' }),
+      makeEntry({ date: '2026-03-10', employee_id: 'emp-1', id: 'e2', start_time: '08:00', end_time: '18:00' }),
+      makeEntry({ date: '2026-03-11', employee_id: 'emp-1', id: 'e3', start_time: '08:00', end_time: '18:00' }),
+      makeEntry({ date: '2026-03-12', employee_id: 'emp-1', id: 'e4', start_time: '08:00', end_time: '18:00' }),
+      makeEntry({ date: '2026-03-13', employee_id: 'emp-1', id: 'e5', start_time: '08:00', end_time: '18:00' }),
+    ],
+    weekStart: '2026-03-09',
+  });
+
+  assert.equal(issues.weekly_hours_warnings.length, 1);
+  assert.match(issues.weekly_hours_warnings[0], /Ana García/);
+  assert.match(issues.weekly_hours_warnings[0], /50h/);
 });
 
 test('buildPublicationState disables publishing when there are no real changes', () => {

@@ -14,6 +14,7 @@ import { buildShiftTextFromEntry, validateShiftText } from './shiftValidation';
 type SchedulableRole = Parameters<typeof requiresScheduledCells>[0];
 
 export type ScheduleIssueEmployee = {
+  full_name?: string | null;
   id: string;
   system_role: SchedulableRole;
 };
@@ -22,6 +23,54 @@ export type SchedulePublicationEmployee = {
   full_name: string | null;
   id: string;
 };
+
+function timeToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + (m ?? 0);
+}
+
+function rangeMinutes(start: string, end: string): number {
+  const diff = timeToMinutes(end) - timeToMinutes(start);
+  return diff <= 0 ? diff + 24 * 60 : diff;
+}
+
+function entryWorkMinutes(entry: ScheduleEntry): number {
+  if (entry.day_type !== 'work' || !entry.start_time || !entry.end_time) return 0;
+  const main = rangeMinutes(entry.start_time, entry.end_time);
+  const split =
+    entry.split_start_time && entry.split_end_time
+      ? rangeMinutes(entry.split_start_time, entry.split_end_time)
+      : 0;
+  return main + split;
+}
+
+function summarizeWeeklyHoursWarnings(
+  employees: ScheduleIssueEmployee[],
+  entries: ScheduleEntry[],
+  maxHours: number,
+): string[] {
+  const minutesByEmployee = new Map<string, number>();
+
+  for (const entry of entries) {
+    const mins = entryWorkMinutes(entry);
+    if (mins === 0) continue;
+    minutesByEmployee.set(entry.employee_id, (minutesByEmployee.get(entry.employee_id) ?? 0) + mins);
+  }
+
+  const warnings: string[] = [];
+  const employeeById = new Map(employees.map((e) => [e.id, e]));
+
+  for (const [employeeId, totalMinutes] of minutesByEmployee) {
+    if (totalMinutes > maxHours * 60) {
+      const employee = employeeById.get(employeeId);
+      const name = employee?.full_name?.trim() || employeeId;
+      const hours = Math.round((totalMinutes / 60) * 10) / 10;
+      warnings.push(`${name}: ${hours}h (máx ${maxHours}h)`);
+    }
+  }
+
+  return warnings;
+}
 
 export function summarizeScheduleIssues(params: {
   config: ScheduleConfig;
@@ -68,12 +117,21 @@ export function summarizeScheduleIssues(params: {
   }
 
   const emptyKeys = Array.from(expectedKeys).filter((key) => !presentKeys.has(key));
+  const weeklyHoursWarnings =
+    params.config.max_weekly_hours_employee != null
+      ? summarizeWeeklyHoursWarnings(
+          params.employees,
+          params.entries,
+          params.config.max_weekly_hours_employee,
+        )
+      : [];
 
   return {
     empty_cells: emptyKeys.length,
     empty_keys: emptyKeys,
     invalid_cells: invalidKeys.size,
     invalid_keys: Array.from(invalidKeys),
+    weekly_hours_warnings: weeklyHoursWarnings,
   };
 }
 

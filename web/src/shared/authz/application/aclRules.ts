@@ -139,10 +139,8 @@ export function can(
       if (!isAreaLead(ctx.systemRole)) return false;
       if (!ctx.zoneId) return false;
 
-      // Para area_lead, el manejo es por zona: si no se pasa un resource.zoneId,
-      // asumimos que la acción apunta a la zona activa (ctx.zoneId).
       const targetZoneId = resource?.targetZoneId ?? resource?.zoneId ?? null;
-      if (!targetZoneId) return true;
+      if (!targetZoneId) return false;
 
       return targetZoneId === ctx.zoneId;
     }

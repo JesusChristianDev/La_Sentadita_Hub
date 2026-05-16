@@ -34,35 +34,32 @@ type ScheduleDraftServiceDeps = {
     issues: ScheduleIssueSummary;
     schedule: ScheduleWithEntries;
   }) => Promise<SchedulePublicationState>;
-  createScheduleEntry: (entry: Record<string, unknown>) => Promise<ScheduleEntry>;
   getEntryByNaturalKey: (
     scheduleId: string,
     employeeId: string,
     date: string,
   ) => Promise<ScheduleEntry | null>;
   getScheduleConfig: (restaurantId: string) => Promise<{
+    max_weekly_hours_employee: number | null;
     min_shift_duration_minutes: number;
     min_split_break_minutes: number;
     timezone: string;
   }>;
-  insertScheduleEntryLog: (params: {
-    changedBy: string | null;
-    changeSource: 'manual' | 'auto';
-    next: Partial<ScheduleEntry> | null;
-    previous: Partial<ScheduleEntry> | null;
-    scheduleEntryId: string;
-  }) => Promise<void>;
   listEmployees: (
     restaurantId: string,
     status?: 'active' | 'inactive' | 'all',
   ) => Promise<EmployeeListItem[]>;
   listScheduleEntries: (scheduleId: string) => Promise<ScheduleEntry[]>;
   markScheduleAsDraft: (scheduleId: string) => Promise<Schedule>;
-  updateEntry: (
-    id: string,
-    version: number,
-    updates: Record<string, unknown>,
-  ) => Promise<ScheduleEntry>;
+  persistEntryAtomic: (params: {
+    actorUserId: string | null;
+    changeSource: 'manual' | 'auto';
+    date: string;
+    employeeId: string;
+    existing: ScheduleEntry | null;
+    payload: Partial<ScheduleEntry>;
+    scheduleId: string;
+  }) => Promise<ScheduleEntry>;
 };
 
 function identityScopeEmployees(employees: EmployeeListItem[]): EmployeeListItem[] {
@@ -92,41 +89,19 @@ export function createScheduleDraftService(deps: ScheduleDraftServiceDeps) {
       };
     }
 
-    if (existing) {
-      const updated = await deps.updateEntry(existing.id, existing.version, payload);
-      await deps.insertScheduleEntryLog({
-        changedBy: params.actorUserId,
-        changeSource: 'manual',
-        next: updated,
-        previous: existing,
-        scheduleEntryId: existing.id,
-      });
-      return {
-        changed: true,
-        entry: updated,
-      };
-    }
-
-    const created = await deps.createScheduleEntry({
-      ...payload,
-      date: params.date,
-      employee_id: params.employeeId,
-      schedule_id: params.scheduleId,
-      source: 'manual',
-      version: 1,
-    });
-
-    await deps.insertScheduleEntryLog({
-      changedBy: params.actorUserId,
+    const entry = await deps.persistEntryAtomic({
+      actorUserId: params.actorUserId,
       changeSource: 'manual',
-      next: created,
-      previous: null,
-      scheduleEntryId: created.id,
+      date: params.date,
+      employeeId: params.employeeId,
+      existing,
+      payload,
+      scheduleId: params.scheduleId,
     });
 
     return {
       changed: true,
-      entry: created,
+      entry,
     };
   }
 

@@ -139,6 +139,7 @@ export interface ScheduleIssueSummary {
   empty_keys: string[];
   invalid_cells: number;
   invalid_keys: string[];
+  weekly_hours_warnings: string[];
 }
 
 export interface ScheduleEntryLog {
@@ -208,6 +209,7 @@ export interface ScheduleLock {
 }
 
 export interface ScheduleConfig {
+  max_weekly_hours_employee: number | null;
   min_shift_duration_minutes: number;
   min_split_break_minutes: number;
   timezone: string;

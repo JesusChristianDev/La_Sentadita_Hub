@@ -64,6 +64,7 @@ function makeIssueSummary(): ScheduleIssueSummary {
     empty_keys: [],
     invalid_cells: 0,
     invalid_keys: [],
+    weekly_hours_warnings: [],
   };
 }
 
@@ -76,37 +77,31 @@ function makePublicationState(): SchedulePublicationState {
   };
 }
 
+const BASE_CONFIG = {
+  max_weekly_hours_employee: null,
+  min_shift_duration_minutes: 240,
+  min_split_break_minutes: 180,
+  timezone: 'Europe/Madrid',
+};
+
 test('persistDraftEntry returns unchanged entry when payload is effectively identical', async () => {
   const existing = makeEntry({
     date: '2026-03-09',
     employee_id: 'emp-1',
     id: 'entry-1',
   });
-  let updated = false;
-  let created = false;
-  let logged = false;
+  let atomicCalled = false;
 
   const service = createScheduleDraftService({
     buildIssueSummaryForSchedule: async () => makeIssueSummary(),
     buildPublicationStateForSchedule: async () => makePublicationState(),
-    createScheduleEntry: async () => {
-      created = true;
-      return existing;
-    },
     getEntryByNaturalKey: async () => existing,
-    getScheduleConfig: async () => ({
-      min_shift_duration_minutes: 240,
-      min_split_break_minutes: 180,
-      timezone: 'Europe/Madrid',
-    }),
-    insertScheduleEntryLog: async () => {
-      logged = true;
-    },
+    getScheduleConfig: async () => BASE_CONFIG,
     listEmployees: async () => [makeEmployee()],
     listScheduleEntries: async () => [existing],
     markScheduleAsDraft: async () => makeSchedule(),
-    updateEntry: async () => {
-      updated = true;
+    persistEntryAtomic: async () => {
+      atomicCalled = true;
       return existing;
     },
   });
@@ -122,39 +117,30 @@ test('persistDraftEntry returns unchanged entry when payload is effectively iden
 
   assert.equal(result.changed, false);
   assert.equal(result.entry, existing);
-  assert.equal(updated, false);
-  assert.equal(created, false);
-  assert.equal(logged, false);
+  assert.equal(atomicCalled, false);
 });
 
-test('persistDraftEntry creates a new entry and audit log when the cell does not exist', async () => {
+test('persistDraftEntry creates a new entry atomically when the cell does not exist', async () => {
   const createdEntry = makeEntry({
     date: '2026-03-09',
     employee_id: 'emp-1',
     id: 'entry-new',
   });
-  const logCalls: Array<{ previous: Partial<ScheduleEntry> | null; scheduleEntryId: string }> = [];
+  type AtomicCall = { existing: ScheduleEntry | null; employeeId: string };
+  const atomicCalls: AtomicCall[] = [];
 
   const service = createScheduleDraftService({
     buildIssueSummaryForSchedule: async () => makeIssueSummary(),
     buildPublicationStateForSchedule: async () => makePublicationState(),
-    createScheduleEntry: async () => createdEntry,
     getEntryByNaturalKey: async () => null,
-    getScheduleConfig: async () => ({
-      min_shift_duration_minutes: 240,
-      min_split_break_minutes: 180,
-      timezone: 'Europe/Madrid',
-    }),
-    insertScheduleEntryLog: async (params) => {
-      logCalls.push({
-        previous: params.previous,
-        scheduleEntryId: params.scheduleEntryId,
-      });
-    },
+    getScheduleConfig: async () => BASE_CONFIG,
     listEmployees: async () => [makeEmployee()],
     listScheduleEntries: async () => [createdEntry],
     markScheduleAsDraft: async () => makeSchedule(),
-    updateEntry: async () => createdEntry,
+    persistEntryAtomic: async (params) => {
+      atomicCalls.push({ existing: params.existing, employeeId: params.employeeId });
+      return createdEntry;
+    },
   });
 
   const result = await service.persistDraftEntry({
@@ -172,12 +158,9 @@ test('persistDraftEntry creates a new entry and audit log when the cell does not
 
   assert.equal(result.changed, true);
   assert.equal(result.entry.id, 'entry-new');
-  assert.deepEqual(logCalls, [
-    {
-      previous: null,
-      scheduleEntryId: 'entry-new',
-    },
-  ]);
+  assert.equal(atomicCalls.length, 1);
+  assert.equal(atomicCalls[0].existing, null);
+  assert.equal(atomicCalls[0].employeeId, 'emp-1');
 });
 
 test('saveCellDraft republishes to draft state and recalculates issue summary', async () => {
@@ -205,26 +188,20 @@ test('saveCellDraft republishes to draft state and recalculates issue summary', 
       return makeIssueSummary();
     },
     buildPublicationStateForSchedule: async () => makePublicationState(),
-    createScheduleEntry: async () => refreshedEntries[0],
     getEntryByNaturalKey: async () =>
       makeEntry({
         date: '2026-03-09',
         employee_id: 'emp-1',
         id: 'entry-1',
       }),
-    getScheduleConfig: async () => ({
-      min_shift_duration_minutes: 240,
-      min_split_break_minutes: 180,
-      timezone: 'Europe/Madrid',
-    }),
-    insertScheduleEntryLog: async () => undefined,
+    getScheduleConfig: async () => BASE_CONFIG,
     listEmployees: async () => employees,
     listScheduleEntries: async () => refreshedEntries,
     markScheduleAsDraft: async () => {
       markedDraft = true;
       return makeSchedule({ status: 'draft' });
     },
-    updateEntry: async () => refreshedEntries[0],
+    persistEntryAtomic: async () => refreshedEntries[0],
   });
 
   const result = await service.saveCellDraft({
@@ -245,43 +222,28 @@ test('saveCellDraft republishes to draft state and recalculates issue summary', 
 
 test('saveCellDraft allows clearing a cell without loading schedule config', async () => {
   let configCalls = 0;
+  const clearedEntry = makeEntry({
+    date: '2026-03-09',
+    day_type: 'unscheduled',
+    employee_id: 'emp-1',
+    end_time: null,
+    id: 'entry-cleared',
+    start_time: null,
+    zone_id: null,
+  });
 
   const service = createScheduleDraftService({
     buildIssueSummaryForSchedule: async () => makeIssueSummary(),
     buildPublicationStateForSchedule: async () => makePublicationState(),
-    createScheduleEntry: async () =>
-      makeEntry({
-        date: '2026-03-09',
-        day_type: 'unscheduled',
-        employee_id: 'emp-1',
-        end_time: null,
-        id: 'entry-cleared',
-        start_time: null,
-        zone_id: null,
-      }),
     getEntryByNaturalKey: async () => null,
     getScheduleConfig: async () => {
       configCalls += 1;
-      return {
-        min_shift_duration_minutes: 240,
-        min_split_break_minutes: 180,
-        timezone: 'Europe/Madrid',
-      };
+      return BASE_CONFIG;
     },
-    insertScheduleEntryLog: async () => undefined,
     listEmployees: async () => [makeEmployee()],
     listScheduleEntries: async () => [],
     markScheduleAsDraft: async () => makeSchedule(),
-    updateEntry: async () =>
-      makeEntry({
-        date: '2026-03-09',
-        day_type: 'unscheduled',
-        employee_id: 'emp-1',
-        end_time: null,
-        id: 'entry-cleared',
-        start_time: null,
-        zone_id: null,
-      }),
+    persistEntryAtomic: async () => clearedEntry,
   });
 
   await service.saveCellDraft({

@@ -12,16 +12,16 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
   },
   webServer: {
     command: process.env.CI
-      ? 'pnpm run build && pnpm run start -- --hostname 127.0.0.1 --port 3000'
+      ? 'node_modules/.bin/next start -p 3000'
       : 'pnpm run dev',
-    url: 'http://127.0.0.1:3000/login',
+    url: 'http://localhost:3000/login',
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    timeout: 30000,
     env: {
       NEXT_TELEMETRY_DISABLED: '1',
       E2E_LOGIN_DELAY_MS: '900',

@@ -17,6 +17,10 @@ defaults:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,6 +73,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
 
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
