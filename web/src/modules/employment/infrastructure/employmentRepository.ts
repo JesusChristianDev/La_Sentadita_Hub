@@ -149,14 +149,13 @@ export function formatFullName(person: Pick<PersonRow, 'first_name' | 'last_name
 
 export function parseAccessStatus(
   accessStatus: string | null,
-  isArchived: boolean,
 ): PersonProfile['access_status'] {
   if (accessStatus === 'pending_activation') return 'pending_activation';
   if (accessStatus === 'active') return 'active';
   if (accessStatus === 'suspended') return 'suspended';
   if (accessStatus === 'archived') return 'archived';
   if (accessStatus === 'blocked') return 'blocked';
-  return isArchived ? 'archived' : 'active';
+  return 'active';
 }
 
 export function mapSystemRoleToEmployment(systemRole: SystemRole): EmploymentSystemRole {
@@ -398,7 +397,7 @@ export async function loadEmployeeProfileProjectionById(
   const companyRow = (companyData.data ?? null) as { chain_id: string | null } | null;
 
   return {
-    access_status: parseAccessStatus(person.access_status, person.is_archived),
+    access_status: parseAccessStatus(person.access_status),
     avatar_path: person.avatar_url,
     chain_id: companyRow?.chain_id ?? null,
     employee_code: Number.parseInt(person.agora_employee_id ?? '0', 10) || 0,

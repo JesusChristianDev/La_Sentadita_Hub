@@ -107,7 +107,6 @@ async function syncPersonEmploymentProjection(params: {
     .from('persons')
     .update({
       deleted_at: null,
-      is_archived: false,
       system_role: params.systemRole,
       updated_at: new Date().toISOString(),
     })
@@ -421,7 +420,6 @@ async function deactivateEmploymentProjection(personId: string): Promise<void> {
     .update({
       access_status: 'archived',
       deleted_at: timestamp,
-      is_archived: true,
       updated_at: timestamp,
     })
     .eq('person_id', personId);
@@ -515,7 +513,6 @@ export async function setEmploymentActiveProjection(
       .update({
         access_status: 'active',
         deleted_at: null,
-        is_archived: false,
         updated_at: new Date().toISOString(),
       })
       .eq('person_id', personId);

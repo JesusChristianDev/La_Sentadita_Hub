@@ -105,12 +105,8 @@ function formatFullName(firstName: string, lastName: string): string {
   return [firstName, lastName].filter(Boolean).join(' ').trim();
 }
 
-function parseAccessStatus(
-  accessStatus: AccessStatus | null,
-  isArchived: boolean,
-): AccessStatus {
-  if (accessStatus) return accessStatus;
-  return isArchived ? 'archived' : 'active';
+function parseAccessStatus(accessStatus: AccessStatus | null): AccessStatus {
+  return accessStatus ?? 'active';
 }
 
 function todayIsoDate(): string {
@@ -348,7 +344,7 @@ export async function loadBackendSession(): Promise<BackendSession | null> {
   const zoneById = new Map(zoneRows.map((zone) => [zone.id, zone]));
 
   const backendPerson: BackendPerson = {
-    accessStatus: parseAccessStatus(personRow.access_status, personRow.is_archived),
+    accessStatus: parseAccessStatus(personRow.access_status),
     agoraEmployeeId: personRow.agora_employee_id,
     avatarUrl: personRow.avatar_url,
     email: personRow.email,

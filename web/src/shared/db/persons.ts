@@ -127,15 +127,12 @@ function hasKeys(value: Record<string, unknown>): boolean {
   return Object.keys(value).length > 0;
 }
 
-function parseAccessStatus(
-  value: string | undefined | null,
-  isArchived: boolean,
-): AccessStatus {
+function parseAccessStatus(value: string | undefined | null): AccessStatus {
   if (typeof value === 'string' && PERSON_ACCESS_STATUSES.includes(value as AccessStatus)) {
     return value as AccessStatus;
   }
 
-  return isArchived ? 'archived' : 'active';
+  return 'active';
 }
 
 export function isPersonAccessAllowed(accessStatus: AccessStatus): boolean {
@@ -236,10 +233,7 @@ export async function loadPersonProfileByIdWithClient(
   }
 
   const typedPerson = person as PersonRow;
-  const accessStatus = parseAccessStatus(
-    typedPerson.access_status,
-    typedPerson.is_archived,
-  );
+  const accessStatus = parseAccessStatus(typedPerson.access_status);
   const systemRole = coerceSystemRole(typedPerson.system_role);
   const snapshot = await loadLatestOperationalSnapshot(supabase, personId);
 
@@ -280,7 +274,7 @@ export async function loadPersonAccessState(
 
   const row = data as Pick<PersonRow, 'access_status' | 'is_archived'>;
   return {
-    access_status: parseAccessStatus(row.access_status, row.is_archived),
+    access_status: parseAccessStatus(row.access_status),
   };
 }
 
