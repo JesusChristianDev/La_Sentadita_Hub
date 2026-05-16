@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { BackendScopeType } from '@/modules/auth_users';
 import type { SystemRole } from '@/shared/authz';
 
-import { ScopeStepSelector } from './scope-step-selector';
+import { ScopeTreeMenu } from './scope-tree-menu';
 import { ScreenNav } from './screen-nav';
 import { UserAvatar } from './user-avatar';
 
@@ -171,11 +171,12 @@ export function AppHeader({
 
           <div className="relative flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-2.5 lg:gap-2">
             {canSelectScope && setActiveScopeAction ? (
-              <div className="hidden min-w-0 lg:flex lg:w-[clamp(22.5rem,30vw,26.5rem)]">
-                <ScopeStepSelector
+              <div className="hidden lg:block">
+                <ScopeTreeMenu
                   action={setActiveScopeAction}
                   activeScopeId={activeScopeId}
                   activeScopeType={activeScopeType}
+                  activeScopeLabel={activeScopeLabel}
                   scopes={availableScopes}
                 />
               </div>
