@@ -720,6 +720,127 @@ export async function respondToShiftSwapPeer(
   return data as ShiftSwapRequestRecord;
 }
 
+export async function cancelRequest(requestId: string): Promise<RequestRecord> {
+  const ctx = await getRequiredCurrentUserContext();
+  const admin = createSupabaseAdminClient();
+  const { data: current, error: currentError } = await admin
+    .from('requests')
+    .select(
+      'request_id, employment_id, request_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
+    )
+    .eq('request_id', requestId)
+    .single();
+
+  if (currentError) {
+    throw new Error(`Failed to load request: ${currentError.message}`);
+  }
+
+  if (current.requested_by !== ctx.userId) {
+    throw new Error('REQUEST_CANCEL_FORBIDDEN: Solo el solicitante puede cancelar su propia solicitud.');
+  }
+
+  const CANCELLABLE_STATUSES = new Set(['pending', 'in_review']);
+  if (!CANCELLABLE_STATUSES.has(current.status as string)) {
+    throw new Error(`REQUEST_INVALID_TRANSITION: No se puede cancelar una solicitud en estado '${current.status}'.`);
+  }
+
+  const patch = { resolution_note: null, reviewed_by: null, status: 'cancelled' };
+  const { data, error } = await admin
+    .from('requests')
+    .update(patch)
+    .eq('request_id', requestId)
+    .select(
+      'request_id, employment_id, request_type, status, requested_by, reviewed_by, effective_start_date, effective_end_date, resolution_note, created_at, updated_at',
+    )
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to cancel request: ${error.message}`);
+  }
+
+  await writeAuditLog({
+    action: AUDIT_ACTIONS.requestStatusChanged,
+    entityId: requestId,
+    entityType: 'request',
+    newValue: patch,
+    previousValue: { status: current.status },
+    scopeId: null,
+    scopeType: null,
+    traceId: ctx.requestContext.traceId,
+  });
+
+  return data as RequestRecord;
+}
+
+export async function cancelShiftSwapRequest(
+  shiftSwapRequestId: string,
+): Promise<ShiftSwapRequestRecord> {
+  const ctx = await getRequiredCurrentUserContext();
+  const admin = createSupabaseAdminClient();
+  const { data: current, error: currentError } = await admin
+    .from('shift_swap_requests')
+    .select(
+      'shift_swap_request_id, requester_employee_id, target_employee_id, requester_schedule_entry_id, target_schedule_entry_id, status, requested_at, peer_responded_at, reviewed_by, reviewed_at, reason',
+    )
+    .eq('shift_swap_request_id', shiftSwapRequestId)
+    .single();
+
+  if (currentError) {
+    throw new Error(`Failed to load shift swap request: ${currentError.message}`);
+  }
+
+  if (current.requester_employee_id !== ctx.userId) {
+    throw new Error('SHIFT_SWAP_CANCEL_FORBIDDEN: Solo el solicitante puede cancelar su intercambio.');
+  }
+
+  if ((current.status as string) !== 'pending_peer') {
+    throw new Error(`SHIFT_SWAP_INVALID_TRANSITION: Solo se puede cancelar un intercambio en estado 'pending_peer'. Estado actual: '${current.status}'.`);
+  }
+
+  const patch = { status: 'expired' };
+  const { data, error } = await admin
+    .from('shift_swap_requests')
+    .update(patch)
+    .eq('shift_swap_request_id', shiftSwapRequestId)
+    .select(
+      'shift_swap_request_id, requester_employee_id, target_employee_id, requester_schedule_entry_id, target_schedule_entry_id, status, requested_at, peer_responded_at, reviewed_by, reviewed_at, reason',
+    )
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to cancel shift swap request: ${error.message}`);
+  }
+
+  const requesterEntry = await loadScheduleEntrySnapshot(
+    current.requester_schedule_entry_id as string,
+  );
+
+  await writeAuditLog({
+    action: AUDIT_ACTIONS.shiftSwapManagerRejected,
+    entityId: shiftSwapRequestId,
+    entityType: 'shift_swap_request',
+    newValue: patch,
+    previousValue: { status: current.status },
+    scopeId: requesterEntry.restaurant_id,
+    scopeType: 'restaurant',
+    traceId: ctx.requestContext.traceId,
+  });
+
+  await notifyPerson({
+    body: 'Tu solicitud de intercambio ha sido cancelada.',
+    entityId: shiftSwapRequestId,
+    entityType: 'shift_swap_request',
+    notificationType: 'shift_swap_rejected',
+    recipientPersonId: current.target_employee_id as string,
+    scopeId: requesterEntry.restaurant_id,
+    scopeType: 'restaurant',
+    title: 'Intercambio cancelado',
+    traceId: ctx.requestContext.traceId,
+  });
+
+  return data as ShiftSwapRequestRecord;
+}
+
 export async function reviewShiftSwapRequest(
   shiftSwapRequestId: string,
   approve: boolean,

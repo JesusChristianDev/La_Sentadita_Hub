@@ -8,7 +8,12 @@ import {
   ReviewRequestSchema,
   type ReviewRequestSchemaType,
 } from '../domain/requestSchemas';
-import { createRequest, reviewRequest } from './requestService';
+import {
+  cancelRequest,
+  cancelShiftSwapRequest,
+  createRequest,
+  reviewRequest,
+} from './requestService';
 
 export async function createRequestAction(data: CreateRequestSchemaType) {
   const parsed = CreateRequestSchema.safeParse(data);
@@ -33,3 +38,18 @@ export async function reviewRequestAction(data: ReviewRequestSchemaType) {
   revalidatePath('/requests');
   revalidatePath('/app');
 }
+
+export async function cancelRequestAction(requestId: string) {
+  if (!requestId) throw new Error('requestId requerido');
+  await cancelRequest(requestId);
+  revalidatePath('/requests');
+  revalidatePath('/app');
+}
+
+export async function cancelShiftSwapAction(shiftSwapRequestId: string) {
+  if (!shiftSwapRequestId) throw new Error('shiftSwapRequestId requerido');
+  await cancelShiftSwapRequest(shiftSwapRequestId);
+  revalidatePath('/requests');
+  revalidatePath('/app');
+}
+
