@@ -2,16 +2,15 @@ import 'server-only';
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import {
-  type EditableEmployeeRole,
   type EditableEmploymentSystemRole,
   type EmploymentListItem,
-  type EmploymentStatusFilter,
   type EmploymentSystemRole,
 } from '@/modules/employment/domain/employmentTypes';
 import type { PersonProfile } from '@/modules/people';
 import { coerceSystemRole, type SystemRole } from '@/shared/authz';
 
-type PersonRow = {
+// internal
+export type PersonRow = {
   access_status: string | null;
   agora_employee_id: string | null;
   avatar_url: string | null;
@@ -38,7 +37,8 @@ type EmploymentRow = {
   valid_to: string | null;
 };
 
-type RestaurantAssignmentRow = {
+// internal
+export type RestaurantAssignmentRow = {
   assignment_id: string;
   created_at: string;
   employment_id: string;
@@ -47,7 +47,8 @@ type RestaurantAssignmentRow = {
   valid_to: string | null;
 };
 
-type ZoneAssignmentRow = {
+// internal
+export type ZoneAssignmentRow = {
   assignment_id: string;
   created_at: string;
   employment_id: string;
@@ -56,7 +57,8 @@ type ZoneAssignmentRow = {
   zone_id: string;
 };
 
-type RoleScopeRow = {
+// internal
+export type RoleScopeRow = {
   assignment_id: string;
   authority_tier: string | null;
   created_at: string;
@@ -70,19 +72,6 @@ type RoleScopeRow = {
 type RestaurantRow = {
   company_id: string;
   id: string;
-};
-
-type UpdateEmploymentInput = {
-  personId: string;
-  restaurantId: string;
-  role: EditableEmploymentSystemRole;
-  zoneId: string | null;
-};
-
-type ActiveAssignmentSeed = {
-  restaurant_id: string | null;
-  role: EditableEmployeeRole;
-  zone_id: string | null;
 };
 
 export type ScheduleActorProjection = {
@@ -115,26 +104,24 @@ export type EmployeeDetailPageProjection = {
 
 export type RestaurantZonesMap = Record<string, RestaurantZoneSummary[]>;
 
-const BAN_100_YEARS = '876600h';
-
-function todayIsoDate(): string {
+export function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function previousIsoDate(date: string): string {
+export function previousIsoDate(date: string): string {
   const value = new Date(`${date}T00:00:00.000Z`);
   value.setUTCDate(value.getUTCDate() - 1);
   return value.toISOString().slice(0, 10);
 }
 
-function isCurrentTemporalRow(
+export function isCurrentTemporalRow(
   row: { valid_from: string; valid_to: string | null },
   today = todayIsoDate(),
 ): boolean {
   return row.valid_from <= today && (row.valid_to === null || row.valid_to >= today);
 }
 
-function compareTemporalDesc(
+export function compareTemporalDesc(
   left: { created_at?: string | null; valid_from: string },
   right: { created_at?: string | null; valid_from: string },
 ): number {
@@ -144,23 +131,23 @@ function compareTemporalDesc(
   );
 }
 
-function sortTemporalDesc<T extends { created_at?: string | null; valid_from: string }>(
+export function sortTemporalDesc<T extends { created_at?: string | null; valid_from: string }>(
   rows: T[],
 ): T[] {
   return [...rows].sort(compareTemporalDesc);
 }
 
-function pickCurrentOrLatest<
+export function pickCurrentOrLatest<
   T extends { created_at?: string | null; valid_from: string; valid_to: string | null },
 >(rows: T[], today = todayIsoDate()): T | null {
   return rows.find((row) => isCurrentTemporalRow(row, today)) ?? sortTemporalDesc(rows)[0] ?? null;
 }
 
-function formatFullName(person: Pick<PersonRow, 'first_name' | 'last_name'>): string {
+export function formatFullName(person: Pick<PersonRow, 'first_name' | 'last_name'>): string {
   return [person.first_name, person.last_name].filter(Boolean).join(' ').trim();
 }
 
-function parseAccessStatus(
+export function parseAccessStatus(
   accessStatus: string | null,
   isArchived: boolean,
 ): PersonProfile['access_status'] {
@@ -172,7 +159,7 @@ function parseAccessStatus(
   return isArchived ? 'archived' : 'active';
 }
 
-function mapSystemRoleToEmployment(systemRole: SystemRole): EmploymentSystemRole {
+export function mapSystemRoleToEmployment(systemRole: SystemRole): EmploymentSystemRole {
   if (systemRole === 'area_lead' || systemRole === 'manager' || systemRole === 'employee') {
     return systemRole;
   }
@@ -180,14 +167,14 @@ function mapSystemRoleToEmployment(systemRole: SystemRole): EmploymentSystemRole
   return 'employee';
 }
 
-function normalizeEditableEmploymentRole(
+export function normalizeEditableEmploymentRole(
   value: string | null | undefined,
 ): EditableEmploymentSystemRole {
   if (value === 'area_lead' || value === 'manager') return value;
   return 'employee';
 }
 
-async function loadPeopleByIds(personIds: string[]): Promise<Map<string, PersonRow>> {
+export async function loadPeopleByIds(personIds: string[]): Promise<Map<string, PersonRow>> {
   if (personIds.length === 0) return new Map();
 
   const admin = createSupabaseAdminClient();
@@ -205,7 +192,7 @@ async function loadPeopleByIds(personIds: string[]): Promise<Map<string, PersonR
   return new Map(((data ?? []) as PersonRow[]).map((row) => [row.person_id, row]));
 }
 
-async function loadEmploymentsByIds(employmentIds: string[]): Promise<Map<string, EmploymentRow>> {
+export async function loadEmploymentsByIds(employmentIds: string[]): Promise<Map<string, EmploymentRow>> {
   if (employmentIds.length === 0) return new Map();
 
   const admin = createSupabaseAdminClient();
@@ -227,7 +214,7 @@ async function loadEmploymentsByIds(employmentIds: string[]): Promise<Map<string
   );
 }
 
-async function loadCurrentEmploymentForPerson(
+export async function loadCurrentEmploymentForPerson(
   personId: string,
   today = todayIsoDate(),
 ): Promise<EmploymentRow | null> {
@@ -249,7 +236,7 @@ async function loadCurrentEmploymentForPerson(
   return ((data ?? []) as EmploymentRow[]).find((row) => isCurrentTemporalRow(row, today)) ?? null;
 }
 
-async function loadLatestEmploymentForPerson(personId: string): Promise<EmploymentRow | null> {
+export async function loadLatestEmploymentForPerson(personId: string): Promise<EmploymentRow | null> {
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
     .from('employment_relationships')
@@ -268,7 +255,7 @@ async function loadLatestEmploymentForPerson(personId: string): Promise<Employme
   return ((data ?? []) as EmploymentRow[])[0] ?? null;
 }
 
-async function loadRestaurantAssignmentsByEmploymentIds(
+export async function loadRestaurantAssignmentsByEmploymentIds(
   employmentIds: string[],
 ): Promise<Map<string, RestaurantAssignmentRow[]>> {
   if (employmentIds.length === 0) return new Map();
@@ -294,7 +281,7 @@ async function loadRestaurantAssignmentsByEmploymentIds(
   return byEmploymentId;
 }
 
-async function loadZoneAssignmentsByEmploymentIds(
+export async function loadZoneAssignmentsByEmploymentIds(
   employmentIds: string[],
 ): Promise<Map<string, ZoneAssignmentRow[]>> {
   if (employmentIds.length === 0) return new Map();
@@ -320,7 +307,7 @@ async function loadZoneAssignmentsByEmploymentIds(
   return byEmploymentId;
 }
 
-async function loadCurrentRoleScopesForPerson(
+export async function loadCurrentRoleScopesForPerson(
   personId: string,
   today = todayIsoDate(),
 ): Promise<RoleScopeRow[]> {
@@ -340,7 +327,7 @@ async function loadCurrentRoleScopesForPerson(
   return ((data ?? []) as RoleScopeRow[]).filter((row) => isCurrentTemporalRow(row, today));
 }
 
-async function loadCurrentRestaurantAssignment(
+export async function loadCurrentRestaurantAssignment(
   employmentId: string,
   today = todayIsoDate(),
 ): Promise<RestaurantAssignmentRow | null> {
@@ -348,7 +335,7 @@ async function loadCurrentRestaurantAssignment(
   return pickCurrentOrLatest(assignments.get(employmentId) ?? [], today);
 }
 
-async function loadCurrentZoneAssignment(
+export async function loadCurrentZoneAssignment(
   employmentId: string,
   today = todayIsoDate(),
 ): Promise<ZoneAssignmentRow | null> {
@@ -356,7 +343,7 @@ async function loadCurrentZoneAssignment(
   return pickCurrentOrLatest(assignments.get(employmentId) ?? [], today);
 }
 
-async function loadCompanyByRestaurantId(restaurantId: string): Promise<{ companyId: string }> {
+export async function loadCompanyByRestaurantId(restaurantId: string): Promise<{ companyId: string }> {
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
     .from('restaurants')
@@ -424,7 +411,7 @@ export async function loadEmployeeProfileProjectionById(
   };
 }
 
-async function loadRestaurantZonesByRestaurantId(
+export async function loadRestaurantZonesByRestaurantId(
   restaurantId: string | null,
 ): Promise<RestaurantZoneSummary[]> {
   if (!restaurantId) return [];
@@ -476,21 +463,6 @@ export async function loadRestaurantZonesMap(
   return byRestaurantId;
 }
 
-export async function loadEmployeesPageProjection(
-  restaurantId: string,
-  status: EmploymentStatusFilter = 'active',
-): Promise<EmployeesPageProjection> {
-  const [employees, restaurantZones] = await Promise.all([
-    listEmploymentForRestaurantProjection(restaurantId, status),
-    loadRestaurantZonesByRestaurantId(restaurantId),
-  ]);
-
-  return {
-    employees,
-    restaurantZones,
-  };
-}
-
 export async function loadEmployeeDetailPageProjection(
   personId: string,
 ): Promise<EmployeeDetailPageProjection> {
@@ -510,402 +482,6 @@ export async function loadEmployeeDetailPageProjection(
     profile,
     restaurantZones,
   };
-}
-
-async function replaceTemporalRows(params: {
-  currentRows: Array<{ assignment_id: string; valid_from: string }>;
-  table:
-    | 'employment_restaurant_assignments'
-    | 'employment_zone_assignments'
-    | 'role_scope_assignments';
-  today: string;
-}): Promise<void> {
-  const admin = createSupabaseAdminClient();
-  const deleteIds = params.currentRows
-    .filter((row) => row.valid_from >= params.today)
-    .map((row) => row.assignment_id);
-  const closeIds = params.currentRows
-    .filter((row) => row.valid_from < params.today)
-    .map((row) => row.assignment_id);
-
-  if (deleteIds.length > 0) {
-    const { error } = await admin
-      .from(params.table)
-      .delete()
-      .in('assignment_id', deleteIds);
-
-    if (error) {
-      throw new Error(`Failed to replace temporal rows: ${error.message}`);
-    }
-  }
-
-  if (closeIds.length > 0) {
-    const { error } = await admin
-      .from(params.table)
-      .update({ valid_to: previousIsoDate(params.today) })
-      .in('assignment_id', closeIds);
-
-    if (error) {
-      throw new Error(`Failed to close temporal rows: ${error.message}`);
-    }
-  }
-}
-
-async function ensureZoneBelongsToRestaurant(zoneId: string, restaurantId: string): Promise<void> {
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('restaurant_zones')
-    .select('id, restaurant_id')
-    .eq('id', zoneId)
-    .maybeSingle();
-
-  if (error && error.code !== 'PGRST116') {
-    throw new Error(`Failed to load zone projection: ${error.message}`);
-  }
-
-  if (!data || (data as { restaurant_id: string }).restaurant_id !== restaurantId) {
-    throw new Error('restaurant_mismatch');
-  }
-}
-
-async function syncPersonEmploymentProjection(params: {
-  personId: string;
-  systemRole: EditableEmploymentSystemRole;
-}): Promise<void> {
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin
-    .from('persons')
-    .update({
-      deleted_at: null,
-      is_archived: false,
-      system_role: params.systemRole,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('person_id', params.personId);
-
-  if (error) {
-    throw new Error(`Failed to sync person projection: ${error.message}`);
-  }
-}
-
-async function ensureEmploymentRow(params: {
-  companyId: string;
-  personId: string;
-  role: EditableEmploymentSystemRole;
-  today: string;
-}): Promise<string> {
-  const admin = createSupabaseAdminClient();
-  const currentEmployment = await loadCurrentEmploymentForPerson(params.personId, params.today);
-
-  if (!currentEmployment) {
-    const { data, error } = await admin
-      .from('employment_relationships')
-      .insert({
-        company_id: params.companyId,
-        job_title: params.role,
-        person_id: params.personId,
-        requires_schedule: true,
-        valid_from: params.today,
-      })
-      .select('employment_id')
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to create employment relationship: ${error.message}`);
-    }
-
-    return (data as { employment_id: string }).employment_id;
-  }
-
-  if (currentEmployment.company_id === params.companyId || currentEmployment.valid_from >= params.today) {
-    const { error } = await admin
-      .from('employment_relationships')
-      .update({
-        company_id: params.companyId,
-        job_title: params.role,
-        requires_schedule: true,
-      })
-      .eq('employment_id', currentEmployment.employment_id);
-
-    if (error) {
-      throw new Error(`Failed to update employment relationship: ${error.message}`);
-    }
-
-    return currentEmployment.employment_id;
-  }
-
-  const { error: closeError } = await admin
-    .from('employment_relationships')
-    .update({ valid_to: previousIsoDate(params.today) })
-    .eq('employment_id', currentEmployment.employment_id);
-
-  if (closeError) {
-    throw new Error(`Failed to close employment relationship: ${closeError.message}`);
-  }
-
-  const { data, error: insertError } = await admin
-    .from('employment_relationships')
-    .insert({
-      company_id: params.companyId,
-      job_title: params.role,
-      person_id: params.personId,
-      requires_schedule: true,
-      valid_from: params.today,
-    })
-    .select('employment_id')
-    .single();
-
-  if (insertError) {
-    throw new Error(`Failed to recreate employment relationship: ${insertError.message}`);
-  }
-
-  return (data as { employment_id: string }).employment_id;
-}
-
-async function replaceRestaurantAssignments(params: {
-  employmentId: string;
-  restaurantId: string;
-  today: string;
-}): Promise<void> {
-  const assignmentsByEmploymentId = await loadRestaurantAssignmentsByEmploymentIds([params.employmentId]);
-  const currentRows = (assignmentsByEmploymentId.get(params.employmentId) ?? []).filter((row) =>
-    isCurrentTemporalRow(row, params.today),
-  );
-
-  const currentTarget = currentRows.find((row) => row.restaurant_id === params.restaurantId);
-  if (currentRows.length === 1 && currentTarget) {
-    return;
-  }
-
-  await replaceTemporalRows({
-    currentRows,
-    table: 'employment_restaurant_assignments',
-    today: params.today,
-  });
-
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin.from('employment_restaurant_assignments').insert({
-    employment_id: params.employmentId,
-    restaurant_id: params.restaurantId,
-    transfer_reason: 'manual_assignment',
-    valid_from: params.today,
-  });
-
-  if (error) {
-    throw new Error(`Failed to replace restaurant assignments: ${error.message}`);
-  }
-}
-
-async function replaceZoneAssignments(params: {
-  employmentId: string;
-  today: string;
-  zoneId: string | null;
-}): Promise<void> {
-  const assignmentsByEmploymentId = await loadZoneAssignmentsByEmploymentIds([params.employmentId]);
-  const currentRows = (assignmentsByEmploymentId.get(params.employmentId) ?? []).filter((row) =>
-    isCurrentTemporalRow(row, params.today),
-  );
-
-  const currentTarget = params.zoneId
-    ? currentRows.find((row) => row.zone_id === params.zoneId)
-    : null;
-
-  if (
-    (params.zoneId === null && currentRows.length === 0) ||
-    (params.zoneId && currentRows.length === 1 && currentTarget)
-  ) {
-    return;
-  }
-
-  await replaceTemporalRows({
-    currentRows,
-    table: 'employment_zone_assignments',
-    today: params.today,
-  });
-
-  if (!params.zoneId) return;
-
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin.from('employment_zone_assignments').insert({
-    employment_id: params.employmentId,
-    valid_from: params.today,
-    zone_id: params.zoneId,
-  });
-
-  if (error) {
-    throw new Error(`Failed to replace zone assignments: ${error.message}`);
-  }
-}
-
-async function replaceRoleScopes(params: {
-  personId: string;
-  restaurantId: string;
-  role: EditableEmploymentSystemRole;
-  today: string;
-  zoneId: string | null;
-}): Promise<void> {
-  const currentScopes = await loadCurrentRoleScopesForPerson(params.personId, params.today);
-
-  let desiredScope:
-    | { authority_tier: string | null; scope_id: string; scope_type: RoleScopeRow['scope_type'] }
-    | null = null;
-
-  if (params.role === 'manager') {
-    desiredScope = {
-      authority_tier: 'primary',
-      scope_id: params.restaurantId,
-      scope_type: 'restaurant',
-    };
-  } else if (params.role === 'area_lead' && params.zoneId) {
-    desiredScope = {
-      authority_tier: null,
-      scope_id: params.zoneId,
-      scope_type: 'zone',
-    };
-  }
-
-  if (
-    desiredScope &&
-    currentScopes.length === 1 &&
-    currentScopes[0].scope_id === desiredScope.scope_id &&
-    currentScopes[0].scope_type === desiredScope.scope_type &&
-    currentScopes[0].authority_tier === desiredScope.authority_tier
-  ) {
-    return;
-  }
-
-  await replaceTemporalRows({
-    currentRows: currentScopes,
-    table: 'role_scope_assignments',
-    today: params.today,
-  });
-
-  if (!desiredScope) return;
-
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin.from('role_scope_assignments').insert({
-    authority_tier: desiredScope.authority_tier,
-    person_id: params.personId,
-    scope_id: desiredScope.scope_id,
-    scope_type: desiredScope.scope_type,
-    valid_from: params.today,
-  });
-
-  if (error) {
-    throw new Error(`Failed to replace role scopes: ${error.message}`);
-  }
-}
-
-async function loadAreaLeadConflictPersonIds(params: {
-  excludingUserId?: string;
-  today: string;
-  zoneId: string;
-}): Promise<string[]> {
-  const admin = createSupabaseAdminClient();
-  const { data: zoneAssignments, error: zoneError } = await admin
-    .from('employment_zone_assignments')
-    .select('employment_id, zone_id, valid_from, valid_to, created_at, assignment_id')
-    .eq('zone_id', params.zoneId);
-
-  if (zoneError) {
-    throw new Error(`Failed to load zone assignments: ${zoneError.message}`);
-  }
-
-  const activeZoneAssignments = ((zoneAssignments ?? []) as ZoneAssignmentRow[]).filter((row) =>
-    isCurrentTemporalRow(row, params.today),
-  );
-
-  if (activeZoneAssignments.length === 0) return [];
-
-  const employmentsById = await loadEmploymentsByIds(
-    activeZoneAssignments.map((row) => row.employment_id),
-  );
-  const personIds = Array.from(
-    new Set(
-      activeZoneAssignments
-        .map((row) => employmentsById.get(row.employment_id)?.person_id ?? null)
-        .filter((personId): personId is string => Boolean(personId) && personId !== params.excludingUserId),
-    ),
-  );
-
-  if (personIds.length === 0) return [];
-
-  const peopleById = await loadPeopleByIds(personIds);
-  return personIds.filter((personId) => {
-    const person = peopleById.get(personId);
-    return person?.system_role === 'area_lead' && person.is_archived === false;
-  });
-}
-
-async function loadManagerPrimaryConflict(params: {
-  excludingUserId?: string;
-  restaurantId: string;
-  today: string;
-}): Promise<boolean> {
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from('role_scope_assignments')
-    .select(
-      'assignment_id, person_id, scope_type, scope_id, valid_from, valid_to, authority_tier, created_at',
-    )
-    .eq('scope_type', 'restaurant')
-    .eq('scope_id', params.restaurantId)
-    .eq('authority_tier', 'primary');
-
-  if (error) {
-    throw new Error(`Failed to load manager scope assignments: ${error.message}`);
-  }
-
-  const currentManagerScopes = ((data ?? []) as RoleScopeRow[]).filter(
-    (row) =>
-      row.person_id !== params.excludingUserId &&
-      isCurrentTemporalRow(row, params.today),
-  );
-
-  if (currentManagerScopes.length === 0) return false;
-
-  const peopleById = await loadPeopleByIds(
-    Array.from(new Set(currentManagerScopes.map((scope) => scope.person_id))),
-  );
-
-  return currentManagerScopes.some(
-    (scope) => peopleById.get(scope.person_id)?.system_role === 'manager',
-  );
-}
-
-export async function getAreaLeadZoneConflictCode(params: {
-  excludingUserId?: string;
-  restaurantId: string;
-  zoneId: string;
-}): Promise<'area_lead_zone_full' | null> {
-  await ensureZoneBelongsToRestaurant(params.zoneId, params.restaurantId);
-
-  const personIds = await loadAreaLeadConflictPersonIds({
-    excludingUserId: params.excludingUserId,
-    today: todayIsoDate(),
-    zoneId: params.zoneId,
-  });
-
-  return personIds.length >= 2 ? 'area_lead_zone_full' : null;
-}
-
-export async function hasActiveAreaLead(personId: string): Promise<boolean> {
-  const today = todayIsoDate();
-  const peopleById = await loadPeopleByIds([personId]);
-  const person = peopleById.get(personId);
-  if (!person || person.is_archived || person.system_role !== 'area_lead') {
-    return false;
-  }
-
-  const employment = await loadCurrentEmploymentForPerson(personId, today);
-  if (!employment) return false;
-
-  const [restaurantAssignment, zoneAssignment] = await Promise.all([
-    loadCurrentRestaurantAssignment(employment.employment_id, today),
-    loadCurrentZoneAssignment(employment.employment_id, today),
-  ]);
-
-  return Boolean(restaurantAssignment && zoneAssignment);
 }
 
 export async function loadEmploymentScopeProjection(
@@ -949,430 +525,4 @@ export async function loadScheduleActorProjection(
     system_role: coerceSystemRole(person.system_role),
     zone_id: scope?.zone_id ?? null,
   };
-}
-
-export async function listEmploymentForRestaurantProjection(
-  restaurantId: string,
-  status: EmploymentStatusFilter = 'active',
-): Promise<EmploymentListItem[]> {
-  return listEmploymentForGenericScopeProjection({
-    scopeId: restaurantId,
-    scopeType: 'restaurant',
-    status,
-  });
-}
-
-export async function listEmploymentForOrganizationProjection(
-  organizationId: string,
-  status: EmploymentStatusFilter = 'active',
-): Promise<EmploymentListItem[]> {
-  return listEmploymentForGenericScopeProjection({
-    scopeId: organizationId,
-    scopeType: 'organization',
-    status,
-  });
-}
-
-export async function listEmploymentForChainProjection(
-  chainId: string,
-  status: EmploymentStatusFilter = 'active',
-): Promise<EmploymentListItem[]> {
-  return listEmploymentForGenericScopeProjection({
-    scopeId: chainId,
-    scopeType: 'chain',
-    status,
-  });
-}
-
-export async function listEmploymentForCompanyProjection(
-  companyId: string,
-  status: EmploymentStatusFilter = 'active',
-): Promise<EmploymentListItem[]> {
-  return listEmploymentForGenericScopeProjection({
-    scopeId: companyId,
-    scopeType: 'company',
-    status,
-  });
-}
-
-async function loadRestaurantIdsForEmploymentScope(params: {
-  scopeId: string;
-  scopeType: 'organization' | 'chain' | 'company' | 'restaurant';
-}): Promise<string[]> {
-  const admin = createSupabaseAdminClient();
-
-  if (params.scopeType === 'restaurant') {
-    return [params.scopeId];
-  }
-
-  if (params.scopeType === 'company') {
-    const { data, error } = await admin
-      .from('restaurants')
-      .select('id')
-      .eq('company_id', params.scopeId);
-
-    if (error) throw new Error(`Failed to load restaurant ids: ${error.message}`);
-    return (data ?? []).map((row: { id: string }) => row.id);
-  }
-
-  // organization / chain => resolve company_ids first, then restaurants.
-  const companiesQuery =
-    params.scopeType === 'organization'
-      ? admin.from('companies').select('company_id').eq('organization_id', params.scopeId)
-      : admin.from('companies').select('company_id').eq('chain_id', params.scopeId);
-
-  const { data: companiesData, error: companiesError } = await companiesQuery;
-  if (companiesError) throw new Error(`Failed to load company ids: ${companiesError.message}`);
-
-  const companyIds = Array.from(
-    new Set((companiesData ?? []).map((row: { company_id: string }) => row.company_id)),
-  );
-  if (companyIds.length === 0) return [];
-
-  const { data: restaurantsData, error: restaurantsError } = await admin
-    .from('restaurants')
-    .select('id')
-    .in('company_id', companyIds);
-
-  if (restaurantsError) {
-    throw new Error(`Failed to load restaurant ids: ${restaurantsError.message}`);
-  }
-
-  return (restaurantsData ?? []).map((row: { id: string }) => row.id);
-}
-
-async function listEmploymentForGenericScopeProjection(params: {
-  scopeId: string;
-  scopeType: 'organization' | 'chain' | 'company' | 'restaurant';
-  status: EmploymentStatusFilter;
-}): Promise<EmploymentListItem[]> {
-  const today = todayIsoDate();
-  const admin = createSupabaseAdminClient();
-
-  const restaurantIds = await loadRestaurantIdsForEmploymentScope({
-    scopeId: params.scopeId,
-    scopeType: params.scopeType,
-  });
-
-  if (restaurantIds.length === 0) return [];
-
-  const { data, error } = await admin
-    .from('employment_restaurant_assignments')
-    .select('assignment_id, employment_id, restaurant_id, valid_from, valid_to, created_at')
-    .in('restaurant_id', restaurantIds)
-    .order('valid_from', { ascending: false });
-
-  if (error) {
-    throw new Error(`Failed to list scope assignments: ${error.message}`);
-  }
-
-  const restaurantAssignments = (data ?? []) as RestaurantAssignmentRow[];
-
-  const employmentIds = Array.from(new Set(restaurantAssignments.map((row) => row.employment_id)));
-  const employmentsById = await loadEmploymentsByIds(employmentIds);
-
-  const relevantAssignments = restaurantAssignments.filter((assignment) =>
-    employmentsById.has(assignment.employment_id),
-  );
-
-  const personIds = Array.from(
-    new Set(
-      relevantAssignments
-        .map((assignment) => employmentsById.get(assignment.employment_id)?.person_id ?? null)
-        .filter((personId): personId is string => Boolean(personId)),
-    ),
-  );
-
-  const peopleById = await loadPeopleByIds(personIds);
-  const zoneAssignmentsByEmploymentId = await loadZoneAssignmentsByEmploymentIds(
-    Array.from(new Set(relevantAssignments.map((row) => row.employment_id))),
-  );
-
-  const itemsByPersonId = new Map<string, EmploymentListItem>();
-
-  for (const assignment of relevantAssignments) {
-    const employment = employmentsById.get(assignment.employment_id);
-    if (!employment) continue;
-
-    const person = peopleById.get(employment.person_id);
-    if (!person) continue;
-
-    const systemRole = coerceSystemRole(person.system_role);
-    // El módulo "Equipo" está pensado para roles operativos.
-    // Pero para visibilidad de archivados (ej: YANI), incluimos roles no-operativos
-    // cuando la persona está archivada (soporta listado por `inactive/all`).
-    const isOperationalRole =
-      systemRole === 'employee' || systemRole === 'manager' || systemRole === 'area_lead';
-    if (!isOperationalRole && person.is_archived === false) continue;
-
-    const zoneAssignment = pickCurrentOrLatest(
-      zoneAssignmentsByEmploymentId.get(employment.employment_id) ?? [],
-      today,
-    );
-
-    const isActive =
-      person.access_status === 'active' &&
-      person.is_archived === false &&
-      isCurrentTemporalRow(employment, today) &&
-      isCurrentTemporalRow(assignment, today);
-
-    const nextItem: EmploymentListItem = {
-      avatar_path: person.avatar_url,
-      employee_code: Number.parseInt(person.agora_employee_id ?? '0', 10) || 0,
-      full_name: formatFullName(person) || '(sin nombre)',
-      id: person.person_id,
-      is_active: isActive,
-      restaurant_id: assignment.restaurant_id,
-      system_role: mapSystemRoleToEmployment(systemRole),
-      zone_id: zoneAssignment?.zone_id ?? null,
-    };
-
-    const existing = itemsByPersonId.get(person.person_id);
-    // If multiple assignments, keep the active one or the latest one
-    if (!existing || (!existing.is_active && isActive)) {
-      itemsByPersonId.set(person.person_id, nextItem);
-    }
-  }
-
-  const items = Array.from(itemsByPersonId.values()).sort(
-    (left, right) => left.employee_code - right.employee_code,
-  );
-
-  if (params.status === 'active') return items.filter((item) => item.is_active);
-  if (params.status === 'inactive') return items.filter((item) => !item.is_active);
-  return items;
-}
-
-export async function getEmploymentRoleSlotConflictCode(
-  restaurantId: string,
-  _role: Extract<EditableEmployeeRole, 'manager'>,
-  excludingUserId?: string,
-): Promise<'manager_exists' | null> {
-  const exists = await loadManagerPrimaryConflict({
-    excludingUserId,
-    restaurantId,
-    today: todayIsoDate(),
-  });
-
-  return exists ? 'manager_exists' : null;
-}
-
-async function loadEmploymentActivationSeed(
-  personId: string,
-): Promise<ActiveAssignmentSeed | null> {
-  const employment = await loadLatestEmploymentForPerson(personId);
-  if (!employment) return null;
-
-  const [restaurantAssignment, zoneAssignment] = await Promise.all([
-    loadCurrentRestaurantAssignment(employment.employment_id),
-    loadCurrentZoneAssignment(employment.employment_id),
-  ]);
-
-  return {
-    restaurant_id: restaurantAssignment?.restaurant_id ?? null,
-    role: normalizeEditableEmploymentRole(employment.job_title),
-    zone_id: zoneAssignment?.zone_id ?? null,
-  };
-}
-
-async function deactivateEmploymentProjection(personId: string): Promise<void> {
-  const admin = createSupabaseAdminClient();
-  const timestamp = new Date().toISOString();
-  const today = todayIsoDate();
-
-  const currentEmployment = await loadCurrentEmploymentForPerson(personId, today);
-  if (currentEmployment) {
-    const [restaurantAssignments, zoneAssignments, currentScopes] = await Promise.all([
-      loadRestaurantAssignmentsByEmploymentIds([currentEmployment.employment_id]),
-      loadZoneAssignmentsByEmploymentIds([currentEmployment.employment_id]),
-      loadCurrentRoleScopesForPerson(personId, today),
-    ]);
-
-    const activeRestaurantAssignments = (
-      restaurantAssignments.get(currentEmployment.employment_id) ?? []
-    ).filter((row) => isCurrentTemporalRow(row, today));
-    const activeZoneAssignments = (
-      zoneAssignments.get(currentEmployment.employment_id) ?? []
-    ).filter((row) => isCurrentTemporalRow(row, today));
-
-    if (activeRestaurantAssignments.length > 0) {
-      const { error } = await admin
-        .from('employment_restaurant_assignments')
-        .update({ valid_to: today })
-        .in(
-          'assignment_id',
-          activeRestaurantAssignments.map((row) => row.assignment_id),
-        );
-
-      if (error) {
-        throw new Error(`Failed to deactivate restaurant assignments: ${error.message}`);
-      }
-    }
-
-    if (activeZoneAssignments.length > 0) {
-      const { error } = await admin
-        .from('employment_zone_assignments')
-        .update({ valid_to: today })
-        .in(
-          'assignment_id',
-          activeZoneAssignments.map((row) => row.assignment_id),
-        );
-
-      if (error) {
-        throw new Error(`Failed to deactivate zone assignments: ${error.message}`);
-      }
-    }
-
-    if (currentScopes.length > 0) {
-      const { error } = await admin
-        .from('role_scope_assignments')
-        .update({ valid_to: today })
-        .in(
-          'assignment_id',
-          currentScopes.map((row) => row.assignment_id),
-        );
-
-      if (error) {
-        throw new Error(`Failed to deactivate role scopes: ${error.message}`);
-      }
-    }
-
-    const { error: employmentError } = await admin
-      .from('employment_relationships')
-      .update({ valid_to: today })
-      .eq('employment_id', currentEmployment.employment_id);
-
-    if (employmentError) {
-      throw new Error(`Failed to deactivate employment relationship: ${employmentError.message}`);
-    }
-  }
-
-  const { error: personError } = await admin
-    .from('persons')
-    .update({
-      access_status: 'archived',
-      deleted_at: timestamp,
-      is_archived: true,
-      updated_at: timestamp,
-    })
-    .eq('person_id', personId);
-
-  if (personError) {
-    throw new Error(`Failed to deactivate person projection: ${personError.message}`);
-  }
-}
-
-export async function updateEmploymentProjection(input: UpdateEmploymentInput): Promise<void> {
-  const today = todayIsoDate();
-  const normalizedZoneId =
-    input.role === 'employee' || input.role === 'area_lead' ? input.zoneId : null;
-
-  if (input.role === 'area_lead' && !normalizedZoneId) {
-    throw new Error('area_lead_requires_zone');
-  }
-
-  if (normalizedZoneId) {
-    await ensureZoneBelongsToRestaurant(normalizedZoneId, input.restaurantId);
-  }
-
-  if (input.role === 'area_lead' && normalizedZoneId) {
-    const conflict = await getAreaLeadZoneConflictCode({
-      excludingUserId: input.personId,
-      restaurantId: input.restaurantId,
-      zoneId: normalizedZoneId,
-    });
-
-    if (conflict) {
-      throw new Error(conflict);
-    }
-  }
-
-  if (input.role === 'manager') {
-    const conflict = await getEmploymentRoleSlotConflictCode(
-      input.restaurantId,
-      'manager',
-      input.personId,
-    );
-
-    if (conflict) {
-      throw new Error(conflict);
-    }
-  }
-
-  const restaurant = await loadCompanyByRestaurantId(input.restaurantId);
-
-  await syncPersonEmploymentProjection({
-    personId: input.personId,
-    systemRole: input.role,
-  });
-
-  const employmentId = await ensureEmploymentRow({
-    companyId: restaurant.companyId,
-    personId: input.personId,
-    role: input.role,
-    today,
-  });
-
-  await replaceRestaurantAssignments({
-    employmentId,
-    restaurantId: input.restaurantId,
-    today,
-  });
-
-  await replaceZoneAssignments({
-    employmentId,
-    today,
-    zoneId: input.role === 'area_lead' ? normalizedZoneId : null,
-  });
-
-  await replaceRoleScopes({
-    personId: input.personId,
-    restaurantId: input.restaurantId,
-    role: input.role,
-    today,
-    zoneId: normalizedZoneId,
-  });
-}
-
-export async function setEmploymentActiveProjection(
-  personId: string,
-  isActive: boolean,
-): Promise<void> {
-  const admin = createSupabaseAdminClient();
-
-  if (isActive) {
-    const { error: personError } = await admin
-      .from('persons')
-      .update({
-        access_status: 'active',
-        deleted_at: null,
-        is_archived: false,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('person_id', personId);
-
-    if (personError) {
-      throw new Error(`Failed to reactivate person projection: ${personError.message}`);
-    }
-
-    const seed = await loadEmploymentActivationSeed(personId);
-    if (seed?.restaurant_id) {
-      await updateEmploymentProjection({
-        personId,
-        restaurantId: seed.restaurant_id,
-        role: seed.role,
-        zoneId: seed.zone_id ?? null,
-      });
-    }
-  } else {
-    await deactivateEmploymentProjection(personId);
-  }
-
-  const { error: authError } = await admin.auth.admin.updateUserById(personId, {
-    ban_duration: isActive ? 'none' : BAN_100_YEARS,
-  });
-
-  if (authError) {
-    throw new Error(`Failed to update employment auth ban: ${authError.message}`);
-  }
 }

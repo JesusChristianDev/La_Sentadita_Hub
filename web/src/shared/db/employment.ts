@@ -6,6 +6,14 @@ export type {
   ScheduleActorProjection,
 } from '@/modules/employment/infrastructure/employmentRepository';
 export {
+  loadEmployeeDetailPageProjection,
+  loadEmployeeProfileProjectionById,
+  loadEmployeeScopeProjection,
+  loadEmploymentScopeProjection,
+  loadRestaurantZonesMap,
+  loadScheduleActorProjection,
+} from '@/modules/employment/infrastructure/employmentRepository';
+export {
   getAreaLeadZoneConflictCode,
   getEmploymentRoleSlotConflictCode,
   hasActiveAreaLead,
@@ -13,13 +21,9 @@ export {
   listEmploymentForCompanyProjection,
   listEmploymentForOrganizationProjection,
   listEmploymentForRestaurantProjection,
-  loadEmployeeDetailPageProjection,
-  loadEmployeeProfileProjectionById,
-  loadEmployeeScopeProjection,
   loadEmployeesPageProjection,
-  loadEmploymentScopeProjection,
-  loadRestaurantZonesMap,
-  loadScheduleActorProjection,
+} from '@/modules/employment/infrastructure/employmentProjectionService';
+export {
   setEmploymentActiveProjection,
   updateEmploymentProjection,
-} from '@/modules/employment/infrastructure/employmentRepository';
+} from '@/modules/employment/infrastructure/employmentMutationService';
