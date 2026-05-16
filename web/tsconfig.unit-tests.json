@@ -47,6 +47,9 @@
     "src/modules/schedule/domain/**/*.ts",
     "src/modules/incidents/domain/incidentTypes.ts",
     "src/modules/incidents/domain/incidentStatusRules.ts",
-    "src/modules/incidents/domain/incidentStatusRules.test.ts"
+    "src/modules/incidents/domain/incidentStatusRules.test.ts",
+    "src/modules/suppliers/domain/deliveryNoteTypes.ts",
+    "src/modules/suppliers/domain/deliveryNoteStatusRules.ts",
+    "src/modules/suppliers/domain/deliveryNoteStatusRules.test.ts"
   ]
 }
