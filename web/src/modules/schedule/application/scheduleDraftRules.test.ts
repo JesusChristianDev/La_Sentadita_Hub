@@ -12,6 +12,7 @@ import {
 } from './scheduleDraftRules';
 
 const CONFIG: ScheduleConfig = {
+  max_weekly_hours_employee: null,
   min_shift_duration_minutes: 240,
   min_split_break_minutes: 180,
   timezone: 'Europe/Madrid',

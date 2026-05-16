@@ -64,6 +64,7 @@ function makeIssueSummary(): ScheduleIssueSummary {
     empty_keys: [],
     invalid_cells: 0,
     invalid_keys: [],
+    weekly_hours_warnings: [],
   };
 }
 
@@ -95,6 +96,7 @@ test('persistDraftEntry returns unchanged entry when payload is effectively iden
     },
     getEntryByNaturalKey: async () => existing,
     getScheduleConfig: async () => ({
+      max_weekly_hours_employee: null,
       min_shift_duration_minutes: 240,
       min_split_break_minutes: 180,
       timezone: 'Europe/Madrid',
@@ -141,6 +143,7 @@ test('persistDraftEntry creates a new entry and audit log when the cell does not
     createScheduleEntry: async () => createdEntry,
     getEntryByNaturalKey: async () => null,
     getScheduleConfig: async () => ({
+      max_weekly_hours_employee: null,
       min_shift_duration_minutes: 240,
       min_split_break_minutes: 180,
       timezone: 'Europe/Madrid',
@@ -213,6 +216,7 @@ test('saveCellDraft republishes to draft state and recalculates issue summary', 
         id: 'entry-1',
       }),
     getScheduleConfig: async () => ({
+      max_weekly_hours_employee: null,
       min_shift_duration_minutes: 240,
       min_split_break_minutes: 180,
       timezone: 'Europe/Madrid',
@@ -263,6 +267,7 @@ test('saveCellDraft allows clearing a cell without loading schedule config', asy
     getScheduleConfig: async () => {
       configCalls += 1;
       return {
+        max_weekly_hours_employee: null,
         min_shift_duration_minutes: 240,
         min_split_break_minutes: 180,
         timezone: 'Europe/Madrid',

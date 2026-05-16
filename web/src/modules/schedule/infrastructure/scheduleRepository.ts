@@ -21,6 +21,7 @@ type ScheduleQueryRow = Schedule & {
 };
 
 type ScheduleConfigRow = {
+  max_weekly_hours_employee: number | null;
   min_shift_duration: string | null;
   min_split_break: string | null;
   timezone: string | null;
@@ -484,6 +485,7 @@ export async function listRestaurantZones(restaurantId: string): Promise<Restaur
 export async function getScheduleConfig(restaurantId: string): Promise<ScheduleConfig> {
   const supabase = createSupabaseAdminClient();
   const fallback: ScheduleConfig = {
+    max_weekly_hours_employee: null,
     min_shift_duration_minutes: 60,
     min_split_break_minutes: 60,
     timezone: 'Europe/Madrid',
@@ -491,7 +493,7 @@ export async function getScheduleConfig(restaurantId: string): Promise<ScheduleC
 
   const { data, error } = await supabase
     .from('schedule_config')
-    .select('min_shift_duration, min_split_break, timezone')
+    .select('min_shift_duration, min_split_break, timezone, max_weekly_hours_employee')
     .eq('restaurant_id', restaurantId)
     .maybeSingle();
 
@@ -504,6 +506,7 @@ export async function getScheduleConfig(restaurantId: string): Promise<ScheduleC
 
   const typed = data as ScheduleConfigRow;
   return {
+    max_weekly_hours_employee: typed.max_weekly_hours_employee ?? null,
     min_shift_duration_minutes: intervalToMinutes(typed.min_shift_duration, 60),
     min_split_break_minutes: intervalToMinutes(typed.min_split_break, 60),
     timezone: typed.timezone || fallback.timezone,

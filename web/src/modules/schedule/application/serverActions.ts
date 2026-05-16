@@ -59,6 +59,7 @@ import { unlockSchedule } from './lockActions';
 import { publishScheduleWeek } from './publishSchedule';
 import { createScheduleDraftService } from './scheduleDraftService';
 import { createScheduleLockService } from './scheduleLockService';
+import { filterEmployeesForDraftScope as filterEmployeesByScope } from './scheduleDraftScope';
 import { createSchedulePublicationService } from './schedulePublicationService';
 import {
   buildEmployeeWeekView,
@@ -259,13 +260,7 @@ function filterEmployeesForDraftScope(
   ctx: UserContext,
   employees: EmployeeListItem[],
 ): EmployeeListItem[] {
-  if (ctx.requestContext.systemRole !== 'area_lead' || !ctx.requestContext.zoneId) {
-    return employees;
-  }
-
-  return employees.filter(
-    (employee) => employee.zone_id === ctx.requestContext.zoneId,
-  );
+  return filterEmployeesByScope(ctx.requestContext, employees);
 }
 
 function buildShiftTemplateText(input: ShiftTemplateDraftInput): string {
@@ -416,6 +411,7 @@ export async function loadScheduleHomeAction(
     return {
       current_week: buildWeekSummary({
         config: {
+          max_weekly_hours_employee: null,
           min_shift_duration_minutes: 60,
           min_split_break_minutes: 60,
           timezone: 'Europe/Madrid',
@@ -428,6 +424,7 @@ export async function loadScheduleHomeAction(
       history_weeks: [],
       next_week: buildWeekSummary({
         config: {
+          max_weekly_hours_employee: null,
           min_shift_duration_minutes: 60,
           min_split_break_minutes: 60,
           timezone: 'Europe/Madrid',

@@ -116,6 +116,7 @@ function getWeekSummary(week: ScheduleWeekSummary): string {
     empty_keys: [],
     invalid_cells: week.validation_issues,
     invalid_keys: [],
+    weekly_hours_warnings: [],
   });
 }
 

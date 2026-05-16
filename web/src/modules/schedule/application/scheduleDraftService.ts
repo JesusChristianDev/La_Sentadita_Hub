@@ -41,6 +41,7 @@ type ScheduleDraftServiceDeps = {
     date: string,
   ) => Promise<ScheduleEntry | null>;
   getScheduleConfig: (restaurantId: string) => Promise<{
+    max_weekly_hours_employee: number | null;
     min_shift_duration_minutes: number;
     min_split_break_minutes: number;
     timezone: string;

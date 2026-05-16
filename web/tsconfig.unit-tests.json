@@ -30,6 +30,8 @@
     "src/modules/people/application/selfProfileMutationRules.ts",
     "src/modules/schedule/application/scheduleCalculations.test.ts",
     "src/modules/schedule/application/scheduleCalculations.ts",
+    "src/modules/schedule/application/scheduleDraftScope.test.ts",
+    "src/modules/schedule/application/scheduleDraftScope.ts",
     "src/modules/schedule/application/scheduleDates.test.ts",
     "src/modules/schedule/application/scheduleDates.ts",
     "src/modules/schedule/application/scheduleDraftRules.test.ts",
