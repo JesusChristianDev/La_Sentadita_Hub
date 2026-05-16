@@ -5,10 +5,12 @@ import {
   type EditableEmployeeRole,
   type EditableEmploymentSystemRole,
 } from '@/modules/employment/domain/employmentTypes';
+
 import {
-  type RestaurantAssignmentRow,
-  type RoleScopeRow,
-  type ZoneAssignmentRow,
+  getAreaLeadZoneConflictCode,
+  getEmploymentRoleSlotConflictCode,
+} from './employmentProjectionService';
+import {
   isCurrentTemporalRow,
   loadCompanyByRestaurantId,
   loadCurrentEmploymentForPerson,
@@ -20,12 +22,11 @@ import {
   loadZoneAssignmentsByEmploymentIds,
   normalizeEditableEmploymentRole,
   previousIsoDate,
+  type RestaurantAssignmentRow,
+  type RoleScopeRow,
   todayIsoDate,
+  type ZoneAssignmentRow,
 } from './employmentRepository';
-import {
-  getAreaLeadZoneConflictCode,
-  getEmploymentRoleSlotConflictCode,
-} from './employmentProjectionService';
 
 const BAN_100_YEARS = '876600h';
 

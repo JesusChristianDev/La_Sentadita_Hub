@@ -2,8 +2,8 @@ import 'server-only';
 
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
-import type { MindeeExtractedLine } from './mindeeExtractionService';
 import type { CreateDeliveryNoteLineInput } from '../domain/deliveryNoteTypes';
+import type { MindeeExtractedLine } from './mindeeExtractionService';
 
 type AliasRow = {
   product_id: string;

@@ -1,5 +1,6 @@
-import type { IncidentCategory, IncidentSensitivity, IncidentStatus } from './incidentTypes';
 import type { SystemRole } from '@/shared/authz';
+
+import type { IncidentCategory, IncidentSensitivity, IncidentStatus } from './incidentTypes';
 
 // Valid forward-only status transitions
 const ALLOWED_TRANSITIONS: ReadonlyMap<IncidentStatus, ReadonlySet<IncidentStatus>> = new Map([

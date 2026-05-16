@@ -6,27 +6,24 @@ import {
   type EmploymentStatusFilter,
 } from '@/modules/employment/domain/employmentTypes';
 import { coerceSystemRole } from '@/shared/authz';
+
 import {
   type EmployeesPageProjection,
-  type PersonRow,
-  type ZoneAssignmentRow,
-  type RestaurantAssignmentRow,
-  type RoleScopeRow,
-  type RestaurantZoneSummary,
-  todayIsoDate,
-  isCurrentTemporalRow,
-  pickCurrentOrLatest,
   formatFullName,
-  mapSystemRoleToEmployment,
-  loadPeopleByIds,
-  loadEmploymentsByIds,
-  loadRestaurantAssignmentsByEmploymentIds,
-  loadZoneAssignmentsByEmploymentIds,
-  loadCurrentRoleScopesForPerson,
+  isCurrentTemporalRow,
+  loadCurrentEmploymentForPerson,
   loadCurrentRestaurantAssignment,
   loadCurrentZoneAssignment,
+  loadEmploymentsByIds,
+  loadPeopleByIds,
   loadRestaurantZonesByRestaurantId,
-  loadCurrentEmploymentForPerson,
+  loadZoneAssignmentsByEmploymentIds,
+  mapSystemRoleToEmployment,
+  pickCurrentOrLatest,
+  type RestaurantAssignmentRow,
+  type RoleScopeRow,
+  todayIsoDate,
+  type ZoneAssignmentRow,
 } from './employmentRepository';
 
 export async function loadEmployeesPageProjection(

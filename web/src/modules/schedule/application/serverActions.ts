@@ -43,7 +43,6 @@ import {
   getScheduleConfig,
   getScheduleLockOwnerActor,
   getScheduleWithEntriesById,
-  insertScheduleEntryLog,
   listRestaurantZones,
   listScheduleEntries,
   listScheduleEntryLogs,
@@ -57,9 +56,9 @@ import {
 import { ensureScheduleDraft } from './getSchedule';
 import { unlockSchedule } from './lockActions';
 import { publishScheduleWeek } from './publishSchedule';
+import { filterEmployeesForDraftScope as filterEmployeesByScope } from './scheduleDraftScope';
 import { createScheduleDraftService } from './scheduleDraftService';
 import { createScheduleLockService } from './scheduleLockService';
-import { filterEmployeesForDraftScope as filterEmployeesByScope } from './scheduleDraftScope';
 import { createSchedulePublicationService } from './schedulePublicationService';
 import {
   buildEmployeeWeekView,

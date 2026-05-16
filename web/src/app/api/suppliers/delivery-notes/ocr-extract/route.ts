@@ -1,8 +1,8 @@
 import { jsonError, jsonOk } from '@/app/api/_routeUtils';
 import { getCurrentUserContext } from '@/modules/auth_users';
-import { assertRestaurantAccess } from '@/shared/authz';
 import { extractDeliveryNoteFromFile } from '@/modules/suppliers/application/mindeeExtractionService';
 import { matchExtractedLinesToProducts } from '@/modules/suppliers/application/productMatchingService';
+import { assertRestaurantAccess } from '@/shared/authz';
 import { serverEnv } from '@/shared/env.server';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB

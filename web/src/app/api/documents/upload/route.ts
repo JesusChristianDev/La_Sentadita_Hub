@@ -1,7 +1,6 @@
-import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { jsonError, jsonOk } from '@/app/api/_routeUtils';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCurrentUserContext } from '@/modules/auth_users';
-import { isGlobalSystemRole } from '@/shared/authz';
 
 const BUCKET = 'documents';
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB

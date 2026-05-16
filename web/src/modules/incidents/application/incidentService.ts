@@ -10,6 +10,11 @@ import {
   canAccessZone,
 } from '@/shared/authz';
 
+import {
+  assertRoleAllowedToCreateCategory,
+  assertRoleAllowedToMarkRestricted,
+  assertValidIncidentTransition,
+} from '../domain/incidentStatusRules';
 import type {
   CreateIncidentInput,
   IncidentCategory,
@@ -17,11 +22,6 @@ import type {
   IncidentSeverity,
   IncidentStatus,
 } from '../domain/incidentTypes';
-import {
-  assertRoleAllowedToCreateCategory,
-  assertRoleAllowedToMarkRestricted,
-  assertValidIncidentTransition,
-} from '../domain/incidentStatusRules';
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);

@@ -1,5 +1,5 @@
-import { archivePerson, createPerson } from '@/modules/people';
 import type { ArchivePersonInput, CreatePersonInput } from '@/modules/people';
+import { archivePerson, createPerson } from '@/modules/people';
 import { updateEmploymentProjection } from '@/shared/db/employment';
 
 import type { CreateEmployeeValidatedInput, EditableEmploymentSystemRole } from './employeeMutationRules';
