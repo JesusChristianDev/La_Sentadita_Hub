@@ -17,6 +17,7 @@ import type {
   ReassignTaskInstanceInput,
   TaskCancelReason,
   TaskInstanceRecord,
+  TaskStatus,
   TaskTemplateRecord,
 } from '../domain/taskTypes';
 
@@ -293,12 +294,18 @@ export async function createTaskInstance(
   return data as TaskInstanceRecord;
 }
 
+const TERMINAL_TASK_STATUSES = new Set(['completed', 'cancelled'] as const satisfies TaskStatus[]);
+
 export async function completeTaskInstance(
   taskInstanceId: string,
 ): Promise<TaskInstanceRecord> {
   const ctx = await getRequiredCurrentUserContext();
   const current = await loadTaskInstance(taskInstanceId);
   assertRestaurantAccess(ctx.requestContext, current.restaurant_id);
+
+  if (TERMINAL_TASK_STATUSES.has(current.task_status as 'completed' | 'cancelled')) {
+    throw new Error(`TASK_INVALID_TRANSITION: No se puede completar una tarea en estado '${current.task_status}'.`);
+  }
 
   const canComplete =
     ctx.requestContext.systemRole === 'area_lead'
@@ -363,8 +370,16 @@ export async function confirmTaskInstance(
     assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
   }
 
+  if (TERMINAL_TASK_STATUSES.has(current.task_status as 'completed' | 'cancelled')) {
+    throw new Error(`TASK_INVALID_TRANSITION: No se puede confirmar una tarea en estado '${current.task_status}'.`);
+  }
+
   if (!current.requires_confirmation) {
     throw new Error('TASK_CONFIRMATION_NOT_REQUIRED: Esta tarea no requiere confirmacion.');
+  }
+
+  if (current.confirmed_at) {
+    throw new Error('TASK_ALREADY_CONFIRMED: Esta tarea ya fue confirmada.');
   }
 
   const patch = {
@@ -412,6 +427,10 @@ export async function cancelTaskInstance(
     assertZoneAccess(ctx.requestContext, current.restaurant_id, current.assigned_zone_id);
   } else {
     assertRestaurantManagement(ctx.requestContext, current.restaurant_id);
+  }
+
+  if (TERMINAL_TASK_STATUSES.has(current.task_status as 'completed' | 'cancelled')) {
+    throw new Error(`TASK_INVALID_TRANSITION: No se puede cancelar una tarea en estado '${current.task_status}'.`);
   }
 
   const patch = {

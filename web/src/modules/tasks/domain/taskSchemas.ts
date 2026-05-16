@@ -19,3 +19,19 @@ export const CreateTaskInstanceSchema = z.object({
 );
 
 export type CreateTaskInstanceSchemaType = z.infer<typeof CreateTaskInstanceSchema>;
+
+export const ReassignTaskInstanceSchema = z.object({
+  taskInstanceId: z.string().uuid(),
+  assignedEmployeeId: z.string().uuid().optional().nullable(),
+  assignedRole: z.string().optional().nullable(),
+  assignedZoneId: z.string().uuid().optional().nullable(),
+  reason: z.enum(['employment_change', 'request_conflict', 'shift_swap', 'manual_reassignment_required']),
+}).refine(
+  (data) => data.assignedEmployeeId || data.assignedRole || data.assignedZoneId,
+  {
+    message: 'Toda reasignación debe tener al menos un responsable.',
+    path: ['assignedEmployeeId'],
+  }
+);
+
+export type ReassignTaskInstanceSchemaType = z.infer<typeof ReassignTaskInstanceSchema>;

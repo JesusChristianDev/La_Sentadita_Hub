@@ -451,6 +451,11 @@ export async function reviewRequest(input: ReviewRequestInput): Promise<RequestR
     throw new Error('REQUEST_SELF_APPROVAL_FORBIDDEN: No puedes autorizar tu propia solicitud.');
   }
 
+  const TERMINAL_REQUEST_STATUSES = new Set(['approved', 'rejected', 'cancelled', 'expired']);
+  if (TERMINAL_REQUEST_STATUSES.has(current.status as string)) {
+    throw new Error(`REQUEST_INVALID_TRANSITION: No se puede cambiar una solicitud en estado '${current.status}'.`);
+  }
+
   const patch = {
     resolution_note: input.resolutionNote ?? null,
     reviewed_by: ctx.userId,
@@ -733,6 +738,10 @@ export async function reviewShiftSwapRequest(
     throw new Error(`Failed to load shift swap request: ${currentError.message}`);
   }
 
+  if ((current.status as string) !== 'pending_manager') {
+    throw new Error(`SHIFT_SWAP_INVALID_TRANSITION: Solo se puede revisar un intercambio en estado 'pending_manager'. Estado actual: '${current.status}'.`);
+  }
+
   const requesterEntry = await loadScheduleEntrySnapshot(
     current.requester_schedule_entry_id as string,
   );
@@ -754,6 +763,30 @@ export async function reviewShiftSwapRequest(
 
   if (error) {
     throw new Error(`Failed to review shift swap request: ${error.message}`);
+  }
+
+  if (approve) {
+    const targetEntry = await loadScheduleEntrySnapshot(
+      current.target_schedule_entry_id as string,
+    );
+    const requesterEmploymentId = requesterEntry.employment_id;
+    const targetEmploymentId = targetEntry.employment_id;
+
+    const { error: swapRequesterError } = await admin
+      .from('schedule_entries')
+      .update({ employment_id: targetEmploymentId })
+      .eq('id', requesterEntry.id);
+    if (swapRequesterError) {
+      throw new Error(`Failed to swap requester entry: ${swapRequesterError.message}`);
+    }
+
+    const { error: swapTargetError } = await admin
+      .from('schedule_entries')
+      .update({ employment_id: requesterEmploymentId })
+      .eq('id', targetEntry.id);
+    if (swapTargetError) {
+      throw new Error(`Failed to swap target entry: ${swapTargetError.message}`);
+    }
   }
 
   await writeAuditLog({
