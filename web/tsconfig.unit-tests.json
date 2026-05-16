@@ -44,6 +44,9 @@
     "src/modules/schedule/application/schedulePublicationService.ts",
     "src/modules/schedule/application/shiftValidation.test.ts",
     "src/modules/schedule/application/shiftValidation.ts",
-    "src/modules/schedule/domain/**/*.ts"
+    "src/modules/schedule/domain/**/*.ts",
+    "src/modules/incidents/domain/incidentTypes.ts",
+    "src/modules/incidents/domain/incidentStatusRules.ts",
+    "src/modules/incidents/domain/incidentStatusRules.test.ts"
   ]
 }

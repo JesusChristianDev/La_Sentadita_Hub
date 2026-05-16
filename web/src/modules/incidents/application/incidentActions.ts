@@ -3,10 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-import type { IncidentStatus } from '../domain/incidentTypes';
 import {
   assignIncidentOwner,
   createIncident,
+  editIncidentDetails,
   updateIncidentStatus,
 } from './incidentService';
 
@@ -32,6 +32,16 @@ const createIncidentSchema = z.object({
 const incidentStatusSchema = z.object({
   incidentId: z.string().uuid(),
   status: z.enum(['reported', 'in_review', 'resolved', 'closed']),
+});
+
+const editIncidentDetailsSchema = z.object({
+  incidentId: z.string().uuid(),
+  category: z.enum([
+    'operational','maintenance','hygiene','customer','security','stock','technology','personnel',
+  ]).optional(),
+  description: z.string().trim().min(1).optional(),
+  severity: z.enum(['low','medium','high','critical']).nullable().optional(),
+  title: z.string().trim().min(1).optional(),
 });
 
 const incidentOwnerSchema = z.object({
@@ -78,10 +88,7 @@ export async function updateIncidentStatusAction(formData: FormData) {
   }
 
   try {
-    await updateIncidentStatus(
-      parsed.data.incidentId,
-      parsed.data.status as IncidentStatus,
-    );
+    await updateIncidentStatus(parsed.data.incidentId, parsed.data.status);
     revalidatePath('/incidents');
     revalidatePath('/app');
     return { ok: true as const };
@@ -89,6 +96,34 @@ export async function updateIncidentStatusAction(formData: FormData) {
     return {
       ok: false as const,
       error: error instanceof Error ? error.message : 'No se pudo actualizar la incidencia',
+    };
+  }
+}
+
+export async function editIncidentDetailsAction(formData: FormData) {
+  const parsed = editIncidentDetailsSchema.safeParse({
+    incidentId: formData.get('incidentId'),
+    category: formData.get('category') || undefined,
+    description: formData.get('description') || undefined,
+    severity: formData.get('severity') === '' ? null : (formData.get('severity') || undefined),
+    title: formData.get('title') || undefined,
+  });
+
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.message };
+  }
+
+  const { incidentId, ...rest } = parsed.data;
+
+  try {
+    await editIncidentDetails(incidentId, rest);
+    revalidatePath('/incidents');
+    revalidatePath('/app');
+    return { ok: true as const };
+  } catch (error: unknown) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : 'No se pudo editar la incidencia',
     };
   }
 }
