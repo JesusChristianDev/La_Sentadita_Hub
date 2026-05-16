@@ -35,8 +35,9 @@ test.describe('Login', () => {
 
     await page.getByRole('button', { name: 'Entrar' }).click();
 
-    const submitButton = page.getByRole('button', { name: 'Entrando...' });
-    await expect(submitButton).toBeDisabled();
-    await expect(submitButton).toHaveAttribute('aria-busy', 'true');
+    // Check both conditions atomically with a CSS selector before the redirect fires
+    await expect(
+      page.locator('button[type="submit"][aria-busy="true"]:disabled'),
+    ).toBeVisible({ timeout: 2000 });
   });
 });
