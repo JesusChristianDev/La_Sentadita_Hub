@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: '/app',
     name: 'La Sentadita Hub',
     short_name: 'Sentadita Hub',
-    description: 'Operacion diaria de restaurantes',
+    description: 'Operación diaria de restaurantes',
     start_url: '/app',
     display: 'standalone',
     background_color: '#101820',
