@@ -1,4 +1,5 @@
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
+import { isDynamicServerError } from 'next/dist/client/components/hooks-server-context';
 import { redirect } from 'next/navigation';
 
 import type { PersonProfile } from '@/modules/people';
@@ -44,6 +45,7 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
     backendSession = await loadBackendSession();
   } catch (error) {
     if (isRedirectError(error)) throw error;
+    if (isDynamicServerError(error)) throw error;
     console.error('[getCurrentUserContext] session load failed:', error);
     return null;
   }

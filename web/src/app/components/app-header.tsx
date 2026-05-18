@@ -41,7 +41,7 @@ export type AppHeaderProps = {
   activeScopeType?: BackendScopeType;
   activeScopeLabel?: string;
   isMobileDevice?: boolean;
-  setActiveScopeAction?: (formData: FormData) => void;
+  setActiveScopeAction?: (formData: FormData) => Promise<void> | void;
   currentUserName?: string | null;
   currentUserRole?: SystemRole | null;
   currentUserAvatarUrl?: string | null;

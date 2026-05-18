@@ -44,7 +44,7 @@ type Props = {
   activeScopeId?: string | null;
   activeScopeType?: BackendScopeType;
   activeScopeLabel?: string;
-  setActiveScopeAction?: (formData: FormData) => void;
+  setActiveScopeAction?: (formData: FormData) => Promise<void> | void;
   currentUserName?: string | null;
   currentUserRole?: SystemRole | null;
   currentUserAvatarUrl?: string | null;

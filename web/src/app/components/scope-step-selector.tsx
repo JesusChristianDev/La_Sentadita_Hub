@@ -17,7 +17,7 @@ type ScopeOption = {
 };
 
 type ScopeStepSelectorProps = {
-  action: (formData: FormData) => void;
+  action: (formData: FormData) => Promise<void> | void;
   activeScopeId: string | null;
   activeScopeType: BackendScopeType;
   scopes: ScopeOption[];

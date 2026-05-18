@@ -17,7 +17,7 @@ type ScopeOption = {
 };
 
 type ScopeTreeMenuProps = {
-  action: (formData: FormData) => void;
+  action: (formData: FormData) => Promise<void> | void;
   scopes: ScopeOption[];
   activeScopeId: string | null;
   activeScopeType: BackendScopeType;

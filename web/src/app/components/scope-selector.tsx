@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 
 import type { BackendScopeType } from '@/modules/auth_users';
 import { Button, Select } from '@/shared/ui';
@@ -15,7 +15,7 @@ type ScopeOption = {
 };
 
 type ScopeSelectorProps = {
-  action: (formData: FormData) => void;
+  action: (formData: FormData) => Promise<void> | void;
   activeScopeId: string | null;
   activeScopeType: BackendScopeType;
   ariaLabel?: string;
@@ -84,6 +84,8 @@ export function ScopeSelector({
   );
   const selectedScope = deserializeScope(selectedScopeValue);
 
+  const [isPending, startTransition] = useTransition();
+
   const otherScopes = scopes.filter((s) => s.scopeType !== 'restaurant');
   const restaurantScopes = scopes.filter((s) => s.scopeType === 'restaurant');
 
@@ -96,8 +98,16 @@ export function ScopeSelector({
     restaurantGroups.set(groupLabel, current);
   }
 
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => {
+      void action(formData);
+    });
+  }
+
   return (
-    <form action={action} className={className}>
+    <form onSubmit={handleSubmit} className={className}>
       <input type="hidden" name="scopeType" value={selectedScope.scopeType} />
       <input type="hidden" name="scopeId" value={selectedScope.scopeId ?? ''} />
       <Select
@@ -129,8 +139,8 @@ export function ScopeSelector({
           </optgroup>
         ))}
       </Select>
-      <Button className={submitClassName} type="submit">
-        {buttonLabel}
+      <Button className={submitClassName} type="submit" disabled={isPending} aria-disabled={isPending}>
+        {isPending ? 'Aplicando…' : buttonLabel}
       </Button>
     </form>
   );
