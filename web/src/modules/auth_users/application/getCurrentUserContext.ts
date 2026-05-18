@@ -1,3 +1,4 @@
+import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { redirect } from 'next/navigation';
 
 import type { PersonProfile } from '@/modules/people';
@@ -38,7 +39,15 @@ function buildCurrentSession(params: {
 }
 
 export async function getCurrentUserContext(): Promise<UserContext | null> {
-  const backendSession = await loadBackendSession();
+  let backendSession;
+  try {
+    backendSession = await loadBackendSession();
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    console.error('[getCurrentUserContext] session load failed:', error);
+    return null;
+  }
+
   if (!backendSession) return null;
 
   if (backendSession.person.accessStatus !== 'active') {
