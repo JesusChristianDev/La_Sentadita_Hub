@@ -97,31 +97,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: [quality, e2e]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    env:
-      VERCEL_ORG_ID: team_BUxayKcFq2rc52AdWAZFdJYI
-      VERCEL_PROJECT_ID: prj_61kYz5Xq5LcJhwRgUERgTOQRekVo
     defaults:
       run:
-        working-directory: .
+        working-directory: web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.32.1
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Pull Vercel environment
-        run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build project
-        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
       - name: Deploy to Vercel
-        run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --yes
+        env:
+          VERCEL_ORG_ID: team_BUxayKcFq2rc52AdWAZFdJYI
+          VERCEL_PROJECT_ID: prj_61kYz5Xq5LcJhwRgUERgTOQRekVo
