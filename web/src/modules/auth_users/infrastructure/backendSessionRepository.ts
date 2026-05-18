@@ -218,7 +218,8 @@ async function getAuthenticatedUserId(): Promise<string | null> {
   const { data, error } = await supabase.auth.getUser();
 
   if (error) {
-    throw new Error(`Failed to load authenticated user: ${error.message}`);
+    // Auth errors (expired JWT, invalid session) mean unauthenticated — don't throw
+    return null;
   }
 
   return data.user?.id ?? null;
