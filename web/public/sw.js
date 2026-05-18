@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.0.7';
+const CACHE_VERSION = 'v1.0.8';
 const STATIC_CACHE = `la-sentadita-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `la-sentadita-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline';
@@ -91,7 +91,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL)));
+    // Use the URL string (not the request object) so the SW doesn't re-issue a
+    // navigate-mode fetch, which Chrome rejects after form-POST redirects and
+    // would otherwise serve the offline page into the app shell, causing a
+    // React hydration "application error".
+    event.respondWith(fetch(request.url).catch(() => caches.match(OFFLINE_URL)));
     return;
   }
 
