@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.0.8';
+const CACHE_VERSION = 'v1.0.9';
 const STATIC_CACHE = `la-sentadita-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `la-sentadita-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline';
