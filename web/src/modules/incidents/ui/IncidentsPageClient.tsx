@@ -333,10 +333,9 @@ export function IncidentsPageClient({
   ownerOptions,
   zones,
 }: IncidentsPageClientProps) {
-  const visibleIncidents = useMemo(() => incidents, [incidents]);
   const counts = useMemo(
     () =>
-      visibleIncidents.reduce(
+      incidents.reduce(
         (acc, incident) => {
           acc.all += 1;
           acc[incident.status] += 1;
@@ -350,7 +349,7 @@ export function IncidentsPageClient({
           resolved: 0,
         },
       ),
-    [visibleIncidents],
+    [incidents],
   );
 
   return (
@@ -361,7 +360,7 @@ export function IncidentsPageClient({
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300/80">
               Operacion de incidencias
             </p>
-            <h1 className="dashboard-message-title">Incidencias</h1>
+            <h2 className="dashboard-message-title">Incidencias</h2>
             <p className="dashboard-message-body">
               {currentRestaurantName
                 ? `Gestiona incidencias del restaurante ${currentRestaurantName}.`
@@ -438,14 +437,14 @@ export function IncidentsPageClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {visibleIncidents.length === 0 ? (
+                {incidents.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-10 text-center text-muted">
                       No hay incidencias para mostrar.
                     </td>
                   </tr>
                 ) : (
-                  visibleIncidents.map((incident) => (
+                  incidents.map((incident) => (
                     <tr
                       key={incident.incident_id}
                       className="align-top transition hover:bg-surface-muted/30"
@@ -484,21 +483,18 @@ export function IncidentsPageClient({
                       </td>
                       <td className="px-4 py-4 text-muted">{formatDate(incident.created_at)}</td>
                       <td className="px-4 py-4">
-                        <div className="flex flex-col gap-3">
-                          {canManage ? (
+                        {canManage ? (
+                          <div className="flex flex-col gap-3">
                             <IncidentStatusButtons
                               incidentId={incident.incident_id}
                               status={incident.status}
                             />
-                          ) : null}
-
-                          {canManage ? (
                             <IncidentOwnerForm
                               incidentId={incident.incident_id}
                               ownerOptions={ownerOptions}
                             />
-                          ) : null}
-                        </div>
+                          </div>
+                        ) : null}
                       </td>
                     </tr>
                   ))

@@ -6,12 +6,14 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { AlertCircle, CalendarRange, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useState, useTransition } from 'react';
 
 import { reviewRequestAction } from '../application/requestActions';
 import type { RequestRecord } from '../domain/requestTypes';
 import { RequestCreateDialog } from './RequestCreateDialog';
+
+const coreRowModel = getCoreRowModel();
 
 type RequestsPageClientProps = {
   currentEmploymentId: string;
@@ -90,7 +92,6 @@ export function RequestsPageClient({
   mode,
   teamRequests = [],
 }: RequestsPageClientProps) {
-  const [requests] = useState(initialRequests);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'my' | 'team'>('my');
 
@@ -143,33 +144,16 @@ export function RequestsPageClient({
     }),
   ];
 
-  const displayRequests =
-    activeTab === 'team' && canReviewTeam ? teamRequests : requests;
+  const displayRequests = activeTab === 'team' && canReviewTeam ? teamRequests : initialRequests;
 
   const table = useReactTable({
     data: displayRequests,
     columns,
-    getCoreRowModel: getCoreRowModel(),
+    getCoreRowModel: coreRowModel,
   });
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Solicitudes</h1>
-          <p className="mt-2 text-muted">
-            {canManageTeam
-              ? 'Gestiona tus solicitudes y coordina las del equipo segun el contexto activo.'
-              : 'Gestiona tus solicitudes laborales y operativas.'}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="rounded-full bg-amber-500/10 p-3 text-amber-500">
-            <CalendarRange className="h-6 w-6" />
-          </div>
-        </div>
-      </div>
-
       {mode === 'context_required' ? (
         <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -195,13 +179,13 @@ export function RequestsPageClient({
         <div className="border-b border-border/50 pb-px">
           <div className="flex gap-4">
             <button
-              className={`border-b-2 px-1 pb-2 font-medium transition-colors ${activeTab === 'my' ? 'border-amber-500 text-amber-500' : 'border-transparent text-muted-foreground hover:text-white'}`}
+              className={`border-b-2 px-1 pb-2 font-medium transition-colors ${activeTab === 'my' ? 'border-amber-500 text-amber-500' : 'border-transparent text-muted hover:text-white'}`}
               onClick={() => setActiveTab('my')}
             >
               Mis solicitudes
             </button>
             <button
-              className={`border-b-2 px-1 pb-2 font-medium transition-colors ${activeTab === 'team' ? 'border-amber-500 text-amber-500' : 'border-transparent text-muted-foreground hover:text-white'} ${isTeamTabDisabled ? 'cursor-not-allowed opacity-60' : ''}`}
+              className={`border-b-2 px-1 pb-2 font-medium transition-colors ${activeTab === 'team' ? 'border-amber-500 text-amber-500' : 'border-transparent text-muted hover:text-white'} ${isTeamTabDisabled ? 'cursor-not-allowed opacity-60' : ''}`}
               disabled={isTeamTabDisabled}
               onClick={() => setActiveTab('team')}
             >
@@ -230,7 +214,7 @@ export function RequestsPageClient({
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-background/50 text-muted-foreground">
+            <thead className="bg-background/50 text-muted">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (

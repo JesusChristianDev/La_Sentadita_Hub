@@ -10,17 +10,21 @@ import {
   updateIncidentStatus,
 } from './incidentService';
 
+const INCIDENT_CATEGORIES = [
+  'operational',
+  'maintenance',
+  'hygiene',
+  'customer',
+  'security',
+  'stock',
+  'technology',
+  'personnel',
+] as const;
+
+const categoryEnum = z.enum(INCIDENT_CATEGORIES);
+
 const createIncidentSchema = z.object({
-  category: z.enum([
-    'operational',
-    'maintenance',
-    'hygiene',
-    'customer',
-    'security',
-    'stock',
-    'technology',
-    'personnel',
-  ]),
+  category: categoryEnum,
   description: z.string().trim().min(1),
   restaurantId: z.string().uuid(),
   sensitivity: z.enum(['normal', 'restricted']).optional(),
@@ -36,11 +40,9 @@ const incidentStatusSchema = z.object({
 
 const editIncidentDetailsSchema = z.object({
   incidentId: z.string().uuid(),
-  category: z.enum([
-    'operational','maintenance','hygiene','customer','security','stock','technology','personnel',
-  ]).optional(),
+  category: categoryEnum.optional(),
   description: z.string().trim().min(1).optional(),
-  severity: z.enum(['low','medium','high','critical']).nullable().optional(),
+  severity: z.enum(['low', 'medium', 'high', 'critical']).nullable().optional(),
   title: z.string().trim().min(1).optional(),
 });
 
@@ -101,11 +103,12 @@ export async function updateIncidentStatusAction(formData: FormData) {
 }
 
 export async function editIncidentDetailsAction(formData: FormData) {
+  const rawSeverity = formData.get('severity');
   const parsed = editIncidentDetailsSchema.safeParse({
     incidentId: formData.get('incidentId'),
     category: formData.get('category') || undefined,
     description: formData.get('description') || undefined,
-    severity: formData.get('severity') === '' ? null : (formData.get('severity') || undefined),
+    severity: rawSeverity === '' ? null : (rawSeverity || undefined),
     title: formData.get('title') || undefined,
   });
 

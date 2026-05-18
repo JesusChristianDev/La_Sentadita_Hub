@@ -10,9 +10,12 @@ import { CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type { FrontendPageMode } from '@/modules/auth_users';
+import { Button } from '@/shared/ui';
 
 import type { TaskInstanceRecord } from '../domain/taskTypes';
 import { TaskCreateDialog } from './TaskCreateDialog';
+
+const coreRowModel = getCoreRowModel();
 
 type TasksPageClientProps = {
   initialTasks: TaskInstanceRecord[];
@@ -32,7 +35,6 @@ export function TasksPageClient({
   mode,
   restaurantId,
 }: TasksPageClientProps) {
-  const [tasks] = useState(initialTasks);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const modeDescription =
@@ -67,25 +69,12 @@ export function TasksPageClient({
       header: 'Requiere Confirmación',
       cell: (info) => info.getValue() ? 'Sí' : 'No',
     }),
-    columnHelper.display({
-      id: 'actions',
-      cell: () => (
-        <button
-          className="text-xs font-medium text-amber-500 hover:text-amber-400 transition"
-          type="button"
-        >
-          Gestionar
-        </button>
-      ),
-    }),
   ], []);
 
-  const data = useMemo(() => tasks, [tasks]);
-
   const table = useReactTable({
-    data,
+    data: initialTasks,
     columns,
-    getCoreRowModel: getCoreRowModel(),
+    getCoreRowModel: coreRowModel,
   });
 
   return (
@@ -96,12 +85,7 @@ export function TasksPageClient({
           <p className="mt-1 text-sm text-muted">{modeDescription}</p>
         </div>
         {canManage && (
-          <button 
-            className="px-4 py-2 bg-amber-500 text-black font-semibold rounded-full hover:bg-amber-400 transition"
-            onClick={() => setIsCreateOpen(true)}
-          >
-            Crear Tarea
-          </button>
+          <Button onClick={() => setIsCreateOpen(true)}>Crear Tarea</Button>
         )}
       </div>
 
@@ -133,7 +117,7 @@ export function TasksPageClient({
                 </tr>
               ) : (
                 table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-surface-highlight/30 transition-colors">
+                  <tr key={row.id} className="hover:bg-surface-muted/30 transition-colors">
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-3 text-foreground/90">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

@@ -2,7 +2,7 @@
 
 import { Bell, CheckCheck, Laptop2, Loader2, Smartphone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 
 import { Button, Notice } from '@/shared/ui';
 
@@ -157,7 +157,6 @@ export function NotificationsPageClient({
   unreadCount,
 }: NotificationsPageClientProps) {
   const [tab, setTab] = useState<'notifications' | 'devices'>('notifications');
-  const visibleNotifications = useMemo(() => notifications, [notifications]);
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-6">
@@ -167,7 +166,7 @@ export function NotificationsPageClient({
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300/80">
               Bandeja personal
             </p>
-            <h1 className="dashboard-message-title">Notificaciones</h1>
+            <h2 className="dashboard-message-title">Notificaciones</h2>
             <p className="dashboard-message-body">
               Revisa eventos del sistema, incidencias y confirmaciones operativas.
             </p>
@@ -176,7 +175,7 @@ export function NotificationsPageClient({
           <div className="grid gap-3 sm:grid-cols-3">
             <article className="meta-item">
               <p className="meta-label">Total</p>
-              <p className="meta-value">{visibleNotifications.length}</p>
+              <p className="meta-value">{notifications.length}</p>
             </article>
             <article className="meta-item">
               <p className="meta-label">Sin leer</p>
@@ -230,12 +229,12 @@ export function NotificationsPageClient({
 
         {tab === 'notifications' ? (
           <div className="grid gap-3">
-            {visibleNotifications.length === 0 ? (
+            {notifications.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border/60 bg-surface-muted/30 p-8 text-center text-muted">
                 No tienes notificaciones todavia.
               </div>
             ) : (
-              visibleNotifications.map((notification) => {
+              notifications.map((notification) => {
                 const isUnread = notification.read_at === null;
                 return (
                   <article

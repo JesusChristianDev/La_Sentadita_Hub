@@ -1457,6 +1457,31 @@ summary:focus-visible {
   gap: 10px;
 }
 
+.dashboard-message-hero {
+  padding: clamp(16px, 2.4vw, 28px) 0 0;
+}
+
+.dashboard-message-copy {
+  min-width: 0;
+}
+
+.dashboard-message-title {
+  margin: 0;
+  font-size: clamp(1.65rem, 3.2vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+}
+
+.dashboard-message-body {
+  margin: 8px 0 0;
+  max-width: 56ch;
+  color: #c4cdd8;
+  font-size: 0.97rem;
+  line-height: 1.6;
+}
+
 .form-actions {
   display: flex;
   flex-wrap: wrap;
